@@ -33,9 +33,15 @@ Because ANA deliberately explores personal, symbolic, sometimes dark material, t
 blueprint's **Self‑Alignment Protocols** and **World‑Truth Harmonizer** are
 implemented as real guards, not flavor text:
 
-- **Forbidden themes.** `ANAConfig.forbidden_themes` are checked before a scene
-  reaches the protagonist; a match is blocked and the scene is regenerated gently
-  or replaced with a guaranteed‑safe interlude.
+- **Forbidden themes.** `ANAConfig.forbidden_themes` are kept out of everything
+  the protagonist sees, in three layers: generation works from a "safe view" of
+  the self with forbidden themes (and their lexicon synonyms) removed from
+  themes, goals, memories, motifs and the cast; the generator, cast and
+  harmonizer never voice them; and a final gate scans every text field of the
+  finished scene (title, summary, beats, speakers, symbols, choices). A scene
+  that still trips the gate is regenerated, or replaced with a safe interlude,
+  and the record says so. Verified: 0 leaks over 200 cycles with each of the
+  self's active themes forbidden in turn.
 - **Stress band / dynamic difficulty.** Intensity is pulled down when modelled
   stress approaches the ceiling and raised out of boredom — keeping the experience
   in a constructive zone.
@@ -48,3 +54,13 @@ implemented as real guards, not flavor text:
 
 These are configurable and inspectable, and every decision is recorded in the
 per‑cycle `CycleRecord`.
+
+## Model output and the viewer
+
+- Text produced by the model is bounded before it can enter the self: trait
+  updates only on known traits, themes only from the theme lexicon, clipped
+  strings. Earlier story text is fenced as data in later prompts.
+- The web viewer binds to localhost, rejects foreign Host/Origin headers,
+  requires JSON/ndjson content types, budgets memory and upload size, and keeps
+  model use off unless started with `--allow-llm`. All page text is rendered as
+  text nodes under a strict Content-Security-Policy.

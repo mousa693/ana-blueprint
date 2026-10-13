@@ -30,44 +30,44 @@
      "max": 16.0
     },
     "conv_final": {
-     "mean": 0.49194602574827284,
-     "min": 0.4558193063221842,
-     "max": 0.568393182712644
+     "mean": 0.5091180406736426,
+     "min": 0.4682010269926472,
+     "max": 0.6203879003724803
     },
     "conv_max": {
-     "mean": 0.5025497757662866,
-     "min": 0.460151974976762,
-     "max": 0.568393182712644
+     "mean": 0.5464057919238245,
+     "min": 0.4694189131858357,
+     "max": 0.6203879003724803
     },
     "conv_auc": {
-     "mean": 0.30247265978430227,
-     "min": 0.2630375187523875,
-     "max": 0.3364594521335745
+     "mean": 0.3409011818398341,
+     "min": 0.2947644832597294,
+     "max": 0.39531085830125257
     },
     "conv_monotonicity": {
-     "mean": 0.8533333333333333,
+     "mean": 0.8400000000000001,
      "min": 0.7333333333333333,
-     "max": 0.9333333333333333
+     "max": 1.0
     },
     "conv_dips": {
-     "mean": 1.4,
-     "min": 1.0,
-     "max": 2.0
+     "mean": 1.8,
+     "min": 0.0,
+     "max": 4.0
     },
     "conv_dips_recovered": {
-     "mean": 1.2,
-     "min": 1.0,
-     "max": 2.0
+     "mean": 1.0,
+     "min": 0.0,
+     "max": 4.0
     },
     "conv_recovery_rate": {
-     "mean": 0.9,
-     "min": 0.5,
+     "mean": 0.5,
+     "min": 0.0,
      "max": 1.0
     },
     "earned_corr": {
-     "mean": 0.27680550819419086,
+     "mean": 0.08161670662230885,
      "min": 0.0,
-     "max": 0.5161117455032533
+     "max": 0.18690139029067937
     },
     "earned_gap": {
      "mean": 0.0,
@@ -75,9 +75,9 @@
      "max": 0.0
     },
     "dconv_when_met": {
-     "mean": 0.03246066329643639,
-     "min": 0.029843650857044494,
-     "max": 0.037521521473996435
+     "mean": 0.03252066452196117,
+     "min": 0.02962967015126595,
+     "max": 0.038774243773280016
     },
     "dconv_when_avoided": {
      "mean": 0.0,
@@ -85,7 +85,7 @@
      "max": 0.0
     },
     "success_rate": {
-     "mean": 0.95,
+     "mean": 0.9625,
      "min": 0.9375,
      "max": 1.0
     },
@@ -135,14 +135,14 @@
      "max": 1.0
     },
     "repeated_beat_ratio": {
-     "mean": 0.025697305946272,
-     "min": 0.0,
-     "max": 0.04597701149425287
+     "mean": 0.027598808569137358,
+     "min": 0.011111111111111112,
+     "max": 0.06976744186046512
     },
     "distinct_nudge_ratio": {
-     "mean": 0.31423646782410253,
-     "min": 0.2564102564102564,
-     "max": 0.375
+     "mean": 0.30887866655308516,
+     "min": 0.2619047619047619,
+     "max": 0.358974358974359
     },
     "consecutive_identical_nudges": {
      "mean": 0.0,
@@ -160,29 +160,29 @@
      "max": 3.0
     },
     "trait_delta_sum": {
-     "mean": 2.17474,
-     "min": 2.1239,
-     "max": 2.2318
+     "mean": 2.1927,
+     "min": 2.123,
+     "max": 2.2259
     },
     "trait_delta_abs": {
-     "mean": 2.17474,
-     "min": 2.1239,
-     "max": 2.2318
+     "mean": 2.1927,
+     "min": 2.123,
+     "max": 2.2259
     },
     "goal_progress_mean": {
-     "mean": 0.6381,
-     "min": 0.6014999999999999,
-     "max": 0.7173
+     "mean": 0.64464,
+     "min": 0.60055,
+     "max": 0.7518499999999999
     },
     "lessons": {
-     "mean": 14.2,
+     "mean": 14.4,
      "min": 13.0,
      "max": 15.0
     },
     "distinct_lesson_ratio": {
-     "mean": 0.7338461538461538,
+     "mean": 0.7397069597069597,
      "min": 0.6666666666666666,
-     "max": 0.7857142857142857
+     "max": 0.8461538461538461
     },
     "final_valence": {
      "mean": 1.0,
@@ -215,9 +215,9 @@
      "max": 0.0
     },
     "vision_flags": {
-     "mean": 0.2,
+     "mean": 0.4,
      "min": 0.0,
-     "max": 1.0
+     "max": 2.0
     },
     "seed": {
      "mean": 3.0,
@@ -228,16 +228,16 @@
    "runs": [
     {
      "cycles": 16,
-     "conv_final": 0.568393182712644,
-     "conv_max": 0.568393182712644,
-     "conv_auc": 0.3172468322544833,
-     "conv_monotonicity": 0.9333333333333333,
-     "conv_dips": 1,
-     "conv_dips_recovered": 1,
-     "conv_recovery_rate": 1.0,
-     "earned_corr": 0.4457065249133626,
+     "conv_final": 0.4899814883364917,
+     "conv_max": 0.5431488694847189,
+     "conv_auc": 0.3441647176225068,
+     "conv_monotonicity": 0.8,
+     "conv_dips": 2,
+     "conv_dips_recovered": 0,
+     "conv_recovery_rate": 0.0,
+     "earned_corr": 0.18690139029067937,
      "earned_gap": 0.0,
-     "dconv_when_met": 0.037521521473996435,
+     "dconv_when_met": 0.03229407518225294,
      "dconv_when_avoided": 0.0,
      "success_rate": 0.9375,
      "avoid_rate": 0.0,
@@ -253,9 +253,9 @@
       "mentor",
       "ordeal",
       "ordeal",
-      "mentor",
+      "ordeal",
       "reward",
-      "reward",
+      "ordeal",
       "reward",
       "return"
      ],
@@ -267,8 +267,8 @@
      "journey_unlabeled": 0,
      "distinct_locations": 6,
      "distinct_scene_ratio": 1.0,
-     "repeated_beat_ratio": 0.0,
-     "distinct_nudge_ratio": 0.32558139534883723,
+     "repeated_beat_ratio": 0.011111111111111112,
+     "distinct_nudge_ratio": 0.3333333333333333,
      "consecutive_identical_nudges": 0,
      "theme_coverage": 1.0,
      "themes_missed": [],
@@ -278,10 +278,10 @@
       "courage_confidence": 0.8458,
       "honesty": 0.0,
       "leadership_confidence": 0.3738,
-      "purpose_confidence": 0.9043
+      "purpose_confidence": 0.9034
      },
-     "trait_delta_sum": 2.1239,
-     "trait_delta_abs": 2.1239,
+     "trait_delta_sum": 2.123,
+     "trait_delta_abs": 2.123,
      "goal_progress": [
       0.715,
       0.5392
@@ -300,16 +300,16 @@
     },
     {
      "cycles": 16,
-     "conv_final": 0.460151974976762,
-     "conv_max": 0.460151974976762,
-     "conv_auc": 0.29497647077096817,
+     "conv_final": 0.4694189131858357,
+     "conv_max": 0.4694189131858357,
+     "conv_auc": 0.30538258484385683,
      "conv_monotonicity": 0.7333333333333333,
-     "conv_dips": 2,
-     "conv_dips_recovered": 2,
+     "conv_dips": 4,
+     "conv_dips_recovered": 4,
      "conv_recovery_rate": 1.0,
-     "earned_corr": 0.2699262934455032,
+     "earned_corr": 0.03850825075260046,
      "earned_gap": 0.0,
-     "dconv_when_met": 0.030665137678822434,
+     "dconv_when_met": 0.02962967015126595,
      "dconv_when_avoided": 0.0,
      "success_rate": 0.9375,
      "avoid_rate": 0.0,
@@ -321,14 +321,14 @@
       "threshold",
       "threshold",
       "mentor",
-      "mentor",
+      "threshold",
       "mentor",
       "ordeal",
-      "ordeal",
       "mentor",
+      "ordeal",
       "reward",
-      "reward",
       "ordeal",
+      "reward",
       "return"
      ],
      "journey_distinct_stages": 6,
@@ -339,8 +339,8 @@
      "journey_unlabeled": 0,
      "distinct_locations": 6,
      "distinct_scene_ratio": 1.0,
-     "repeated_beat_ratio": 0.04597701149425287,
-     "distinct_nudge_ratio": 0.375,
+     "repeated_beat_ratio": 0.022988505747126436,
+     "distinct_nudge_ratio": 0.358974358974359,
      "consecutive_identical_nudges": 0,
      "theme_coverage": 1.0,
      "themes_missed": [],
@@ -350,15 +350,15 @@
       "courage_confidence": 0.8467,
       "honesty": 0.0,
       "leadership_confidence": 0.6022,
-      "purpose_confidence": 0.7505
+      "purpose_confidence": 0.7498
      },
-     "trait_delta_sum": 2.1994,
-     "trait_delta_abs": 2.1994,
+     "trait_delta_sum": 2.1987,
+     "trait_delta_abs": 2.1987,
      "goal_progress": [
-      0.2371,
+      0.2353,
       1.0
      ],
-     "goal_progress_mean": 0.61855,
+     "goal_progress_mean": 0.61765,
      "lessons": 14,
      "distinct_lesson_ratio": 0.7857142857142857,
      "final_valence": 1.0,
@@ -372,18 +372,18 @@
     },
     {
      "cycles": 16,
-     "conv_final": 0.4558193063221842,
-     "conv_max": 0.5088380564122529,
-     "conv_auc": 0.3364594521335745,
-     "conv_monotonicity": 0.7333333333333333,
-     "conv_dips": 2,
-     "conv_dips_recovered": 1,
-     "conv_recovery_rate": 0.5,
-     "earned_corr": 0.5161117455032533,
+     "conv_final": 0.4976008744807582,
+     "conv_max": 0.5838399321289227,
+     "conv_auc": 0.36488326517182473,
+     "conv_monotonicity": 0.8,
+     "conv_dips": 1,
+     "conv_dips_recovered": 0,
+     "conv_recovery_rate": 0.0,
+     "earned_corr": 0.0,
      "earned_gap": 0.0,
-     "dconv_when_met": 0.0324344085151518,
+     "dconv_when_met": 0.031100054655047386,
      "dconv_when_avoided": 0.0,
-     "success_rate": 0.9375,
+     "success_rate": 1.0,
      "avoid_rate": 0.0,
      "journey_stage_seq": [
       "call",
@@ -397,10 +397,10 @@
       "mentor",
       "ordeal",
       "ordeal",
-      "mentor",
+      "ordeal",
       "reward",
       "reward",
-      "reward",
+      "ordeal",
       "return"
      ],
      "journey_distinct_stages": 6,
@@ -411,28 +411,28 @@
      "journey_unlabeled": 0,
      "distinct_locations": 6,
      "distinct_scene_ratio": 1.0,
-     "repeated_beat_ratio": 0.023529411764705882,
-     "distinct_nudge_ratio": 0.34146341463414637,
+     "repeated_beat_ratio": 0.06976744186046512,
+     "distinct_nudge_ratio": 0.3111111111111111,
      "consecutive_identical_nudges": 0,
      "theme_coverage": 1.0,
      "themes_missed": [],
      "distinct_scene_themes": 3,
      "trait_deltas": {
       "courage": 0.0,
-      "courage_confidence": 0.8775,
+      "courage_confidence": 0.879,
       "honesty": 0.0,
-      "leadership_confidence": 0.4364,
-      "purpose_confidence": 0.848
+      "leadership_confidence": 0.5001,
+      "purpose_confidence": 0.8468
      },
-     "trait_delta_sum": 2.1619,
-     "trait_delta_abs": 2.1619,
+     "trait_delta_sum": 2.2259,
+     "trait_delta_abs": 2.2259,
      "goal_progress": [
-      0.5997,
-      0.6033
+      0.5966,
+      0.6045
      ],
-     "goal_progress_mean": 0.6014999999999999,
-     "lessons": 14,
-     "distinct_lesson_ratio": 0.7142857142857143,
+     "goal_progress_mean": 0.60055,
+     "lessons": 15,
+     "distinct_lesson_ratio": 0.7333333333333333,
      "final_valence": 1.0,
      "final_stress": 0.0,
      "forbidden_scenes": 0,
@@ -444,16 +444,16 @@
     },
     {
      "cycles": 16,
-     "conv_final": 0.46594809741510573,
-     "conv_max": 0.46594809741510573,
-     "conv_auc": 0.2630375187523875,
-     "conv_monotonicity": 0.9333333333333333,
-     "conv_dips": 1,
+     "conv_final": 0.4682010269926472,
+     "conv_max": 0.5152333444471654,
+     "conv_auc": 0.2947644832597294,
+     "conv_monotonicity": 0.8666666666666667,
+     "conv_dips": 2,
      "conv_dips_recovered": 1,
-     "conv_recovery_rate": 1.0,
-     "earned_corr": 0.15228297710883532,
+     "conv_recovery_rate": 0.5,
+     "earned_corr": 0.18267389206826443,
      "earned_gap": 0.0,
-     "dconv_when_met": 0.029843650857044494,
+     "dconv_when_met": 0.030805278847959583,
      "dconv_when_avoided": 0.0,
      "success_rate": 0.9375,
      "avoid_rate": 0.0,
@@ -466,13 +466,13 @@
       "threshold",
       "mentor",
       "mentor",
-      "mentor",
+      "threshold",
       "ordeal",
       "ordeal",
       "ordeal",
       "reward",
       "reward",
-      "ordeal",
+      "reward",
       "return"
      ],
      "journey_distinct_stages": 6,
@@ -483,49 +483,49 @@
      "journey_unlabeled": 0,
      "distinct_locations": 6,
      "distinct_scene_ratio": 1.0,
-     "repeated_beat_ratio": 0.03488372093023256,
-     "distinct_nudge_ratio": 0.2727272727272727,
+     "repeated_beat_ratio": 0.022222222222222223,
+     "distinct_nudge_ratio": 0.27906976744186046,
      "consecutive_identical_nudges": 0,
      "theme_coverage": 1.0,
      "themes_missed": [],
      "distinct_scene_themes": 3,
      "trait_deltas": {
       "courage": 0.0,
-      "courage_confidence": 0.8985,
+      "courage_confidence": 0.8726,
       "honesty": 0.0,
-      "leadership_confidence": 0.5592,
-      "purpose_confidence": 0.699
+      "leadership_confidence": 0.5599,
+      "purpose_confidence": 0.7632
      },
-     "trait_delta_sum": 2.1567,
-     "trait_delta_abs": 2.1567,
+     "trait_delta_sum": 2.1957,
+     "trait_delta_abs": 2.1957,
      "goal_progress": [
       0.2521,
       1.0
      ],
      "goal_progress_mean": 0.62605,
      "lessons": 13,
-     "distinct_lesson_ratio": 0.7692307692307693,
+     "distinct_lesson_ratio": 0.8461538461538461,
      "final_valence": 1.0,
      "final_stress": 0.0,
      "forbidden_scenes": 0,
      "blocked": 0,
      "stressed_cycles": 0,
      "max_intensity_when_stressed": 0.0,
-     "vision_flags": 1,
+     "vision_flags": 2,
      "seed": 4
     },
     {
      "cycles": 16,
-     "conv_final": 0.5094175673146681,
-     "conv_max": 0.5094175673146681,
-     "conv_auc": 0.300643025010098,
-     "conv_monotonicity": 0.9333333333333333,
-     "conv_dips": 1,
-     "conv_dips_recovered": 1,
+     "conv_final": 0.6203879003724803,
+     "conv_max": 0.6203879003724803,
+     "conv_auc": 0.39531085830125257,
+     "conv_monotonicity": 1.0,
+     "conv_dips": 0,
+     "conv_dips_recovered": 0,
      "conv_recovery_rate": 1.0,
      "earned_corr": 0.0,
      "earned_gap": 0.0,
-     "dconv_when_met": 0.03183859795716676,
+     "dconv_when_met": 0.038774243773280016,
      "dconv_when_avoided": 0.0,
      "success_rate": 1.0,
      "avoid_rate": 0.0,
@@ -555,28 +555,28 @@
      "journey_unlabeled": 0,
      "distinct_locations": 6,
      "distinct_scene_ratio": 1.0,
-     "repeated_beat_ratio": 0.024096385542168676,
-     "distinct_nudge_ratio": 0.2564102564102564,
+     "repeated_beat_ratio": 0.011904761904761904,
+     "distinct_nudge_ratio": 0.2619047619047619,
      "consecutive_identical_nudges": 0,
      "theme_coverage": 1.0,
      "themes_missed": [],
      "distinct_scene_themes": 3,
      "trait_deltas": {
       "courage": 0.0,
-      "courage_confidence": 0.8381,
+      "courage_confidence": 0.7987,
       "honesty": 0.0,
-      "leadership_confidence": 0.5172,
-      "purpose_confidence": 0.8765
+      "leadership_confidence": 0.5193,
+      "purpose_confidence": 0.9022
      },
-     "trait_delta_sum": 2.2318,
-     "trait_delta_abs": 2.2318,
+     "trait_delta_sum": 2.2202,
+     "trait_delta_abs": 2.2202,
      "goal_progress": [
-      0.5895,
-      0.8451
+      0.8258,
+      0.6779
      ],
-     "goal_progress_mean": 0.7173,
+     "goal_progress_mean": 0.7518499999999999,
      "lessons": 15,
-     "distinct_lesson_ratio": 0.7333333333333333,
+     "distinct_lesson_ratio": 0.6666666666666666,
      "final_valence": 1.0,
      "final_stress": 0.0,
      "forbidden_scenes": 0,
@@ -596,44 +596,44 @@
      "max": 16.0
     },
     "conv_final": {
-     "mean": 0.011547386806481569,
-     "min": 0.0,
-     "max": 0.021543291644479153
+     "mean": 0.01883316231481626,
+     "min": 0.0059614829687071845,
+     "max": 0.03359304114274878
     },
     "conv_max": {
-     "mean": 0.030055104947683882,
-     "min": 0.019318504734909633,
-     "max": 0.04025160516487978
+     "mean": 0.03556714055199423,
+     "min": 0.022414184306994524,
+     "max": 0.045851067110392114
     },
     "conv_auc": {
-     "mean": 0.008375094115424373,
-     "min": 0.004970068156493904,
-     "max": 0.012330306727395764
+     "mean": 0.011833650792949568,
+     "min": 0.0062992395320049435,
+     "max": 0.015808964431005795
     },
     "conv_monotonicity": {
-     "mean": 0.8400000000000001,
-     "min": 0.6666666666666666,
-     "max": 0.9333333333333333
+     "mean": 0.7866666666666667,
+     "min": 0.6,
+     "max": 0.8666666666666667
     },
     "conv_dips": {
-     "mean": 2.0,
+     "mean": 2.2,
      "min": 1.0,
-     "max": 4.0
-    },
-    "conv_dips_recovered": {
-     "mean": 0.8,
-     "min": 0.0,
      "max": 3.0
     },
-    "conv_recovery_rate": {
-     "mean": 0.35,
+    "conv_dips_recovered": {
+     "mean": 1.2,
      "min": 0.0,
-     "max": 1.0
+     "max": 2.0
+    },
+    "conv_recovery_rate": {
+     "mean": 0.4666666666666666,
+     "min": 0.0,
+     "max": 0.6666666666666666
     },
     "earned_corr": {
-     "mean": 0.5121731226385577,
-     "min": 0.25370553283633557,
-     "max": 0.7434720744886488
+     "mean": 0.6354141972006684,
+     "min": 0.47834011718189334,
+     "max": 0.8029246107714033
     },
     "earned_gap": {
      "mean": 0.0,
@@ -646,9 +646,9 @@
      "max": 0.0
     },
     "dconv_when_avoided": {
-     "mean": -0.002876602110304032,
-     "min": -0.0054736919818297045,
-     "max": 0.00030700710041117393
+     "mean": -0.0033288973798741113,
+     "min": -0.005733676004770001,
+     "max": -0.0017782410414859911
     },
     "success_rate": {
      "mean": 0.0,
@@ -701,7 +701,7 @@
      "max": 1.0
     },
     "repeated_beat_ratio": {
-     "mean": 0.013847801568684629,
+     "mean": 0.01387516134980638,
      "min": 0.0,
      "max": 0.034482758620689655
     },
@@ -751,12 +751,12 @@
      "max": 1.0
     },
     "final_valence": {
-     "mean": -0.8825800000000001,
+     "mean": -0.8811800000000002,
      "min": -1.0,
-     "max": -0.7817500000000002
+     "max": -0.7747500000000003
     },
     "final_stress": {
-     "mean": 0.648344,
+     "mean": 0.646944,
      "min": 0.4447199999999999,
      "max": 0.85356
     },
@@ -794,17 +794,17 @@
    "runs": [
     {
      "cycles": 16,
-     "conv_final": 0.0,
-     "conv_max": 0.019318504734909633,
-     "conv_auc": 0.004970068156493904,
-     "conv_monotonicity": 0.8666666666666667,
-     "conv_dips": 2,
-     "conv_dips_recovered": 0,
-     "conv_recovery_rate": 0.0,
-     "earned_corr": 0.517016825350178,
+     "conv_final": 0.0059614829687071845,
+     "conv_max": 0.022414184306994524,
+     "conv_auc": 0.0062992395320049435,
+     "conv_monotonicity": 0.8,
+     "conv_dips": 3,
+     "conv_dips_recovered": 2,
+     "conv_recovery_rate": 0.6666666666666666,
+     "earned_corr": 0.5619478795443311,
      "earned_gap": 0.0,
      "dconv_when_met": 0.0,
-     "dconv_when_avoided": -0.002370134589198594,
+     "dconv_when_avoided": -0.00273116147553644,
      "success_rate": 0.0,
      "avoid_rate": 0.625,
      "journey_stage_seq": [
@@ -865,17 +865,17 @@
     },
     {
      "cycles": 16,
-     "conv_final": 0.009075803943906805,
-     "conv_max": 0.04018096252048735,
-     "conv_auc": 0.012330306727395764,
-     "conv_monotonicity": 0.8,
-     "conv_dips": 2,
+     "conv_final": 0.03359304114274878,
+     "conv_max": 0.045851067110392114,
+     "conv_auc": 0.015808964431005795,
+     "conv_monotonicity": 0.8666666666666667,
+     "conv_dips": 1,
      "conv_dips_recovered": 0,
      "conv_recovery_rate": 0.0,
-     "earned_corr": 0.5749758062307563,
+     "earned_corr": 0.6706641946425487,
      "earned_gap": 0.0,
      "dconv_when_met": 0.0,
-     "dconv_when_avoided": -0.003573857248699585,
+     "dconv_when_avoided": -0.0028757071397225386,
      "success_rate": 0.0,
      "avoid_rate": 0.5,
      "journey_stage_seq": [
@@ -937,17 +937,17 @@
     },
     {
      "cycles": 16,
-     "conv_final": 0.0061557744722761185,
-     "conv_max": 0.04025160516487978,
-     "conv_auc": 0.01040287873082801,
-     "conv_monotonicity": 0.6666666666666666,
-     "conv_dips": 4,
-     "conv_dips_recovered": 3,
-     "conv_recovery_rate": 0.75,
-     "earned_corr": 0.7434720744886488,
+     "conv_final": 0.007461813184319159,
+     "conv_max": 0.045588889227468926,
+     "conv_auc": 0.013859705113770366,
+     "conv_monotonicity": 0.6,
+     "conv_dips": 3,
+     "conv_dips_recovered": 2,
+     "conv_recovery_rate": 0.6666666666666666,
+     "earned_corr": 0.8029246107714033,
      "earned_gap": 0.0,
      "dconv_when_met": 0.0,
-     "dconv_when_avoided": -0.0054736919818297045,
+     "dconv_when_avoided": -0.005733676004770001,
      "success_rate": 0.0,
      "avoid_rate": 0.5625,
      "journey_stage_seq": [
@@ -1009,17 +1009,17 @@
     },
     {
      "cycles": 16,
-     "conv_final": 0.020962063971745767,
-     "conv_max": 0.028981160673663492,
-     "conv_auc": 0.009123237631672346,
-     "conv_monotonicity": 0.9333333333333333,
-     "conv_dips": 1,
-     "conv_dips_recovered": 0,
-     "conv_recovery_rate": 0.0,
-     "earned_corr": 0.4716953742868699,
+     "conv_final": 0.020165743754294103,
+     "conv_max": 0.030139612045087378,
+     "conv_auc": 0.009252170038742739,
+     "conv_monotonicity": 0.8666666666666667,
+     "conv_dips": 2,
+     "conv_dips_recovered": 1,
+     "conv_recovery_rate": 0.5,
+     "earned_corr": 0.47834011718189334,
      "earned_gap": 0.0,
      "dconv_when_met": 0.0,
-     "dconv_when_avoided": -0.0032723338322034508,
+     "dconv_when_avoided": -0.003525701237855588,
      "success_rate": 0.0,
      "avoid_rate": 0.4375,
      "journey_stage_seq": [
@@ -1081,17 +1081,17 @@
     },
     {
      "cycles": 16,
-     "conv_final": 0.021543291644479153,
-     "conv_max": 0.021543291644479153,
-     "conv_auc": 0.005048979330731839,
-     "conv_monotonicity": 0.9333333333333333,
-     "conv_dips": 1,
+     "conv_final": 0.026983730524012067,
+     "conv_max": 0.03384195007002821,
+     "conv_auc": 0.013948174849223999,
+     "conv_monotonicity": 0.8,
+     "conv_dips": 2,
      "conv_dips_recovered": 1,
-     "conv_recovery_rate": 1.0,
-     "earned_corr": 0.25370553283633557,
+     "conv_recovery_rate": 0.5,
+     "earned_corr": 0.6631941838631654,
      "earned_gap": 0.0,
      "dconv_when_met": 0.0,
-     "dconv_when_avoided": 0.00030700710041117393,
+     "dconv_when_avoided": -0.0017782410414859911,
      "success_rate": 0.0,
      "avoid_rate": 0.4375,
      "journey_stage_seq": [
@@ -1109,7 +1109,7 @@
       "mentor",
       "reward",
       "reward",
-      "reward",
+      "ordeal",
       "return"
      ],
      "journey_distinct_stages": 6,
@@ -1120,7 +1120,7 @@
      "journey_unlabeled": 0,
      "distinct_locations": 6,
      "distinct_scene_ratio": 1.0,
-     "repeated_beat_ratio": 0.011627906976744186,
+     "repeated_beat_ratio": 0.011764705882352941,
      "distinct_nudge_ratio": 0.2916666666666667,
      "consecutive_identical_nudges": 0,
      "theme_coverage": 1.0,
@@ -1142,8 +1142,8 @@
      "goal_progress_mean": 0.10715,
      "lessons": 6,
      "distinct_lesson_ratio": 0.8333333333333334,
-     "final_valence": -0.7817500000000002,
-     "final_stress": 0.5089200000000002,
+     "final_valence": -0.7747500000000003,
+     "final_stress": 0.5019200000000001,
      "forbidden_scenes": 0,
      "blocked": 0,
      "stressed_cycles": 0,
@@ -1161,59 +1161,59 @@
      "max": 16.0
     },
     "conv_final": {
-     "mean": 0.28995581177982954,
-     "min": 0.21631011254266944,
-     "max": 0.3551896151655779
+     "mean": 0.32674194809939605,
+     "min": 0.25272303144163294,
+     "max": 0.3847018669590788
     },
     "conv_max": {
-     "mean": 0.30252660753283384,
-     "min": 0.23591674636168922,
-     "max": 0.3551896151655779
+     "mean": 0.3302467033100525,
+     "min": 0.25272303144163294,
+     "max": 0.3847018669590788
     },
     "conv_auc": {
-     "mean": 0.1458791472585134,
-     "min": 0.07002548268437929,
-     "max": 0.1984095742523232
+     "mean": 0.1661492335707866,
+     "min": 0.09131314900878831,
+     "max": 0.21173332066650383
     },
     "conv_monotonicity": {
      "mean": 0.8266666666666668,
-     "min": 0.8,
+     "min": 0.7333333333333333,
      "max": 0.9333333333333333
     },
     "conv_dips": {
-     "mean": 2.4,
+     "mean": 2.2,
      "min": 1.0,
      "max": 3.0
     },
     "conv_dips_recovered": {
-     "mean": 2.0,
+     "mean": 1.6,
      "min": 1.0,
-     "max": 3.0
+     "max": 2.0
     },
     "conv_recovery_rate": {
-     "mean": 0.8666666666666666,
-     "min": 0.6666666666666666,
+     "mean": 0.7666666666666666,
+     "min": 0.5,
      "max": 1.0
     },
     "earned_corr": {
-     "mean": 0.8112922028036393,
-     "min": 0.760220228424738,
-     "max": 0.8754821328267018
+     "mean": 0.8139431986665651,
+     "min": 0.7680594553864136,
+     "max": 0.8649127924111178
     },
     "earned_gap": {
-     "mean": 0.05515974264688682,
-     "min": 0.03630440103833537,
-     "max": 0.07420802422190613
+     "mean": 0.05837035954677492,
+     "min": 0.03619532698305992,
+     "max": 0.08537088075739657
     },
     "dconv_when_met": {
-     "mean": 0.038424999118334316,
-     "min": 0.033424999315766216,
-     "max": 0.04571801559697667
+     "mean": 0.040379996612699864,
+     "min": 0.03604446631733831,
+     "max": 0.0453537023050286
     },
     "dconv_when_avoided": {
-     "mean": -0.016734743528552497,
-     "min": -0.035155184909782436,
-     "max": -0.0017285157113104993
+     "mean": -0.01799036293407506,
+     "min": -0.04001717845236798,
+     "max": -0.00015086066572160827
     },
     "success_rate": {
      "mean": 0.475,
@@ -1221,9 +1221,9 @@
      "max": 0.625
     },
     "avoid_rate": {
-     "mean": 0.25,
+     "mean": 0.2375,
      "min": 0.125,
-     "max": 0.375
+     "max": 0.3125
     },
     "journey_distinct_stages": {
      "mean": 6.0,
@@ -1266,14 +1266,14 @@
      "max": 1.0
     },
     "repeated_beat_ratio": {
-     "mean": 0.025506236612892585,
+     "mean": 0.02297030554151014,
      "min": 0.0,
      "max": 0.046511627906976744
     },
     "distinct_nudge_ratio": {
-     "mean": 0.2699578699022582,
-     "min": 0.2391304347826087,
-     "max": 0.3023255813953488
+     "mean": 0.2759318156284789,
+     "min": 0.24444444444444444,
+     "max": 0.30434782608695654
     },
     "consecutive_identical_nudges": {
      "mean": 0.0,
@@ -1291,22 +1291,22 @@
      "max": 3.0
     },
     "trait_delta_sum": {
-     "mean": 1.49442,
+     "mean": 1.49214,
      "min": 1.1115,
      "max": 1.8843
     },
     "trait_delta_abs": {
-     "mean": 1.49442,
+     "mean": 1.49214,
      "min": 1.1115,
      "max": 1.8843
     },
     "goal_progress_mean": {
-     "mean": 0.39390000000000003,
-     "min": 0.2247,
+     "mean": 0.3988,
+     "min": 0.29145,
      "max": 0.5747
     },
     "lessons": {
-     "mean": 10.4,
+     "mean": 10.0,
      "min": 8.0,
      "max": 12.0
     },
@@ -1316,14 +1316,14 @@
      "max": 1.0
     },
     "final_valence": {
-     "mean": 0.94863,
-     "min": 0.8226,
+     "mean": 0.9713099999999999,
+     "min": 0.8565499999999997,
      "max": 1.0
     },
     "final_stress": {
-     "mean": 0.02948,
+     "mean": 0.0,
      "min": 0.0,
-     "max": 0.1474
+     "max": 0.0
     },
     "forbidden_scenes": {
      "mean": 0.0,
@@ -1346,9 +1346,9 @@
      "max": 0.0
     },
     "vision_flags": {
-     "mean": 0.2,
+     "mean": 0.4,
      "min": 0.0,
-     "max": 1.0
+     "max": 2.0
     },
     "seed": {
      "mean": 3.0,
@@ -1359,17 +1359,17 @@
    "runs": [
     {
      "cycles": 16,
-     "conv_final": 0.2940679164702991,
-     "conv_max": 0.2940679164702991,
-     "conv_auc": 0.14917590613726867,
+     "conv_final": 0.3231861738496257,
+     "conv_max": 0.3231861738496257,
+     "conv_auc": 0.17372728928927877,
      "conv_monotonicity": 0.8,
      "conv_dips": 3,
      "conv_dips_recovered": 2,
      "conv_recovery_rate": 0.6666666666666666,
-     "earned_corr": 0.784540623263555,
-     "earned_gap": 0.047099137534896876,
-     "dconv_when_met": 0.033424999315766216,
-     "dconv_when_avoided": -0.013674138219130657,
+     "earned_corr": 0.7685672136674148,
+     "earned_gap": 0.058479037180224944,
+     "dconv_when_met": 0.038100667174502854,
+     "dconv_when_avoided": -0.020378370005722093,
      "success_rate": 0.5,
      "avoid_rate": 0.25,
      "journey_stage_seq": [
@@ -1398,7 +1398,7 @@
      "journey_unlabeled": 0,
      "distinct_locations": 6,
      "distinct_scene_ratio": 1.0,
-     "repeated_beat_ratio": 0.034482758620689655,
+     "repeated_beat_ratio": 0.033707865168539325,
      "distinct_nudge_ratio": 0.3023255813953488,
      "consecutive_identical_nudges": 0,
      "theme_coverage": 1.0,
@@ -1430,26 +1430,26 @@
     },
     {
      "cycles": 16,
-     "conv_final": 0.21631011254266944,
-     "conv_max": 0.27916409130769104,
-     "conv_auc": 0.12260781190561361,
-     "conv_monotonicity": 0.8,
+     "conv_final": 0.306653855779855,
+     "conv_max": 0.3241776318331374,
+     "conv_auc": 0.14246400500915166,
+     "conv_monotonicity": 0.7333333333333333,
      "conv_dips": 3,
      "conv_dips_recovered": 2,
      "conv_recovery_rate": 0.6666666666666666,
-     "earned_corr": 0.8494716132894067,
-     "earned_gap": 0.06563373721882232,
-     "dconv_when_met": 0.04571801559697667,
-     "dconv_when_avoided": -0.019915721621845645,
+     "earned_corr": 0.8649127924111178,
+     "earned_gap": 0.05257366880103362,
+     "dconv_when_met": 0.04472139463094967,
+     "dconv_when_avoided": -0.007852274170083948,
      "success_rate": 0.375,
-     "avoid_rate": 0.375,
+     "avoid_rate": 0.3125,
      "journey_stage_seq": [
       "call",
       "call",
       "call",
       "threshold",
       "threshold",
-      "threshold",
+      "call",
       "mentor",
       "mentor",
       "mentor",
@@ -1469,30 +1469,30 @@
      "journey_unlabeled": 0,
      "distinct_locations": 6,
      "distinct_scene_ratio": 1.0,
-     "repeated_beat_ratio": 0.023809523809523808,
-     "distinct_nudge_ratio": 0.25,
+     "repeated_beat_ratio": 0.011904761904761904,
+     "distinct_nudge_ratio": 0.2558139534883721,
      "consecutive_identical_nudges": 0,
      "theme_coverage": 1.0,
      "themes_missed": [],
      "distinct_scene_themes": 3,
      "trait_deltas": {
       "courage": 0.0,
-      "courage_confidence": 0.644,
+      "courage_confidence": 0.5566,
       "honesty": 0.0,
-      "leadership_confidence": 0.03,
-      "purpose_confidence": 0.6926
+      "leadership_confidence": 0.0771,
+      "purpose_confidence": 0.7572
      },
-     "trait_delta_sum": 1.3666,
-     "trait_delta_abs": 1.3666,
+     "trait_delta_sum": 1.3909,
+     "trait_delta_abs": 1.3909,
      "goal_progress": [
-      0.2439,
-      0.2055
+      0.4227,
+      0.1602
      ],
-     "goal_progress_mean": 0.2247,
-     "lessons": 11,
+     "goal_progress_mean": 0.29145,
+     "lessons": 10,
      "distinct_lesson_ratio": 1.0,
-     "final_valence": 0.8226,
-     "final_stress": 0.1474,
+     "final_valence": 1.0,
+     "final_stress": 0.0,
      "forbidden_scenes": 0,
      "blocked": 0,
      "stressed_cycles": 0,
@@ -1502,17 +1502,17 @@
     },
     {
      "cycles": 16,
-     "conv_final": 0.348294668358912,
-     "conv_max": 0.348294668358912,
-     "conv_auc": 0.1984095742523232,
-     "conv_monotonicity": 0.8,
-     "conv_dips": 3,
-     "conv_dips_recovered": 3,
+     "conv_final": 0.3847018669590788,
+     "conv_max": 0.3847018669590788,
+     "conv_auc": 0.21150840388021033,
+     "conv_monotonicity": 0.8666666666666667,
+     "conv_dips": 2,
+     "conv_dips_recovered": 2,
      "conv_recovery_rate": 1.0,
-     "earned_corr": 0.7867464162137958,
-     "earned_gap": 0.0525534132204734,
-     "dconv_when_met": 0.03935325603978015,
-     "dconv_when_avoided": -0.01320015718069325,
+     "earned_corr": 0.7680594553864136,
+     "earned_gap": 0.05923288401215955,
+     "dconv_when_met": 0.03767975263567988,
+     "dconv_when_avoided": -0.021553131376479674,
      "success_rate": 0.5625,
      "avoid_rate": 0.1875,
      "journey_stage_seq": [
@@ -1542,7 +1542,7 @@
      "distinct_locations": 6,
      "distinct_scene_ratio": 1.0,
      "repeated_beat_ratio": 0.046511627906976744,
-     "distinct_nudge_ratio": 0.26666666666666666,
+     "distinct_nudge_ratio": 0.2727272727272727,
      "consecutive_identical_nudges": 0,
      "theme_coverage": 1.0,
      "themes_missed": [],
@@ -1551,17 +1551,17 @@
       "courage": 0.0,
       "courage_confidence": 0.7806,
       "honesty": 0.0,
-      "leadership_confidence": 0.3281,
+      "leadership_confidence": 0.3111,
       "purpose_confidence": 0.6349
      },
-     "trait_delta_sum": 1.7436,
-     "trait_delta_abs": 1.7436,
+     "trait_delta_sum": 1.7266,
+     "trait_delta_abs": 1.7266,
      "goal_progress": [
       0.2532,
-      0.505
+      0.4398
      ],
-     "goal_progress_mean": 0.3791,
-     "lessons": 11,
+     "goal_progress_mean": 0.34650000000000003,
+     "lessons": 10,
      "distinct_lesson_ratio": 1.0,
      "final_valence": 1.0,
      "final_stress": 0.0,
@@ -1574,17 +1574,17 @@
     },
     {
      "cycles": 16,
-     "conv_final": 0.3551896151655779,
-     "conv_max": 0.3551896151655779,
-     "conv_auc": 0.18917696131298214,
+     "conv_final": 0.3664448124667877,
+     "conv_max": 0.3664448124667877,
+     "conv_auc": 0.21173332066650383,
      "conv_monotonicity": 0.8,
      "conv_dips": 2,
-     "conv_dips_recovered": 2,
-     "conv_recovery_rate": 1.0,
-     "earned_corr": 0.8754821328267018,
-     "earned_gap": 0.07420802422190613,
-     "dconv_when_met": 0.039052839312123694,
-     "dconv_when_avoided": -0.035155184909782436,
+     "conv_dips_recovered": 1,
+     "conv_recovery_rate": 0.5,
+     "earned_corr": 0.8262830300609509,
+     "earned_gap": 0.08537088075739657,
+     "dconv_when_met": 0.0453537023050286,
+     "dconv_when_avoided": -0.04001717845236798,
      "success_rate": 0.625,
      "avoid_rate": 0.125,
      "journey_stage_seq": [
@@ -1614,7 +1614,7 @@
      "distinct_locations": 6,
      "distinct_scene_ratio": 1.0,
      "repeated_beat_ratio": 0.0,
-     "distinct_nudge_ratio": 0.2391304347826087,
+     "distinct_nudge_ratio": 0.24444444444444444,
      "consecutive_identical_nudges": 0,
      "theme_coverage": 1.0,
      "themes_missed": [],
@@ -1630,9 +1630,9 @@
      "trait_delta_abs": 1.8843,
      "goal_progress": [
       0.2521,
-      0.6997
+      0.6977
      ],
-     "goal_progress_mean": 0.4759,
+     "goal_progress_mean": 0.4749,
      "lessons": 10,
      "distinct_lesson_ratio": 1.0,
      "final_valence": 1.0,
@@ -1641,22 +1641,22 @@
      "blocked": 0,
      "stressed_cycles": 0,
      "max_intensity_when_stressed": 0.0,
-     "vision_flags": 1,
+     "vision_flags": 2,
      "seed": 4
     },
     {
      "cycles": 16,
-     "conv_final": 0.23591674636168922,
-     "conv_max": 0.23591674636168922,
-     "conv_auc": 0.07002548268437929,
+     "conv_final": 0.25272303144163294,
+     "conv_max": 0.25272303144163294,
+     "conv_auc": 0.09131314900878831,
      "conv_monotonicity": 0.9333333333333333,
      "conv_dips": 1,
      "conv_dips_recovered": 1,
      "conv_recovery_rate": 1.0,
-     "earned_corr": 0.760220228424738,
-     "earned_gap": 0.03630440103833537,
-     "dconv_when_met": 0.03457588532702487,
-     "dconv_when_avoided": -0.0017285157113104993,
+     "earned_corr": 0.8418935018069279,
+     "earned_gap": 0.03619532698305992,
+     "dconv_when_met": 0.03604446631733831,
+     "dconv_when_avoided": -0.00015086066572160827,
      "success_rate": 0.3125,
      "avoid_rate": 0.3125,
      "journey_stage_seq": [
@@ -1686,7 +1686,7 @@
      "distinct_locations": 6,
      "distinct_scene_ratio": 1.0,
      "repeated_beat_ratio": 0.022727272727272728,
-     "distinct_nudge_ratio": 0.2916666666666667,
+     "distinct_nudge_ratio": 0.30434782608695654,
      "consecutive_identical_nudges": 0,
      "theme_coverage": 1.0,
      "themes_missed": [],
@@ -1695,19 +1695,19 @@
       "courage": 0.0,
       "courage_confidence": 0.6403,
       "honesty": 0.0,
-      "leadership_confidence": 0.2093,
-      "purpose_confidence": 0.5165
+      "leadership_confidence": 0.1998,
+      "purpose_confidence": 0.5073
      },
-     "trait_delta_sum": 1.3660999999999999,
-     "trait_delta_abs": 1.3660999999999999,
+     "trait_delta_sum": 1.3474,
+     "trait_delta_abs": 1.3474,
      "goal_progress": [
-      0.2334,
-      0.3968
+      0.226,
+      0.3869
      ],
-     "goal_progress_mean": 0.3151,
+     "goal_progress_mean": 0.30645,
      "lessons": 8,
      "distinct_lesson_ratio": 1.0,
-     "final_valence": 0.9205499999999998,
+     "final_valence": 0.8565499999999997,
      "final_stress": 0.0,
      "forbidden_scenes": 0,
      "blocked": 0,
@@ -1726,64 +1726,64 @@
      "max": 16.0
     },
     "conv_final": {
-     "mean": 0.3748927284696678,
-     "min": 0.03303419616753962,
-     "max": 0.5389901701600731
+     "mean": 0.4183459105135948,
+     "min": 0.08442813903128847,
+     "max": 0.5573365698682389
     },
     "conv_max": {
-     "mean": 0.391833280244245,
-     "min": 0.041235793612524406,
-     "max": 0.5389901701600731
+     "mean": 0.43559372204322777,
+     "min": 0.08442813903128847,
+     "max": 0.5838399321289227
     },
     "conv_auc": {
-     "mean": 0.22158716210563387,
-     "min": 0.015805933808994328,
-     "max": 0.3364594521335745
+     "mean": 0.24709628510523207,
+     "min": 0.023677612480729488,
+     "max": 0.36488326517182473
     },
     "conv_monotonicity": {
-     "mean": 0.8400000000000001,
-     "min": 0.7333333333333333,
-     "max": 1.0
+     "mean": 0.8,
+     "min": 0.6666666666666666,
+     "max": 0.9333333333333333
     },
     "conv_dips": {
-     "mean": 1.6,
-     "min": 0.0,
-     "max": 3.0
+     "mean": 2.2,
+     "min": 1.0,
+     "max": 4.0
     },
     "conv_dips_recovered": {
-     "mean": 1.0,
+     "mean": 2.0,
      "min": 0.0,
-     "max": 2.0
+     "max": 4.0
     },
     "conv_recovery_rate": {
-     "mean": 0.6333333333333333,
+     "mean": 0.8,
      "min": 0.0,
      "max": 1.0
     },
     "earned_corr": {
-     "mean": 0.5204318933111967,
-     "min": 0.37334802703665165,
-     "max": 0.6468868312610969
+     "mean": 0.3667133247264483,
+     "min": 0.0,
+     "max": 0.7185993299528981
     },
     "earned_gap": {
-     "mean": 0.016365349153921335,
+     "mean": 0.01619672766000026,
      "min": 0.0,
-     "max": 0.05776589273641908
+     "max": 0.047738912791796734
     },
     "dconv_when_met": {
-     "mean": 0.03196676055841024,
-     "min": 0.0240608530331876,
-     "max": 0.03668105992842673
+     "mean": 0.03406354402039468,
+     "min": 0.030151259363624904,
+     "max": 0.03869149124289051
     },
     "dconv_when_avoided": {
-     "mean": -0.004252993258990933,
-     "min": -0.021264966294954665,
+     "mean": -0.0018480148012909353,
+     "min": -0.00904742154890623,
      "max": 0.0
     },
     "success_rate": {
-     "mean": 0.7125,
+     "mean": 0.725,
      "min": 0.0625,
-     "max": 0.9375
+     "max": 1.0
     },
     "avoid_rate": {
      "mean": 0.075,
@@ -1806,13 +1806,13 @@
      "max": 1.0
     },
     "journey_in_order": {
-     "mean": 0.6,
+     "mean": 0.0,
      "min": 0.0,
-     "max": 1.0
+     "max": 0.0
     },
     "journey_max_backjump": {
-     "mean": 0.4,
-     "min": 0.0,
+     "mean": 1.0,
+     "min": 1.0,
      "max": 1.0
     },
     "journey_unlabeled": {
@@ -1831,14 +1831,14 @@
      "max": 1.0
     },
     "repeated_beat_ratio": {
-     "mean": 0.02052117816823699,
+     "mean": 0.032115850354679724,
      "min": 0.0,
-     "max": 0.044444444444444446
+     "max": 0.06976744186046512
     },
     "distinct_nudge_ratio": {
-     "mean": 0.3299748960625308,
+     "mean": 0.3193244289585753,
      "min": 0.2857142857142857,
-     "max": 0.38461538461538464
+     "max": 0.34146341463414637
     },
     "consecutive_identical_nudges": {
      "mean": 0.0,
@@ -1856,33 +1856,33 @@
      "max": 3.0
     },
     "trait_delta_sum": {
-     "mean": 1.7775000000000003,
+     "mean": 1.7810400000000002,
      "min": 0.34240000000000004,
-     "max": 2.1758
+     "max": 2.2259
     },
     "trait_delta_abs": {
-     "mean": 1.7955,
+     "mean": 1.7990400000000002,
      "min": 0.4324,
-     "max": 2.1758
+     "max": 2.2259
     },
     "goal_progress_mean": {
-     "mean": 0.5285299999999999,
-     "min": 0.127,
-     "max": 0.6644
+     "mean": 0.52183,
+     "min": 0.12,
+     "max": 0.6388499999999999
     },
     "lessons": {
-     "mean": 11.2,
+     "mean": 11.4,
      "min": 4.0,
-     "max": 14.0
+     "max": 15.0
     },
     "distinct_lesson_ratio": {
-     "mean": 0.8326007326007326,
-     "min": 0.7142857142857143,
+     "mean": 0.8210256410256409,
+     "min": 0.7333333333333333,
      "max": 1.0
     },
     "final_valence": {
-     "mean": 0.75413,
-     "min": -0.22935,
+     "mean": 0.75489,
+     "min": -0.22554999999999997,
      "max": 1.0
     },
     "final_stress": {
@@ -1924,17 +1924,17 @@
    "runs": [
     {
      "cycles": 16,
-     "conv_final": 0.03303419616753962,
-     "conv_max": 0.041235793612524406,
-     "conv_auc": 0.015805933808994328,
-     "conv_monotonicity": 0.8,
-     "conv_dips": 1,
-     "conv_dips_recovered": 0,
-     "conv_recovery_rate": 0.0,
-     "earned_corr": 0.37334802703665165,
-     "earned_gap": 0.0240608530331876,
-     "dconv_when_met": 0.0240608530331876,
-     "dconv_when_avoided": 0.0,
+     "conv_final": 0.08442813903128847,
+     "conv_max": 0.08442813903128847,
+     "conv_auc": 0.023677612480729488,
+     "conv_monotonicity": 0.7333333333333333,
+     "conv_dips": 3,
+     "conv_dips_recovered": 3,
+     "conv_recovery_rate": 1.0,
+     "earned_corr": 0.7185993299528981,
+     "earned_gap": 0.03324472550820456,
+     "dconv_when_met": 0.03305207305065611,
+     "dconv_when_avoided": -0.00019265245754844634,
      "success_rate": 0.0625,
      "avoid_rate": 0.3125,
      "journey_stage_seq": [
@@ -1942,7 +1942,7 @@
       "call",
       "call",
       "threshold",
-      "threshold",
+      "call",
       "threshold",
       "mentor",
       "mentor",
@@ -1964,7 +1964,7 @@
      "distinct_locations": 6,
      "distinct_scene_ratio": 1.0,
      "repeated_beat_ratio": 0.011904761904761904,
-     "distinct_nudge_ratio": 0.3125,
+     "distinct_nudge_ratio": 0.3333333333333333,
      "consecutive_identical_nudges": 0,
      "theme_coverage": 1.0,
      "themes_missed": [],
@@ -1979,13 +1979,13 @@
      "trait_delta_sum": 0.34240000000000004,
      "trait_delta_abs": 0.4324,
      "goal_progress": [
-      0.1215,
-      0.1325
+      0.1518,
+      0.0882
      ],
-     "goal_progress_mean": 0.127,
+     "goal_progress_mean": 0.12,
      "lessons": 4,
      "distinct_lesson_ratio": 1.0,
-     "final_valence": -0.22935,
+     "final_valence": -0.22554999999999997,
      "final_stress": 0.0,
      "forbidden_scenes": 0,
      "blocked": 0,
@@ -1996,16 +1996,16 @@
     },
     {
      "cycles": 16,
-     "conv_final": 0.3753954609837139,
-     "conv_max": 0.3988778723215464,
-     "conv_auc": 0.2745653663528548,
-     "conv_monotonicity": 0.8,
-     "conv_dips": 3,
-     "conv_dips_recovered": 2,
-     "conv_recovery_rate": 0.6666666666666666,
-     "earned_corr": 0.6083672095570829,
+     "conv_final": 0.4429313691953478,
+     "conv_max": 0.4429313691953478,
+     "conv_auc": 0.29192091771641593,
+     "conv_monotonicity": 0.6666666666666666,
+     "conv_dips": 4,
+     "conv_dips_recovered": 4,
+     "conv_recovery_rate": 1.0,
+     "earned_corr": 0.2234435079599974,
      "earned_gap": 0.0,
-     "dconv_when_met": 0.030156554873820646,
+     "dconv_when_met": 0.030151259363624904,
      "dconv_when_avoided": 0.0,
      "success_rate": 0.875,
      "avoid_rate": 0.0,
@@ -2017,26 +2017,26 @@
       "threshold",
       "threshold",
       "mentor",
-      "mentor",
+      "threshold",
       "mentor",
       "ordeal",
-      "ordeal",
+      "mentor",
       "ordeal",
       "reward",
-      "reward",
+      "ordeal",
       "reward",
       "return"
      ],
      "journey_distinct_stages": 6,
      "journey_max_stage": 5,
      "journey_reached_ordeal": 1,
-     "journey_in_order": 1,
-     "journey_max_backjump": 0,
+     "journey_in_order": 0,
+     "journey_max_backjump": 1,
      "journey_unlabeled": 0,
      "distinct_locations": 6,
      "distinct_scene_ratio": 1.0,
-     "repeated_beat_ratio": 0.044444444444444446,
-     "distinct_nudge_ratio": 0.38461538461538464,
+     "repeated_beat_ratio": 0.056179775280898875,
+     "distinct_nudge_ratio": 0.325,
      "consecutive_identical_nudges": 0,
      "theme_coverage": 1.0,
      "themes_missed": [],
@@ -2068,18 +2068,90 @@
     },
     {
      "cycles": 16,
-     "conv_final": 0.4558193063221842,
-     "conv_max": 0.5088380564122529,
-     "conv_auc": 0.3364594521335745,
-     "conv_monotonicity": 0.7333333333333333,
-     "conv_dips": 2,
-     "conv_dips_recovered": 1,
-     "conv_recovery_rate": 0.5,
-     "earned_corr": 0.5161117455032533,
+     "conv_final": 0.4976008744807582,
+     "conv_max": 0.5838399321289227,
+     "conv_auc": 0.36488326517182473,
+     "conv_monotonicity": 0.8,
+     "conv_dips": 1,
+     "conv_dips_recovered": 0,
+     "conv_recovery_rate": 0.0,
+     "earned_corr": 0.0,
      "earned_gap": 0.0,
-     "dconv_when_met": 0.0324344085151518,
+     "dconv_when_met": 0.031100054655047386,
      "dconv_when_avoided": 0.0,
-     "success_rate": 0.9375,
+     "success_rate": 1.0,
+     "avoid_rate": 0.0,
+     "journey_stage_seq": [
+      "call",
+      "call",
+      "call",
+      "threshold",
+      "threshold",
+      "threshold",
+      "mentor",
+      "mentor",
+      "mentor",
+      "ordeal",
+      "ordeal",
+      "ordeal",
+      "reward",
+      "reward",
+      "ordeal",
+      "return"
+     ],
+     "journey_distinct_stages": 6,
+     "journey_max_stage": 5,
+     "journey_reached_ordeal": 1,
+     "journey_in_order": 0,
+     "journey_max_backjump": 1,
+     "journey_unlabeled": 0,
+     "distinct_locations": 6,
+     "distinct_scene_ratio": 1.0,
+     "repeated_beat_ratio": 0.06976744186046512,
+     "distinct_nudge_ratio": 0.3111111111111111,
+     "consecutive_identical_nudges": 0,
+     "theme_coverage": 1.0,
+     "themes_missed": [],
+     "distinct_scene_themes": 3,
+     "trait_deltas": {
+      "courage": 0.0,
+      "courage_confidence": 0.879,
+      "honesty": 0.0,
+      "leadership_confidence": 0.5001,
+      "purpose_confidence": 0.8468
+     },
+     "trait_delta_sum": 2.2259,
+     "trait_delta_abs": 2.2259,
+     "goal_progress": [
+      0.5966,
+      0.6045
+     ],
+     "goal_progress_mean": 0.60055,
+     "lessons": 15,
+     "distinct_lesson_ratio": 0.7333333333333333,
+     "final_valence": 1.0,
+     "final_stress": 0.0,
+     "forbidden_scenes": 0,
+     "blocked": 0,
+     "stressed_cycles": 0,
+     "max_intensity_when_stressed": 0.0,
+     "vision_flags": 0,
+     "seed": 3
+    },
+    {
+     "cycles": 16,
+     "conv_final": 0.5573365698682389,
+     "conv_max": 0.5573365698682389,
+     "conv_auc": 0.30103411941250946,
+     "conv_monotonicity": 0.9333333333333333,
+     "conv_dips": 1,
+     "conv_dips_recovered": 1,
+     "conv_recovery_rate": 1.0,
+     "earned_corr": 0.3401771061726624,
+     "earned_gap": 0.0,
+     "dconv_when_met": 0.03732284178975449,
+     "dconv_when_avoided": 0.0,
+     "success_rate": 0.875,
      "avoid_rate": 0.0,
      "journey_stage_seq": [
       "call",
@@ -2107,78 +2179,6 @@
      "journey_unlabeled": 0,
      "distinct_locations": 6,
      "distinct_scene_ratio": 1.0,
-     "repeated_beat_ratio": 0.023529411764705882,
-     "distinct_nudge_ratio": 0.34146341463414637,
-     "consecutive_identical_nudges": 0,
-     "theme_coverage": 1.0,
-     "themes_missed": [],
-     "distinct_scene_themes": 3,
-     "trait_deltas": {
-      "courage": 0.0,
-      "courage_confidence": 0.8775,
-      "honesty": 0.0,
-      "leadership_confidence": 0.4364,
-      "purpose_confidence": 0.848
-     },
-     "trait_delta_sum": 2.1619,
-     "trait_delta_abs": 2.1619,
-     "goal_progress": [
-      0.5997,
-      0.6033
-     ],
-     "goal_progress_mean": 0.6014999999999999,
-     "lessons": 14,
-     "distinct_lesson_ratio": 0.7142857142857143,
-     "final_valence": 1.0,
-     "final_stress": 0.0,
-     "forbidden_scenes": 0,
-     "blocked": 0,
-     "stressed_cycles": 0,
-     "max_intensity_when_stressed": 0.0,
-     "vision_flags": 0,
-     "seed": 3
-    },
-    {
-     "cycles": 16,
-     "conv_final": 0.5389901701600731,
-     "conv_max": 0.5389901701600731,
-     "conv_auc": 0.2673468857691926,
-     "conv_monotonicity": 1.0,
-     "conv_dips": 0,
-     "conv_dips_recovered": 0,
-     "conv_recovery_rate": 1.0,
-     "earned_corr": 0.45744565319789854,
-     "earned_gap": 0.0,
-     "dconv_when_met": 0.03668105992842673,
-     "dconv_when_avoided": 0.0,
-     "success_rate": 0.875,
-     "avoid_rate": 0.0,
-     "journey_stage_seq": [
-      "call",
-      "call",
-      "call",
-      "threshold",
-      "threshold",
-      "threshold",
-      "mentor",
-      "mentor",
-      "mentor",
-      "ordeal",
-      "ordeal",
-      "ordeal",
-      "reward",
-      "reward",
-      "reward",
-      "return"
-     ],
-     "journey_distinct_stages": 6,
-     "journey_max_stage": 5,
-     "journey_reached_ordeal": 1,
-     "journey_in_order": 1,
-     "journey_max_backjump": 0,
-     "journey_unlabeled": 0,
-     "distinct_locations": 6,
-     "distinct_scene_ratio": 1.0,
      "repeated_beat_ratio": 0.0,
      "distinct_nudge_ratio": 0.2857142857142857,
      "consecutive_identical_nudges": 0,
@@ -2187,20 +2187,20 @@
      "distinct_scene_themes": 3,
      "trait_deltas": {
       "courage": 0.0,
-      "courage_confidence": 0.8091,
+      "courage_confidence": 0.8079,
       "honesty": 0.0,
-      "leadership_confidence": 0.5612,
-      "purpose_confidence": 0.8055
+      "leadership_confidence": 0.4485,
+      "purpose_confidence": 0.8767
      },
-     "trait_delta_sum": 2.1758,
-     "trait_delta_abs": 2.1758,
+     "trait_delta_sum": 2.1330999999999998,
+     "trait_delta_abs": 2.1330999999999998,
      "goal_progress": [
-      0.5385,
-      0.7903
+      0.6533,
+      0.6244
      ],
-     "goal_progress_mean": 0.6644,
+     "goal_progress_mean": 0.6388499999999999,
      "lessons": 13,
-     "distinct_lesson_ratio": 0.8461538461538461,
+     "distinct_lesson_ratio": 0.7692307692307693,
      "final_valence": 1.0,
      "final_stress": 0.0,
      "forbidden_scenes": 0,
@@ -2212,17 +2212,17 @@
     },
     {
      "cycles": 16,
-     "conv_final": 0.47122450871482824,
-     "conv_max": 0.47122450871482824,
-     "conv_auc": 0.2137581724635533,
+     "conv_final": 0.5094325999923408,
+     "conv_max": 0.5094325999923408,
+     "conv_auc": 0.2539655107446808,
      "conv_monotonicity": 0.8666666666666667,
      "conv_dips": 2,
      "conv_dips_recovered": 2,
      "conv_recovery_rate": 1.0,
-     "earned_corr": 0.6468868312610969,
-     "earned_gap": 0.05776589273641908,
-     "dconv_when_met": 0.03650092644146441,
-     "dconv_when_avoided": -0.021264966294954665,
+     "earned_corr": 0.5513466795466835,
+     "earned_gap": 0.047738912791796734,
+     "dconv_when_met": 0.03869149124289051,
+     "dconv_when_avoided": -0.00904742154890623,
      "success_rate": 0.8125,
      "avoid_rate": 0.0625,
      "journey_stage_seq": [
@@ -2240,32 +2240,32 @@
       "ordeal",
       "reward",
       "reward",
-      "reward",
+      "ordeal",
       "return"
      ],
      "journey_distinct_stages": 6,
      "journey_max_stage": 5,
      "journey_reached_ordeal": 1,
-     "journey_in_order": 1,
-     "journey_max_backjump": 0,
+     "journey_in_order": 0,
+     "journey_max_backjump": 1,
      "journey_unlabeled": 0,
      "distinct_locations": 6,
      "distinct_scene_ratio": 1.0,
      "repeated_beat_ratio": 0.022727272727272728,
-     "distinct_nudge_ratio": 0.32558139534883723,
+     "distinct_nudge_ratio": 0.34146341463414637,
      "consecutive_identical_nudges": 0,
      "theme_coverage": 1.0,
      "themes_missed": [],
      "distinct_scene_themes": 3,
      "trait_deltas": {
       "courage": 0.0,
-      "courage_confidence": 0.7507,
+      "courage_confidence": 0.7471,
       "honesty": 0.0,
       "leadership_confidence": 0.4658,
       "purpose_confidence": 0.8593
      },
-     "trait_delta_sum": 2.0758,
-     "trait_delta_abs": 2.0758,
+     "trait_delta_sum": 2.0722,
+     "trait_delta_abs": 2.0722,
      "goal_progress": [
       0.7364,
       0.5231
@@ -2292,23 +2292,23 @@
      "max": 16.0
     },
     "conv_final": {
-     "mean": 0.38178690006037636,
-     "min": 0.2862683958341881,
-     "max": 0.4329338548604235
+     "mean": 0.35500697722658997,
+     "min": 0.2421161381595502,
+     "max": 0.4612151259295494
     },
     "conv_max": {
-     "mean": 0.3939074686490146,
-     "min": 0.3348604197307306,
-     "max": 0.43330807710423436
+     "mean": 0.37584141155783357,
+     "min": 0.2421161381595502,
+     "max": 0.46537524498594635
     },
     "conv_auc": {
-     "mean": 0.2425767213907588,
-     "min": 0.19963051125393405,
-     "max": 0.2682757573488089
+     "mean": 0.2519688641625134,
+     "min": 0.17169341430370658,
+     "max": 0.2947850443788935
     },
     "conv_monotonicity": {
-     "mean": 0.8533333333333333,
-     "min": 0.7333333333333333,
+     "mean": 0.7333333333333333,
+     "min": 0.5333333333333333,
      "max": 0.9333333333333333
     },
     "conv_dips": {
@@ -2317,44 +2317,44 @@
      "max": 3.0
     },
     "conv_dips_recovered": {
-     "mean": 1.0,
-     "min": 0.0,
-     "max": 2.0
-    },
-    "conv_recovery_rate": {
-     "mean": 0.5333333333333333,
+     "mean": 0.2,
      "min": 0.0,
      "max": 1.0
     },
+    "conv_recovery_rate": {
+     "mean": 0.1,
+     "min": 0.0,
+     "max": 0.5
+    },
     "earned_corr": {
-     "mean": 0.5986927935651514,
-     "min": 0.3786040122892452,
-     "max": 0.7382619087032701
+     "mean": 0.6405590209468601,
+     "min": 0.2647057903601357,
+     "max": 0.7966728719890034
     },
     "earned_gap": {
-     "mean": 0.014936185743433427,
+     "mean": 0.02802912170826835,
      "min": 0.0,
-     "max": 0.07468092871716714
+     "max": 0.08065979431448134
     },
     "dconv_when_met": {
-     "mean": 0.034265482966558104,
-     "min": 0.02923721296394181,
-     "max": 0.03808230587514837
+     "mean": 0.039141038364583255,
+     "min": 0.029773665161273995,
+     "max": 0.04637884800410535
     },
     "dconv_when_avoided": {
-     "mean": -0.008298133672960145,
-     "min": -0.041490668364800726,
+     "mean": -0.011768900792216846,
+     "min": -0.04370578017749774,
      "max": 0.0
     },
     "success_rate": {
-     "mean": 0.625,
-     "min": 0.5625,
-     "max": 0.75
+     "mean": 0.5875,
+     "min": 0.4375,
+     "max": 0.6875
     },
     "avoid_rate": {
-     "mean": 0.0125,
+     "mean": 0.0375,
      "min": 0.0,
-     "max": 0.0625
+     "max": 0.125
     },
     "journey_distinct_stages": {
      "mean": 6.0,
@@ -2397,14 +2397,14 @@
      "max": 1.0
     },
     "repeated_beat_ratio": {
-     "mean": 0.01837158358592934,
-     "min": 0.011363636363636364,
-     "max": 0.03409090909090909
+     "mean": 0.028708980604835,
+     "min": 0.0,
+     "max": 0.06521739130434782
     },
     "distinct_nudge_ratio": {
-     "mean": 0.2601470932483411,
-     "min": 0.23809523809523808,
-     "max": 0.27906976744186046
+     "mean": 0.2795033244477127,
+     "min": 0.2391304347826087,
+     "max": 0.3333333333333333
     },
     "consecutive_identical_nudges": {
      "mean": 0.0,
@@ -2422,29 +2422,29 @@
      "max": 3.0
     },
     "trait_delta_sum": {
-     "mean": 1.7844200000000001,
-     "min": 1.271,
-     "max": 2.0214
+     "mean": 1.8326999999999998,
+     "min": 1.6317,
+     "max": 1.9284
     },
     "trait_delta_abs": {
-     "mean": 1.7844200000000001,
-     "min": 1.271,
-     "max": 2.0214
+     "mean": 1.8326999999999998,
+     "min": 1.6317,
+     "max": 1.9284
     },
     "goal_progress_mean": {
-     "mean": 0.52798,
-     "min": 0.40215,
-     "max": 0.6775500000000001
+     "mean": 0.48499,
+     "min": 0.37355,
+     "max": 0.6084499999999999
     },
     "lessons": {
-     "mean": 10.0,
+     "mean": 9.8,
      "min": 9.0,
-     "max": 12.0
+     "max": 11.0
     },
     "distinct_lesson_ratio": {
-     "mean": 0.8433333333333334,
-     "min": 0.75,
-     "max": 0.9
+     "mean": 0.8969696969696969,
+     "min": 0.7777777777777778,
+     "max": 1.0
     },
     "final_valence": {
      "mean": 1.0,
@@ -2490,18 +2490,18 @@
    "runs": [
     {
      "cycles": 16,
-     "conv_final": 0.4329338548604235,
-     "conv_max": 0.4329338548604235,
-     "conv_auc": 0.2682757573488089,
-     "conv_monotonicity": 0.8666666666666667,
+     "conv_final": 0.38877672975113764,
+     "conv_max": 0.40268585191527023,
+     "conv_auc": 0.28622662302073526,
+     "conv_monotonicity": 0.6666666666666666,
      "conv_dips": 2,
-     "conv_dips_recovered": 2,
-     "conv_recovery_rate": 1.0,
-     "earned_corr": 0.3786040122892452,
+     "conv_dips_recovered": 1,
+     "conv_recovery_rate": 0.5,
+     "earned_corr": 0.2647057903601357,
      "earned_gap": 0.0,
-     "dconv_when_met": 0.03303679944818613,
+     "dconv_when_met": 0.029773665161273995,
      "dconv_when_avoided": 0.0,
-     "success_rate": 0.625,
+     "success_rate": 0.6875,
      "avoid_rate": 0.0,
      "journey_stage_seq": [
       "call",
@@ -2515,9 +2515,9 @@
       "mentor",
       "ordeal",
       "ordeal",
-      "mentor",
+      "ordeal",
       "reward",
-      "reward",
+      "ordeal",
       "reward",
       "return"
      ],
@@ -2529,28 +2529,28 @@
      "journey_unlabeled": 0,
      "distinct_locations": 6,
      "distinct_scene_ratio": 1.0,
-     "repeated_beat_ratio": 0.022727272727272728,
-     "distinct_nudge_ratio": 0.27906976744186046,
+     "repeated_beat_ratio": 0.0,
+     "distinct_nudge_ratio": 0.3333333333333333,
      "consecutive_identical_nudges": 0,
      "theme_coverage": 1.0,
      "themes_missed": [],
      "distinct_scene_themes": 3,
      "trait_deltas": {
       "courage": 0.0,
-      "courage_confidence": 0.7531,
+      "courage_confidence": 0.8043,
       "honesty": 0.0,
-      "leadership_confidence": 0.3735,
-      "purpose_confidence": 0.8084
+      "leadership_confidence": 0.2764,
+      "purpose_confidence": 0.8477
      },
-     "trait_delta_sum": 1.935,
-     "trait_delta_abs": 1.935,
+     "trait_delta_sum": 1.9284,
+     "trait_delta_abs": 1.9284,
      "goal_progress": [
-      0.5113,
-      0.5805
+      0.6279,
+      0.414
      ],
-     "goal_progress_mean": 0.5459,
-     "lessons": 10,
-     "distinct_lesson_ratio": 0.9,
+     "goal_progress_mean": 0.52095,
+     "lessons": 11,
+     "distinct_lesson_ratio": 0.8181818181818182,
      "final_valence": 1.0,
      "final_stress": 0.0,
      "forbidden_scenes": 0,
@@ -2562,19 +2562,19 @@
     },
     {
      "cycles": 16,
-     "conv_final": 0.3348604197307306,
-     "conv_max": 0.3348604197307306,
-     "conv_auc": 0.19963051125393405,
-     "conv_monotonicity": 0.8,
-     "conv_dips": 3,
-     "conv_dips_recovered": 2,
-     "conv_recovery_rate": 0.6666666666666666,
-     "earned_corr": 0.6768714880578259,
-     "earned_gap": 0.07468092871716714,
-     "dconv_when_met": 0.03319026035236641,
-     "dconv_when_avoided": -0.041490668364800726,
-     "success_rate": 0.5625,
-     "avoid_rate": 0.0625,
+     "conv_final": 0.2421161381595502,
+     "conv_max": 0.2421161381595502,
+     "conv_auc": 0.17169341430370658,
+     "conv_monotonicity": 0.5333333333333333,
+     "conv_dips": 2,
+     "conv_dips_recovered": 0,
+     "conv_recovery_rate": 0.0,
+     "earned_corr": 0.7875031735998409,
+     "earned_gap": 0.059485814226860424,
+     "dconv_when_met": 0.04434709044327393,
+     "dconv_when_avoided": -0.015138723783586494,
+     "success_rate": 0.4375,
+     "avoid_rate": 0.125,
      "journey_stage_seq": [
       "call",
       "call",
@@ -2583,13 +2583,13 @@
       "threshold",
       "threshold",
       "mentor",
-      "mentor",
+      "threshold",
       "mentor",
       "ordeal",
       "ordeal",
       "mentor",
       "reward",
-      "reward",
+      "ordeal",
       "reward",
       "return"
      ],
@@ -2601,27 +2601,28 @@
      "journey_unlabeled": 0,
      "distinct_locations": 6,
      "distinct_scene_ratio": 1.0,
-     "repeated_beat_ratio": 0.012048192771084338,
-     "distinct_nudge_ratio": 0.24444444444444444,
+     "repeated_beat_ratio": 0.06521739130434782,
+     "distinct_nudge_ratio": 0.2727272727272727,
      "consecutive_identical_nudges": 0,
      "theme_coverage": 1.0,
      "themes_missed": [],
      "distinct_scene_themes": 3,
      "trait_deltas": {
       "courage": 0.0,
-      "courage_confidence": 0.8131,
+      "courage_confidence": 0.626,
       "honesty": 0.0,
-      "leadership_confidence": 0.4579
+      "leadership_confidence": 0.2895,
+      "purpose_confidence": 0.7162
      },
-     "trait_delta_sum": 1.271,
-     "trait_delta_abs": 1.271,
+     "trait_delta_sum": 1.6317,
+     "trait_delta_abs": 1.6317,
      "goal_progress": [
-      0.086,
-      0.7183
+      0.3177,
+      0.4294
      ],
-     "goal_progress_mean": 0.40215,
-     "lessons": 10,
-     "distinct_lesson_ratio": 0.9,
+     "goal_progress_mean": 0.37355,
+     "lessons": 9,
+     "distinct_lesson_ratio": 1.0,
      "final_valence": 1.0,
      "final_stress": 0.0,
      "forbidden_scenes": 0,
@@ -2633,16 +2634,16 @@
     },
     {
      "cycles": 16,
-     "conv_final": 0.2862683958341881,
-     "conv_max": 0.34575790886808133,
-     "conv_auc": 0.23805054775247414,
-     "conv_monotonicity": 0.7333333333333333,
-     "conv_dips": 2,
+     "conv_final": 0.3732696663684134,
+     "conv_max": 0.4534351365656569,
+     "conv_auc": 0.2776174977496444,
+     "conv_monotonicity": 0.8,
+     "conv_dips": 1,
      "conv_dips_recovered": 0,
      "conv_recovery_rate": 0.0,
-     "earned_corr": 0.5408519368430863,
+     "earned_corr": 0.6538041183150227,
      "earned_gap": 0.0,
-     "dconv_when_met": 0.02923721296394181,
+     "dconv_when_met": 0.038251574077279374,
      "dconv_when_avoided": 0.0,
      "success_rate": 0.625,
      "avoid_rate": 0.0,
@@ -2658,10 +2659,10 @@
       "mentor",
       "ordeal",
       "ordeal",
-      "mentor",
+      "ordeal",
       "reward",
       "reward",
-      "reward",
+      "ordeal",
       "return"
      ],
      "journey_distinct_stages": 6,
@@ -2672,8 +2673,8 @@
      "journey_unlabeled": 0,
      "distinct_locations": 6,
      "distinct_scene_ratio": 1.0,
-     "repeated_beat_ratio": 0.011363636363636364,
-     "distinct_nudge_ratio": 0.2708333333333333,
+     "repeated_beat_ratio": 0.03409090909090909,
+     "distinct_nudge_ratio": 0.3023255813953488,
      "consecutive_identical_nudges": 0,
      "theme_coverage": 1.0,
      "themes_missed": [],
@@ -2705,19 +2706,19 @@
     },
     {
      "cycles": 16,
-     "conv_final": 0.4321947471949361,
-     "conv_max": 0.43330807710423436,
-     "conv_auc": 0.26187921919895424,
-     "conv_monotonicity": 0.9333333333333333,
-     "conv_dips": 1,
+     "conv_final": 0.30965722592429923,
+     "conv_max": 0.315594686162744,
+     "conv_auc": 0.22952174135958747,
+     "conv_monotonicity": 0.7333333333333333,
+     "conv_dips": 3,
      "conv_dips_recovered": 0,
      "conv_recovery_rate": 0.0,
-     "earned_corr": 0.7382619087032701,
-     "earned_gap": 0.0,
-     "dconv_when_met": 0.0377808361931478,
-     "dconv_when_avoided": 0.0,
-     "success_rate": 0.75,
-     "avoid_rate": 0.0,
+     "earned_corr": 0.7001091504702981,
+     "earned_gap": 0.08065979431448134,
+     "dconv_when_met": 0.036954014136983605,
+     "dconv_when_avoided": -0.04370578017749774,
+     "success_rate": 0.625,
+     "avoid_rate": 0.0625,
      "journey_stage_seq": [
       "call",
       "call",
@@ -2727,7 +2728,7 @@
       "threshold",
       "mentor",
       "mentor",
-      "mentor",
+      "threshold",
       "ordeal",
       "ordeal",
       "ordeal",
@@ -2744,28 +2745,28 @@
      "journey_unlabeled": 0,
      "distinct_locations": 6,
      "distinct_scene_ratio": 1.0,
-     "repeated_beat_ratio": 0.03409090909090909,
-     "distinct_nudge_ratio": 0.2682926829268293,
+     "repeated_beat_ratio": 0.03260869565217391,
+     "distinct_nudge_ratio": 0.2391304347826087,
      "consecutive_identical_nudges": 0,
      "theme_coverage": 1.0,
      "themes_missed": [],
      "distinct_scene_themes": 3,
      "trait_deltas": {
       "courage": 0.0,
-      "courage_confidence": 0.758,
+      "courage_confidence": 0.8083,
       "honesty": 0.0,
-      "leadership_confidence": 0.3833,
-      "purpose_confidence": 0.8801
+      "leadership_confidence": 0.3412,
+      "purpose_confidence": 0.7592
      },
-     "trait_delta_sum": 2.0214,
-     "trait_delta_abs": 2.0214,
+     "trait_delta_sum": 1.9087,
+     "trait_delta_abs": 1.9087,
      "goal_progress": [
-      0.7194,
-      0.6357
+      0.3662,
+      0.6661
      ],
-     "goal_progress_mean": 0.6775500000000001,
-     "lessons": 12,
-     "distinct_lesson_ratio": 0.75,
+     "goal_progress_mean": 0.51615,
+     "lessons": 11,
+     "distinct_lesson_ratio": 1.0,
      "final_valence": 1.0,
      "final_stress": 0.0,
      "forbidden_scenes": 0,
@@ -2777,16 +2778,16 @@
     },
     {
      "cycles": 16,
-     "conv_final": 0.4226770826816034,
-     "conv_max": 0.4226770826816034,
-     "conv_auc": 0.24504757139962266,
+     "conv_final": 0.4612151259295494,
+     "conv_max": 0.46537524498594635,
+     "conv_auc": 0.2947850443788935,
      "conv_monotonicity": 0.9333333333333333,
      "conv_dips": 1,
-     "conv_dips_recovered": 1,
-     "conv_recovery_rate": 1.0,
-     "earned_corr": 0.6588746219323294,
+     "conv_dips_recovered": 0,
+     "conv_recovery_rate": 0.0,
+     "earned_corr": 0.7966728719890034,
      "earned_gap": 0.0,
-     "dconv_when_met": 0.03808230587514837,
+     "dconv_when_met": 0.04637884800410535,
      "dconv_when_avoided": 0.0,
      "success_rate": 0.5625,
      "avoid_rate": 0.0,
@@ -2817,7 +2818,7 @@
      "distinct_locations": 6,
      "distinct_scene_ratio": 1.0,
      "repeated_beat_ratio": 0.011627906976744186,
-     "distinct_nudge_ratio": 0.23809523809523808,
+     "distinct_nudge_ratio": 0.25,
      "consecutive_identical_nudges": 0,
      "theme_coverage": 1.0,
      "themes_missed": [],
@@ -2851,20 +2852,20 @@
   }
  },
  "pooled": {
-  "earned_corr": 0.6748163440541507,
+  "earned_corr": 0.6117765163101403,
   "n_cycles": 400
  },
  "rubric": [
   {
    "name": "engaged final convergence > avoidant",
    "target": "engaged - avoidant > 0",
-   "value": 0.4804,
+   "value": 0.4903,
    "pass": true
   },
   {
    "name": "earnedness: corr(success, dConv) pooled over all runs",
    "target": "> 0.3",
-   "value": 0.6748,
+   "value": 0.6118,
    "pass": true
   },
   {
@@ -2882,7 +2883,7 @@
   {
    "name": "repeated-beat ratio (worst profile mean)",
    "target": "< 0.2",
-   "value": 0.0257,
+   "value": 0.0321,
    "pass": true
   },
   {
@@ -2899,8 +2900,8 @@
   }
  ],
  "meta": {
-  "git": "28ab238 Journey arc, debriefs, recurring cast; eval rubric 7/7",
-  "time": "2026-10-13 23:21:02 UTC",
-  "elapsed_s": 1.07
+  "git": "43543cc Web viewer: bounded memory/disk, non-blocking SSE, host/origin guard",
+  "time": "2026-10-13 23:40:53 UTC",
+  "elapsed_s": 2.73
  }
 }
