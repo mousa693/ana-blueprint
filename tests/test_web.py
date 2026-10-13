@@ -11,7 +11,15 @@ warnings.filterwarnings("ignore")
 
 from fastapi.testclient import TestClient
 
-from ana.web.server import create_app, parse_jsonl
+from ana.web import server as web_server
+from ana.web.server import create_app as _create_app, parse_jsonl
+
+
+def create_app(*args, **kwargs):
+    """TestClient sends `Host: testserver`; allow it here rather than in the
+    production defaults."""
+    kwargs.setdefault("allowed_hosts", ["testserver"])
+    return _create_app(*args, **kwargs)
 
 
 def _records(n: int = 3) -> list[str]:
@@ -102,10 +110,17 @@ def test_upload_raw_body_and_rejects(client, lines):
     r = client.post("/api/runs/upload?name=raw.jsonl", content="\n".join(lines).encode(),
                     headers={"content-type": "application/x-ndjson"})
     assert r.status_code == 201 and r.json()["cycles"] == 3
+    r = client.post("/api/runs/upload", content="\n".join(lines).encode(),
+                    headers={"content-type": "application/jsonl"})
+    assert r.status_code == 201
     # nothing usable -> 422
     r = client.post("/api/runs/upload", content=b"garbage\n[1,2]\n",
-                    headers={"content-type": "text/plain"})
+                    headers={"content-type": "application/x-ndjson"})
     assert r.status_code == 422
+    # CORS-"simple" raw content types are refused (CSRF)
+    r = client.post("/api/runs/upload", content="\n".join(lines).encode(),
+                    headers={"content-type": "text/plain"})
+    assert r.status_code == 415
 
 
 def test_upload_size_limit(lines):
@@ -273,3 +288,240 @@ def test_debrief_conflict_while_running():
     run = app.state.store.add(Run(id="live-x", name="x", source="live", status="running"))
     assert c.get(f"/api/runs/{run.id}/debrief").status_code == 409
     assert c.get(f"/api/runs/{run.id}/arc").json()["cycles"] == 0
+
+
+# ─────────────────────────────────────────────────────────────
+# Security / robustness
+# ─────────────────────────────────────────────────────────────
+
+
+def test_host_header_allowlist():
+    c = TestClient(_create_app())  # production defaults: testserver not allowed
+    assert c.get("/api/runs").status_code == 400
+    for host in ("127.0.0.1:8765", "localhost", "LOCALHOST:1", "[::1]:8765", "127.0.0.1"):
+        assert c.get("/api/runs", headers={"host": host}).status_code == 200, host
+    for host in ("evil.example", "evil.example:8765", "127.0.0.1.evil.example", "[::2]", ""):
+        r = c.get("/api/runs", headers={"host": host})
+        assert r.status_code == 400, host
+    # rejected before the route runs: no live run is started
+    r = c.post("/api/live", json={"cycles": 1}, headers={"host": "evil.example"})
+    assert r.status_code == 400
+    assert c.get("/api/runs", headers={"host": "localhost"}).json()["runs"] == []
+    extra = TestClient(_create_app(allowed_hosts=["viewer.lan"]))
+    assert extra.get("/api/runs", headers={"host": "viewer.lan:8765"}).status_code == 200
+
+
+def test_cross_origin_requests_rejected(client):
+    for origin in ("http://evil.example", "null", "http://testserver.evil", "http://localhost"):
+        r = client.post("/api/live", json={"cycles": 1}, headers={"origin": origin})
+        assert r.status_code == 403, origin
+        r = client.post("/api/runs/upload", content=b'{"tick":1,"scene":{}}',
+                        headers={"origin": origin, "content-type": "application/x-ndjson"})
+        assert r.status_code == 403, origin
+    assert client.get("/api/runs").json()["runs"] == []
+    # same-origin (what the browser sends for the app's own fetches) is fine
+    r = client.post("/api/live", json={"cycles": 1}, headers={"origin": "http://testserver"})
+    assert r.status_code == 201
+    assert client.get("/", headers={"origin": "http://testserver"}).status_code == 200
+
+
+def test_live_requires_json_content_type(client, monkeypatch):
+    monkeypatch.setattr(web_server, "_run_live", lambda run, req: run.finish("complete"))
+    # an empty text/plain POST is a CORS "simple" request (no preflight)
+    for ctype in ("text/plain", "application/x-www-form-urlencoded", "multipart/form-data", None):
+        headers = {"content-type": ctype} if ctype else {}
+        r = client.post("/api/live", content=b"", headers=headers)
+        assert r.status_code == 415, ctype
+    r = client.post("/api/live", content=b"", headers={"content-type": "application/json"})
+    assert r.status_code == 201  # empty JSON body -> defaults
+    assert r.json()["run"]["params"]["cycles"] == 40
+    r = client.post("/api/live", content=b"{bad", headers={"content-type": "application/json"})
+    assert r.status_code == 422
+    r = client.post("/api/live", content=b" " * (64 * 1024),
+                    headers={"content-type": "application/json"})
+    assert r.status_code == 413
+
+
+def test_use_llm_gated_by_server_flag(monkeypatch):
+    started = []
+    monkeypatch.setattr(web_server, "_run_live",
+                        lambda run, req: (started.append(req.use_llm), run.finish("complete")))
+    c = TestClient(create_app())
+    r = c.post("/api/live", json={"cycles": 1, "use_llm": True})
+    assert r.status_code == 403 and "--allow-llm" in r.json()["detail"]
+    assert c.get("/api/runs").json()["runs"] == [] and started == []
+    assert c.post("/api/live", json={"cycles": 1, "use_llm": False}).status_code == 201
+
+    c2 = TestClient(create_app(allow_llm=True))
+    assert c2.post("/api/live", json={"cycles": 1, "use_llm": True}).status_code == 201
+    import time
+    for _ in range(50):
+        if len(started) == 2:
+            break
+        time.sleep(0.02)
+    assert started == [False, True]
+
+
+def test_last_event_id_is_bounded(client):
+    run_id = client.post("/api/live", json={"cycles": 3, "until_close": False}).json()["id"]
+    with client.stream("GET", f"/api/live/{run_id}/stream") as resp:
+        _read_events(resp)
+    for value, want in (("9" * 5000, 3), ("²", 3), ("１", 3), ("-1", 3), ("0", 2), ("1", 1)):
+        with client.stream("GET", f"/api/live/{run_id}/stream",
+                           headers=[(b"last-event-id", value.encode("utf-8"))]) as resp:
+            assert resp.status_code == 200, value
+            events = _read_events(resp)
+        assert sum(1 for e, _ in events if e == "cycle") == want, value
+        assert events[-1][0] == "done"
+
+
+def test_deeply_nested_line_is_skipped(client, lines):
+    deep = '{"tick":1,"scene":{"title":"x"},"extra":' + "[" * 980 + "]" * 980 + "}"
+    deep_scene = '{"tick":2,"scene":{"title":"x","k":' + "[" * 200 + "]" * 200 + "}}"
+    res = parse_jsonl("\n".join([deep, deep_scene, lines[0]]))
+    assert len(res.records) == 1 and res.skipped == 2
+    body = "\n".join([deep, lines[0], deep_scene]).encode()
+    r = client.post("/api/runs/upload", content=body,
+                    headers={"content-type": "application/x-ndjson"})
+    assert r.status_code == 201, r.text
+    assert r.json()["cycles"] == 1 and r.json()["skipped"] == 2
+    assert client.get(f"/api/runs/{r.json()['id']}").status_code == 200
+
+
+def test_unknown_extras_are_bounded(lines):
+    rec = json.loads(lines[0])
+    rec["small"] = {"a": 1}
+    rec["huge"] = "x" * 10_000
+    partial = {"tick": 5, "scene": {"title": "p"}, "pad": [[]] * 1000}
+    res = parse_jsonl("\n".join([json.dumps(rec), json.dumps(partial)]))
+    full, part = res.records
+    assert full["small"] == {"a": 1} and "huge" not in full
+    assert "pad" not in part and part["scene"] == {"title": "p"}
+    assert res.trimmed == 2 and res.partial == 1 and res.nbytes > 0
+
+
+def test_store_byte_budget_evicts_oldest_uploads(lines):
+    body = "\n".join(lines).encode()
+    one = parse_jsonl(body.decode()).nbytes
+    app = create_app(max_store_bytes=int(one * 2.5))
+    c = TestClient(app)
+    hdr = {"content-type": "application/x-ndjson"}
+    ids = [c.post(f"/api/runs/upload?name=r{i}.jsonl", content=body, headers=hdr).json()["id"]
+           for i in range(4)]
+    kept = [r["id"] for r in c.get("/api/runs").json()["runs"]]
+    assert sorted(kept) == sorted(ids[2:])  # the two oldest were evicted
+    assert app.state.store.total_bytes() <= int(one * 2.5)
+
+    # a running live run is never evicted; if nothing evictable is left, 507
+    from ana.web.server import Run
+    store = app.state.store
+    store.add(Run(id="live-hog", name="hog", source="live", status="running",
+                  nbytes=int(one * 1.2)), force=True)
+    r = c.post("/api/runs/upload", content=body, headers=hdr)
+    assert r.status_code == 201  # evicts the remaining uploads
+    assert c.get("/api/runs/live-hog").status_code == 200
+    store.get("live-hog").nbytes = int(one * 2)
+    r = c.post("/api/runs/upload", content=body, headers=hdr)
+    assert r.status_code == 507
+    assert c.get("/api/runs/live-hog").status_code == 200
+
+
+def test_upload_too_big_once_parsed(lines):
+    body = "\n".join(lines * 4).encode()
+    c = TestClient(create_app(max_run_bytes=parse_jsonl("\n".join(lines)).nbytes))
+    r = c.post("/api/runs/upload", content=body, headers={"content-type": "application/x-ndjson"})
+    assert r.status_code == 413
+    assert c.get("/api/runs").json()["runs"] == []
+
+
+def test_size_limit_on_streamed_body_without_content_length(lines):
+    c = TestClient(create_app(max_upload_bytes=1024))
+    consumed = []
+
+    def raw():
+        for _ in range(200):
+            consumed.append(1)
+            yield ("\n".join(lines) + "\n").encode()
+
+    r = c.post("/api/runs/upload", content=raw(), headers={"content-type": "application/x-ndjson"})
+    assert r.status_code == 413
+
+    def multipart():
+        yield (b'--BB\r\nContent-Disposition: form-data; name="file"; filename="a.jsonl"\r\n'
+               b"Content-Type: application/octet-stream\r\n\r\n")
+        for _ in range(200):
+            yield ("\n".join(lines) + "\n").encode()
+        yield b"\r\n--BB--\r\n"
+
+    r = c.post("/api/runs/upload", content=multipart(),
+               headers={"content-type": "multipart/form-data; boundary=BB"})
+    assert r.status_code == 413
+    r = c.post("/api/runs/upload", content=b"x", headers={"content-type": "application/x-ndjson",
+                                                          "content-length": "9" * 5000})
+    assert r.status_code in (400, 413)
+    assert c.get("/api/runs").json()["runs"] == []
+
+
+def test_sse_subscriber_cap():
+    from ana.web.server import Run
+    app = create_app(max_subscribers_per_run=2, max_subscribers_total=3)
+    c = TestClient(app)
+    store = app.state.store
+    a = store.add(Run(id="live-a", name="a", source="live", status="running"))
+    b = store.add(Run(id="live-b", name="b", source="live", status="running"))
+    held = [store.acquire_subscriber(a), store.acquire_subscriber(a)]
+    assert c.get("/api/live/live-a/stream").status_code == 429  # per-run cap
+    held.append(store.acquire_subscriber(b))
+    assert store.acquire_subscriber(b) is None                   # global cap
+    assert c.get("/api/live/live-b/stream").status_code == 429
+    for rel in held:
+        rel()
+        rel()  # idempotent
+    assert store.subscriber_count() == 0
+    b.finish("complete")
+    with c.stream("GET", "/api/live/live-b/stream") as resp:
+        assert resp.status_code == 200
+        assert _read_events(resp)[-1][0] == "done"
+    assert store.subscriber_count() == 0  # released when the stream ends
+
+
+def test_sse_wakes_on_push_from_another_thread(lines):
+    import threading
+    import time
+    from ana.web.server import Run
+    app = create_app()
+    c = TestClient(app)
+    run = app.state.store.add(Run(id="live-t", name="t", source="live", status="running"))
+
+    def produce():
+        for ln in lines:
+            time.sleep(0.05)
+            run.push(json.loads(ln), {"stage": "call"})
+        run.finish("complete")
+
+    threading.Thread(target=produce, daemon=True).start()
+    t0 = time.time()
+    with c.stream("GET", "/api/live/live-t/stream") as resp:
+        events = _read_events(resp)
+    assert [e for e, _ in events].count("cycle") == 3
+    assert events[-1] == ("done", {"status": "complete", "cycles": 3, "closed": None})
+    assert time.time() - t0 < 5  # woken by the producer, not by keepalive timeouts
+    assert not run._waiters
+
+
+def test_live_cap_is_atomic():
+    import threading
+    from ana.web.server import Run, RunStore
+    store = RunStore(max_live=4)
+    results = []
+    barrier = threading.Barrier(32)
+
+    def go(i):
+        barrier.wait()
+        results.append(store.add_live(Run(id=f"live-{i}", name="x", source="live",
+                                           status="running")))
+
+    ts = [threading.Thread(target=go, args=(i,)) for i in range(32)]
+    [t.start() for t in ts]
+    [t.join() for t in ts]
+    assert results.count(True) == 4 and store.running() == 4
