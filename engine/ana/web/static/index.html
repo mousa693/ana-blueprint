@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>ANA Journey Viewer</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='13' fill='none' stroke='%232a78d6' stroke-width='3'/%3E%3Ccircle cx='16' cy='16' r='5' fill='%232a78d6'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="12.5"/><circle cx="16" cy="16" r="5"/></svg>
+      <div>
+        <h1>ANA</h1>
+        <p class="brand-sub">journey viewer</p>
+      </div>
+    </div>
+
+    <div class="controls">
+      <div class="control-group" aria-label="Loaded runs">
+        <label for="run-select" class="sr-only">Run</label>
+        <select id="run-select" aria-label="Choose a run">
+          <option value="">No runs loaded</option>
+        </select>
+        <label class="btn btn-ghost" for="upload-input" title="Load a JSONL run log">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 13V3m0 0L6 7m4-4 4 4M3 13v3a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-3"/></svg>
+          <span>Upload JSONL</span>
+        </label>
+        <input id="upload-input" type="file" accept=".jsonl,.ndjson,.json,.txt,application/x-ndjson" class="sr-only">
+      </div>
+
+      <form id="live-form" class="control-group live" aria-label="Start live journey">
+        <label class="field"><span id="live-cycles-label">max cycles</span><input id="live-cycles" type="number" min="1" max="200" value="40" inputmode="numeric"></label>
+        <label class="field"><span>seed</span><input id="live-seed" type="number" value="42" inputmode="numeric"></label>
+        <label class="field"><span>driver</span>
+          <select id="live-driver"><option value="auto">auto</option><option value="scripted">scripted</option></select>
+        </label>
+        <label class="field check" title="Stop when the journey comes home (the return has been lived)"><input id="live-until" type="checkbox" checked><span>until home</span></label>
+        <button type="submit" class="btn btn-primary" id="live-start">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 4v12l10-6z"/></svg>
+          <span>Start live journey</span>
+        </button>
+      </form>
+    </div>
+  </header>
+
+  <div id="status" class="status" role="status" aria-live="polite"></div>
+
+  <main id="main">
+    <section id="empty" class="empty">
+      <h2>A self, meeting itself.</h2>
+      <p>Each cycle the Identity Core meets the Environment Mirror, a scene unfolds, the protagonist acts, and the outcome changes the self.</p>
+      <p>Pick a run above, upload a JSONL log from <code>ana-run demo --log run.jsonl</code>, or start a live journey.</p>
+    </section>
+
+    <section id="run-view" hidden>
+      <div id="tiles" class="tiles" aria-label="Run summary"></div>
+
+      <section class="panel track-panel" aria-labelledby="track-title">
+        <header class="track-head">
+          <h2 id="track-title">Hero's journey</h2>
+          <p id="track-chapter" class="panel-sub"></p>
+        </header>
+        <ol id="track" class="track" aria-label="Stages of the journey"></ol>
+      </section>
+
+      <div class="layout">
+        <aside class="instruments" aria-label="Instruments">
+          <section class="panel">
+            <header class="panel-head">
+              <h2>Convergence</h2>
+              <p class="panel-sub">inner/outer polarity closing; surprise from the π-φ engine</p>
+            </header>
+            <div id="chart-convergence" class="chart chart-lg"></div>
+            <div id="legend-convergence" class="legend"></div>
+          </section>
+
+          <section class="panel">
+            <header class="panel-head">
+              <h2>Chapters &amp; milestones</h2>
+              <p class="panel-sub">consecutive cycles in one stage form a chapter</p>
+            </header>
+            <ol id="chapters" class="chapters" aria-label="Chapters"></ol>
+            <h3 class="mini-head">Milestones</h3>
+            <ul id="milestones" class="milestones"></ul>
+          </section>
+
+          <section id="cast-panel" class="panel" hidden>
+            <header class="panel-head">
+              <h2>Cast</h2>
+              <p class="panel-sub">who you met, and how they came to feel about you</p>
+            </header>
+            <table id="cast" class="cast-table" aria-label="Cast"></table>
+          </section>
+
+          <section class="panel">
+            <header class="panel-head">
+              <h2>Self-alignment</h2>
+              <p class="panel-sub">per cycle, 0–1</p>
+            </header>
+            <div class="multiples">
+              <figure><figcaption><span>Reflection</span></figcaption><div id="chart-reflection" class="chart chart-sm"></div></figure>
+              <figure><figcaption><span>Stress</span></figcaption><div id="chart-stress" class="chart chart-sm"></div></figure>
+              <figure><figcaption><span title="recommended intensity for the next cycle">Next intensity</span></figcaption><div id="chart-intensity" class="chart chart-sm"></div></figure>
+            </div>
+          </section>
+
+          <section class="panel">
+            <header class="panel-head">
+              <h2>Identity evolution</h2>
+              <p class="panel-sub">traits at the start of each cycle</p>
+            </header>
+            <div id="chart-traits" class="chart chart-md"></div>
+            <div id="legend-traits" class="legend"></div>
+            <table class="trait-table" id="trait-table" aria-label="Trait change over the run"></table>
+            <h3 class="mini-head">Emotion</h3>
+            <div class="multiples two">
+              <figure><figcaption><span>Valence</span></figcaption><div id="chart-valence" class="chart chart-sm"></div></figure>
+              <figure><figcaption><span>Felt stress</span></figcaption><div id="chart-estress" class="chart chart-sm"></div></figure>
+            </div>
+            <h3 class="mini-head">Active themes</h3>
+            <div id="theme-grid" class="theme-grid"></div>
+          </section>
+        </aside>
+
+        <section class="timeline-wrap" aria-label="Journey timeline">
+          <header class="timeline-head">
+            <h2>Journey</h2>
+            <p id="run-meta" class="panel-sub"></p>
+            <a id="jump-debrief" class="jump" href="#debrief" hidden>Read the debrief ↓</a>
+          </header>
+          <ol id="timeline" class="timeline"></ol>
+          <div id="live-tail" class="live-tail" hidden><span class="pulse"></span><span>dreaming the next cycle…</span></div>
+          <section id="debrief" class="panel debrief" aria-label="Debrief" hidden></section>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <div id="tooltip" class="tooltip" role="tooltip" hidden></div>
+  <script src="/static/app.js"></script>
+</body>
+</html>

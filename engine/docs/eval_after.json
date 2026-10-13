@@ -1,0 +1,2907 @@
+{
+ "config": {
+  "profiles": [
+   "engaged",
+   "avoidant",
+   "mixed",
+   "autonomous",
+   "lighthouse"
+  ],
+  "seeds": [
+   1,
+   2,
+   3,
+   4,
+   5
+  ],
+  "cycles": 16,
+  "use_llm": false,
+  "forbidden": [
+   "drowning",
+   "abandonment"
+  ]
+ },
+ "profiles": {
+  "engaged": {
+   "agg": {
+    "cycles": {
+     "mean": 16.0,
+     "min": 16.0,
+     "max": 16.0
+    },
+    "conv_final": {
+     "mean": 0.5091180406736426,
+     "min": 0.4682010269926472,
+     "max": 0.6203879003724803
+    },
+    "conv_max": {
+     "mean": 0.5464057919238245,
+     "min": 0.4694189131858357,
+     "max": 0.6203879003724803
+    },
+    "conv_auc": {
+     "mean": 0.3409011818398341,
+     "min": 0.2947644832597294,
+     "max": 0.39531085830125257
+    },
+    "conv_monotonicity": {
+     "mean": 0.8400000000000001,
+     "min": 0.7333333333333333,
+     "max": 1.0
+    },
+    "conv_dips": {
+     "mean": 1.8,
+     "min": 0.0,
+     "max": 4.0
+    },
+    "conv_dips_recovered": {
+     "mean": 1.0,
+     "min": 0.0,
+     "max": 4.0
+    },
+    "conv_recovery_rate": {
+     "mean": 0.5,
+     "min": 0.0,
+     "max": 1.0
+    },
+    "earned_corr": {
+     "mean": 0.08161670662230885,
+     "min": 0.0,
+     "max": 0.18690139029067937
+    },
+    "earned_gap": {
+     "mean": 0.0,
+     "min": 0.0,
+     "max": 0.0
+    },
+    "dconv_when_met": {
+     "mean": 0.03252066452196117,
+     "min": 0.02962967015126595,
+     "max": 0.038774243773280016
+    },
+    "dconv_when_avoided": {
+     "mean": 0.0,
+     "min": 0.0,
+     "max": 0.0
+    },
+    "success_rate": {
+     "mean": 0.9625,
+     "min": 0.9375,
+     "max": 1.0
+    },
+    "avoid_rate": {
+     "mean": 0.0,
+     "min": 0.0,
+     "max": 0.0
+    },
+    "journey_distinct_stages": {
+     "mean": 6.0,
+     "min": 6.0,
+     "max": 6.0
+    },
+    "journey_max_stage": {
+     "mean": 5.0,
+     "min": 5.0,
+     "max": 5.0
+    },
+    "journey_reached_ordeal": {
+     "mean": 1.0,
+     "min": 1.0,
+     "max": 1.0
+    },
+    "journey_in_order": {
+     "mean": 0.2,
+     "min": 0.0,
+     "max": 1.0
+    },
+    "journey_max_backjump": {
+     "mean": 0.8,
+     "min": 0.0,
+     "max": 1.0
+    },
+    "journey_unlabeled": {
+     "mean": 0.0,
+     "min": 0.0,
+     "max": 0.0
+    },
+    "distinct_locations": {
+     "mean": 6.0,
+     "min": 6.0,
+     "max": 6.0
+    },
+    "distinct_scene_ratio": {
+     "mean": 1.0,
+     "min": 1.0,
+     "max": 1.0
+    },
+    "repeated_beat_ratio": {
+     "mean": 0.027598808569137358,
+     "min": 0.011111111111111112,
+     "max": 0.06976744186046512
+    },
+    "distinct_nudge_ratio": {
+     "mean": 0.30887866655308516,
+     "min": 0.2619047619047619,
+     "max": 0.358974358974359
+    },
+    "consecutive_identical_nudges": {
+     "mean": 0.0,
+     "min": 0.0,
+     "max": 0.0
+    },
+    "theme_coverage": {
+     "mean": 1.0,
+     "min": 1.0,
+     "max": 1.0
+    },
+    "distinct_scene_themes": {
+     "mean": 3.0,
+     "min": 3.0,
+     "max": 3.0
+    },
+    "trait_delta_sum": {
+     "mean": 2.1927,
+     "min": 2.123,
+     "max": 2.2259
+    },
+    "trait_delta_abs": {
+     "mean": 2.1927,
+     "min": 2.123,
+     "max": 2.2259
+    },
+    "goal_progress_mean": {
+     "mean": 0.64464,
+     "min": 0.60055,
+     "max": 0.7518499999999999
+    },
+    "lessons": {
+     "mean": 14.4,
+     "min": 13.0,
+     "max": 15.0
+    },
+    "distinct_lesson_ratio": {
+     "mean": 0.7397069597069597,
+     "min": 0.6666666666666666,
+     "max": 0.8461538461538461
+    },
+    "final_valence": {
+     "mean": 1.0,
+     "min": 1.0,
+     "max": 1.0
+    },
+    "final_stress": {
+     "mean": 0.0,
+     "min": 0.0,
+     "max": 0.0
+    },
+    "forbidden_scenes": {
+     "mean": 0.0,
+     "min": 0.0,
+     "max": 0.0
+    },
+    "blocked": {
+     "mean": 0.0,
+     "min": 0.0,
+     "max": 0.0
+    },
+    "stressed_cycles": {
+     "mean": 0.0,
+     "min": 0.0,
+     "max": 0.0
+    },
+    "max_intensity_when_stressed": {
+     "mean": 0.0,
+     "min": 0.0,
+     "max": 0.0
+    },
+    "vision_flags": {
+     "mean": 0.4,
+     "min": 0.0,
+     "max": 2.0
+    },
+    "seed": {
+     "mean": 3.0,
+     "min": 1.0,
+     "max": 5.0
+    }
+   },
+   "runs": [
+    {
+     "cycles": 16,
+     "conv_final": 0.4899814883364917,
+     "conv_max": 0.5431488694847189,
+     "conv_auc": 0.3441647176225068,
+     "conv_monotonicity": 0.8,
+     "conv_dips": 2,
+     "conv_dips_recovered": 0,
+     "conv_recovery_rate": 0.0,
+     "earned_corr": 0.18690139029067937,
+     "earned_gap": 0.0,
+     "dconv_when_met": 0.03229407518225294,
+     "dconv_when_avoided": 0.0,
+     "success_rate": 0.9375,
+     "avoid_rate": 0.0,
+     "journey_stage_seq": [
+      "call",
+      "call",
+      "call",
+      "threshold",
+      "threshold",
+      "threshold",
+      "mentor",
+      "mentor",
+      "mentor",
+      "ordeal",
+      "ordeal",
+      "ordeal",
+      "reward",
+      "ordeal",
+      "reward",
+      "return"
+     ],
+     "journey_distinct_stages": 6,
+     "journey_max_stage": 5,
+     "journey_reached_ordeal": 1,
+     "journey_in_order": 0,
+     "journey_max_backjump": 1,
+     "journey_unlabeled": 0,
+     "distinct_locations": 6,
+     "distinct_scene_ratio": 1.0,
+     "repeated_beat_ratio": 0.011111111111111112,
+     "distinct_nudge_ratio": 0.3333333333333333,
+     "consecutive_identical_nudges": 0,
+     "theme_coverage": 1.0,
+     "themes_missed": [],
+     "distinct_scene_themes": 3,
+     "trait_deltas": {
+      "courage": 0.0,
+      "courage_confidence": 0.8458,
+      "honesty": 0.0,
+      "leadership_confidence": 0.3738,
+      "purpose_confidence": 0.9034
+     },
+     "trait_delta_sum": 2.123,
+     "trait_delta_abs": 2.123,
+     "goal_progress": [
+      0.715,
+      0.5392
+     ],
+     "goal_progress_mean": 0.6271,
+     "lessons": 15,
+     "distinct_lesson_ratio": 0.6666666666666666,
+     "final_valence": 1.0,
+     "final_stress": 0.0,
+     "forbidden_scenes": 0,
+     "blocked": 0,
+     "stressed_cycles": 0,
+     "max_intensity_when_stressed": 0.0,
+     "vision_flags": 0,
+     "seed": 1
+    },
+    {
+     "cycles": 16,
+     "conv_final": 0.4694189131858357,
+     "conv_max": 0.4694189131858357,
+     "conv_auc": 0.30538258484385683,
+     "conv_monotonicity": 0.7333333333333333,
+     "conv_dips": 4,
+     "conv_dips_recovered": 4,
+     "conv_recovery_rate": 1.0,
+     "earned_corr": 0.03850825075260046,
+     "earned_gap": 0.0,
+     "dconv_when_met": 0.02962967015126595,
+     "dconv_when_avoided": 0.0,
+     "success_rate": 0.9375,
+     "avoid_rate": 0.0,
+     "journey_stage_seq": [
+      "call",
+      "call",
+      "call",
+      "threshold",
+      "threshold",
+      "threshold",
+      "mentor",
+      "threshold",
+      "mentor",
+      "ordeal",
+      "mentor",
+      "ordeal",
+      "reward",
+      "ordeal",
+      "reward",
+      "return"
+     ],
+     "journey_distinct_stages": 6,
+     "journey_max_stage": 5,
+     "journey_reached_ordeal": 1,
+     "journey_in_order": 0,
+     "journey_max_backjump": 1,
+     "journey_unlabeled": 0,
+     "distinct_locations": 6,
+     "distinct_scene_ratio": 1.0,
+     "repeated_beat_ratio": 0.022988505747126436,
+     "distinct_nudge_ratio": 0.358974358974359,
+     "consecutive_identical_nudges": 0,
+     "theme_coverage": 1.0,
+     "themes_missed": [],
+     "distinct_scene_themes": 3,
+     "trait_deltas": {
+      "courage": 0.0,
+      "courage_confidence": 0.8467,
+      "honesty": 0.0,
+      "leadership_confidence": 0.6022,
+      "purpose_confidence": 0.7498
+     },
+     "trait_delta_sum": 2.1987,
+     "trait_delta_abs": 2.1987,
+     "goal_progress": [
+      0.2353,
+      1.0
+     ],
+     "goal_progress_mean": 0.61765,
+     "lessons": 14,
+     "distinct_lesson_ratio": 0.7857142857142857,
+     "final_valence": 1.0,
+     "final_stress": 0.0,
+     "forbidden_scenes": 0,
+     "blocked": 0,
+     "stressed_cycles": 0,
+     "max_intensity_when_stressed": 0.0,
+     "vision_flags": 0,
+     "seed": 2
+    },
+    {
+     "cycles": 16,
+     "conv_final": 0.4976008744807582,
+     "conv_max": 0.5838399321289227,
+     "conv_auc": 0.36488326517182473,
+     "conv_monotonicity": 0.8,
+     "conv_dips": 1,
+     "conv_dips_recovered": 0,
+     "conv_recovery_rate": 0.0,
+     "earned_corr": 0.0,
+     "earned_gap": 0.0,
+     "dconv_when_met": 0.031100054655047386,
+     "dconv_when_avoided": 0.0,
+     "success_rate": 1.0,
+     "avoid_rate": 0.0,
+     "journey_stage_seq": [
+      "call",
+      "call",
+      "call",
+      "threshold",
+      "threshold",
+      "threshold",
+      "mentor",
+      "mentor",
+      "mentor",
+      "ordeal",
+      "ordeal",
+      "ordeal",
+      "reward",
+      "reward",
+      "ordeal",
+      "return"
+     ],
+     "journey_distinct_stages": 6,
+     "journey_max_stage": 5,
+     "journey_reached_ordeal": 1,
+     "journey_in_order": 0,
+     "journey_max_backjump": 1,
+     "journey_unlabeled": 0,
+     "distinct_locations": 6,
+     "distinct_scene_ratio": 1.0,
+     "repeated_beat_ratio": 0.06976744186046512,
+     "distinct_nudge_ratio": 0.3111111111111111,
+     "consecutive_identical_nudges": 0,
+     "theme_coverage": 1.0,
+     "themes_missed": [],
+     "distinct_scene_themes": 3,
+     "trait_deltas": {
+      "courage": 0.0,
+      "courage_confidence": 0.879,
+      "honesty": 0.0,
+      "leadership_confidence": 0.5001,
+      "purpose_confidence": 0.8468
+     },
+     "trait_delta_sum": 2.2259,
+     "trait_delta_abs": 2.2259,
+     "goal_progress": [
+      0.5966,
+      0.6045
+     ],
+     "goal_progress_mean": 0.60055,
+     "lessons": 15,
+     "distinct_lesson_ratio": 0.7333333333333333,
+     "final_valence": 1.0,
+     "final_stress": 0.0,
+     "forbidden_scenes": 0,
+     "blocked": 0,
+     "stressed_cycles": 0,
+     "max_intensity_when_stressed": 0.0,
+     "vision_flags": 0,
+     "seed": 3
+    },
+    {
+     "cycles": 16,
+     "conv_final": 0.4682010269926472,
+     "conv_max": 0.5152333444471654,
+     "conv_auc": 0.2947644832597294,
+     "conv_monotonicity": 0.8666666666666667,
+     "conv_dips": 2,
+     "conv_dips_recovered": 1,
+     "conv_recovery_rate": 0.5,
+     "earned_corr": 0.18267389206826443,
+     "earned_gap": 0.0,
+     "dconv_when_met": 0.030805278847959583,
+     "dconv_when_avoided": 0.0,
+     "success_rate": 0.9375,
+     "avoid_rate": 0.0,
+     "journey_stage_seq": [
+      "call",
+      "call",
+      "call",
+      "threshold",
+      "threshold",
+      "threshold",
+      "mentor",
+      "mentor",
+      "threshold",
+      "ordeal",
+      "ordeal",
+      "ordeal",
+      "reward",
+      "reward",
+      "reward",
+      "return"
+     ],
+     "journey_distinct_stages": 6,
+     "journey_max_stage": 5,
+     "journey_reached_ordeal": 1,
+     "journey_in_order": 0,
+     "journey_max_backjump": 1,
+     "journey_unlabeled": 0,
+     "distinct_locations": 6,
+     "distinct_scene_ratio": 1.0,
+     "repeated_beat_ratio": 0.022222222222222223,
+     "distinct_nudge_ratio": 0.27906976744186046,
+     "consecutive_identical_nudges": 0,
+     "theme_coverage": 1.0,
+     "themes_missed": [],
+     "distinct_scene_themes": 3,
+     "trait_deltas": {
+      "courage": 0.0,
+      "courage_confidence": 0.8726,
+      "honesty": 0.0,
+      "leadership_confidence": 0.5599,
+      "purpose_confidence": 0.7632
+     },
+     "trait_delta_sum": 2.1957,
+     "trait_delta_abs": 2.1957,
+     "goal_progress": [
+      0.2521,
+      1.0
+     ],
+     "goal_progress_mean": 0.62605,
+     "lessons": 13,
+     "distinct_lesson_ratio": 0.8461538461538461,
+     "final_valence": 1.0,
+     "final_stress": 0.0,
+     "forbidden_scenes": 0,
+     "blocked": 0,
+     "stressed_cycles": 0,
+     "max_intensity_when_stressed": 0.0,
+     "vision_flags": 2,
+     "seed": 4
+    },
+    {
+     "cycles": 16,
+     "conv_final": 0.6203879003724803,
+     "conv_max": 0.6203879003724803,
+     "conv_auc": 0.39531085830125257,
+     "conv_monotonicity": 1.0,
+     "conv_dips": 0,
+     "conv_dips_recovered": 0,
+     "conv_recovery_rate": 1.0,
+     "earned_corr": 0.0,
+     "earned_gap": 0.0,
+     "dconv_when_met": 0.038774243773280016,
+     "dconv_when_avoided": 0.0,
+     "success_rate": 1.0,
+     "avoid_rate": 0.0,
+     "journey_stage_seq": [
+      "call",
+      "call",
+      "call",
+      "threshold",
+      "threshold",
+      "threshold",
+      "mentor",
+      "mentor",
+      "mentor",
+      "ordeal",
+      "ordeal",
+      "ordeal",
+      "reward",
+      "reward",
+      "reward",
+      "return"
+     ],
+     "journey_distinct_stages": 6,
+     "journey_max_stage": 5,
+     "journey_reached_ordeal": 1,
+     "journey_in_order": 1,
+     "journey_max_backjump": 0,
+     "journey_unlabeled": 0,
+     "distinct_locations": 6,
+     "distinct_scene_ratio": 1.0,
+     "repeated_beat_ratio": 0.011904761904761904,
+     "distinct_nudge_ratio": 0.2619047619047619,
+     "consecutive_identical_nudges": 0,
+     "theme_coverage": 1.0,
+     "themes_missed": [],
+     "distinct_scene_themes": 3,
+     "trait_deltas": {
+      "courage": 0.0,
+      "courage_confidence": 0.7987,
+      "honesty": 0.0,
+      "leadership_confidence": 0.5193,
+      "purpose_confidence": 0.9022
+     },
+     "trait_delta_sum": 2.2202,
+     "trait_delta_abs": 2.2202,
+     "goal_progress": [
+      0.8258,
+      0.6779
+     ],
+     "goal_progress_mean": 0.7518499999999999,
+     "lessons": 15,
+     "distinct_lesson_ratio": 0.6666666666666666,
+     "final_valence": 1.0,
+     "final_stress": 0.0,
+     "forbidden_scenes": 0,
+     "blocked": 0,
+     "stressed_cycles": 0,
+     "max_intensity_when_stressed": 0.0,
+     "vision_flags": 0,
+     "seed": 5
+    }
+   ]
+  },
+  "avoidant": {
+   "agg": {
+    "cycles": {
+     "mean": 16.0,
+     "min": 16.0,
+     "max": 16.0
+    },
+    "conv_final": {
+     "mean": 0.01883316231481626,
+     "min": 0.0059614829687071845,
+     "max": 0.03359304114274878
+    },
+    "conv_max": {
+     "mean": 0.03556714055199423,
+     "min": 0.022414184306994524,
+     "max": 0.045851067110392114
+    },
+    "conv_auc": {
+     "mean": 0.011833650792949568,
+     "min": 0.0062992395320049435,
+     "max": 0.015808964431005795
+    },
+    "conv_monotonicity": {
+     "mean": 0.7866666666666667,
+     "min": 0.6,
+     "max": 0.8666666666666667
+    },
+    "conv_dips": {
+     "mean": 2.2,
+     "min": 1.0,
+     "max": 3.0
+    },
+    "conv_dips_recovered": {
+     "mean": 1.2,
+     "min": 0.0,
+     "max": 2.0
+    },
+    "conv_recovery_rate": {
+     "mean": 0.4666666666666666,
+     "min": 0.0,
+     "max": 0.6666666666666666
+    },
+    "earned_corr": {
+     "mean": 0.6354141972006684,
+     "min": 0.47834011718189334,
+     "max": 0.8029246107714033
+    },
+    "earned_gap": {
+     "mean": 0.0,
+     "min": 0.0,
+     "max": 0.0
+    },
+    "dconv_when_met": {
+     "mean": 0.0,
+     "min": 0.0,
+     "max": 0.0
+    },
+    "dconv_when_avoided": {
+     "mean": -0.0033288973798741113,
+     "min": -0.005733676004770001,
+     "max": -0.0017782410414859911
+    },
+    "success_rate": {
+     "mean": 0.0,
+     "min": 0.0,
+     "max": 0.0
+    },
+    "avoid_rate": {
+     "mean": 0.5125,
+     "min": 0.4375,
+     "max": 0.625
+    },
+    "journey_distinct_stages": {
+     "mean": 6.0,
+     "min": 6.0,
+     "max": 6.0
+    },
+    "journey_max_stage": {
+     "mean": 5.0,
+     "min": 5.0,
+     "max": 5.0
+    },
+    "journey_reached_ordeal": {
+     "mean": 1.0,
+     "min": 1.0,
+     "max": 1.0
+    },
+    "journey_in_order": {
+     "mean": 0.0,
+     "min": 0.0,
+     "max": 0.0
+    },
+    "journey_max_backjump": {
+     "mean": 1.0,
+     "min": 1.0,
+     "max": 1.0
+    },
+    "journey_unlabeled": {
+     "mean": 0.0,
+     "min": 0.0,
+     "max": 0.0
+    },
+    "distinct_locations": {
+     "mean": 6.0,
+     "min": 6.0,
+     "max": 6.0
+    },
+    "distinct_scene_ratio": {
+     "mean": 1.0,
+     "min": 1.0,
+     "max": 1.0
+    },
+    "repeated_beat_ratio": {
+     "mean": 0.01387516134980638,
+     "min": 0.0,
+     "max": 0.034482758620689655
+    },
+    "distinct_nudge_ratio": {
+     "mean": 0.2783333333333333,
+     "min": 0.25,
+     "max": 0.32
+    },
+    "consecutive_identical_nudges": {
+     "mean": 0.0,
+     "min": 0.0,
+     "max": 0.0
+    },
+    "theme_coverage": {
+     "mean": 1.0,
+     "min": 1.0,
+     "max": 1.0
+    },
+    "distinct_scene_themes": {
+     "mean": 3.0,
+     "min": 3.0,
+     "max": 3.0
+    },
+    "trait_delta_sum": {
+     "mean": 0.5059400000000001,
+     "min": 0.025500000000000023,
+     "max": 0.6804
+    },
+    "trait_delta_abs": {
+     "mean": 0.8479800000000001,
+     "min": 0.3543,
+     "max": 1.0796000000000001
+    },
+    "goal_progress_mean": {
+     "mean": 0.06149,
+     "min": 0.02635,
+     "max": 0.10715
+    },
+    "lessons": {
+     "mean": 5.2,
+     "min": 4.0,
+     "max": 6.0
+    },
+    "distinct_lesson_ratio": {
+     "mean": 0.9,
+     "min": 0.8333333333333334,
+     "max": 1.0
+    },
+    "final_valence": {
+     "mean": -0.8811800000000002,
+     "min": -1.0,
+     "max": -0.7747500000000003
+    },
+    "final_stress": {
+     "mean": 0.646944,
+     "min": 0.4447199999999999,
+     "max": 0.85356
+    },
+    "forbidden_scenes": {
+     "mean": 0.0,
+     "min": 0.0,
+     "max": 0.0
+    },
+    "blocked": {
+     "mean": 0.0,
+     "min": 0.0,
+     "max": 0.0
+    },
+    "stressed_cycles": {
+     "mean": 2.2,
+     "min": 0.0,
+     "max": 4.0
+    },
+    "max_intensity_when_stressed": {
+     "mean": 0.32,
+     "min": 0.0,
+     "max": 0.4
+    },
+    "vision_flags": {
+     "mean": 0.0,
+     "min": 0.0,
+     "max": 0.0
+    },
+    "seed": {
+     "mean": 3.0,
+     "min": 1.0,
+     "max": 5.0
+    }
+   },
+   "runs": [
+    {
+     "cycles": 16,
+     "conv_final": 0.0059614829687071845,
+     "conv_max": 0.022414184306994524,
+     "conv_auc": 0.0062992395320049435,
+     "conv_monotonicity": 0.8,
+     "conv_dips": 3,
+     "conv_dips_recovered": 2,
+     "conv_recovery_rate": 0.6666666666666666,
+     "earned_corr": 0.5619478795443311,
+     "earned_gap": 0.0,
+     "dconv_when_met": 0.0,
+     "dconv_when_avoided": -0.00273116147553644,
+     "success_rate": 0.0,
+     "avoid_rate": 0.625,
+     "journey_stage_seq": [
+      "call",
+      "call",
+      "call",
+      "threshold",
+      "threshold",
+      "threshold",
+      "mentor",
+      "mentor",
+      "mentor",
+      "ordeal",
+      "ordeal",
+      "mentor",
+      "reward",
+      "ordeal",
+      "reward",
+      "return"
+     ],
+     "journey_distinct_stages": 6,
+     "journey_max_stage": 5,
+     "journey_reached_ordeal": 1,
+     "journey_in_order": 0,
+     "journey_max_backjump": 1,
+     "journey_unlabeled": 0,
+     "distinct_locations": 6,
+     "distinct_scene_ratio": 1.0,
+     "repeated_beat_ratio": 0.011764705882352941,
+     "distinct_nudge_ratio": 0.32,
+     "consecutive_identical_nudges": 0,
+     "theme_coverage": 1.0,
+     "themes_missed": [],
+     "distinct_scene_themes": 3,
+     "trait_deltas": {
+      "courage": 0.0,
+      "honesty": 0.0,
+      "leadership_confidence": -0.1644,
+      "purpose_confidence": 0.1899
+     },
+     "trait_delta_sum": 0.025500000000000023,
+     "trait_delta_abs": 0.3543,
+     "goal_progress": [
+      0.0836,
+      0.0
+     ],
+     "goal_progress_mean": 0.0418,
+     "lessons": 4,
+     "distinct_lesson_ratio": 1.0,
+     "final_valence": -1.0,
+     "final_stress": 0.85356,
+     "forbidden_scenes": 0,
+     "blocked": 0,
+     "stressed_cycles": 3,
+     "max_intensity_when_stressed": 0.4,
+     "vision_flags": 0,
+     "seed": 1
+    },
+    {
+     "cycles": 16,
+     "conv_final": 0.03359304114274878,
+     "conv_max": 0.045851067110392114,
+     "conv_auc": 0.015808964431005795,
+     "conv_monotonicity": 0.8666666666666667,
+     "conv_dips": 1,
+     "conv_dips_recovered": 0,
+     "conv_recovery_rate": 0.0,
+     "earned_corr": 0.6706641946425487,
+     "earned_gap": 0.0,
+     "dconv_when_met": 0.0,
+     "dconv_when_avoided": -0.0028757071397225386,
+     "success_rate": 0.0,
+     "avoid_rate": 0.5,
+     "journey_stage_seq": [
+      "call",
+      "call",
+      "call",
+      "threshold",
+      "threshold",
+      "threshold",
+      "mentor",
+      "mentor",
+      "mentor",
+      "ordeal",
+      "ordeal",
+      "ordeal",
+      "reward",
+      "ordeal",
+      "reward",
+      "return"
+     ],
+     "journey_distinct_stages": 6,
+     "journey_max_stage": 5,
+     "journey_reached_ordeal": 1,
+     "journey_in_order": 0,
+     "journey_max_backjump": 1,
+     "journey_unlabeled": 0,
+     "distinct_locations": 6,
+     "distinct_scene_ratio": 1.0,
+     "repeated_beat_ratio": 0.011363636363636364,
+     "distinct_nudge_ratio": 0.25,
+     "consecutive_identical_nudges": 0,
+     "theme_coverage": 1.0,
+     "themes_missed": [],
+     "distinct_scene_themes": 3,
+     "trait_deltas": {
+      "courage": 0.0,
+      "courage_confidence": 0.2807,
+      "honesty": 0.0,
+      "leadership_confidence": -0.1271,
+      "purpose_confidence": 0.44
+     },
+     "trait_delta_sum": 0.5936,
+     "trait_delta_abs": 0.8478,
+     "goal_progress": [
+      0.0213,
+      0.0314
+     ],
+     "goal_progress_mean": 0.02635,
+     "lessons": 4,
+     "distinct_lesson_ratio": 1.0,
+     "final_valence": -0.80025,
+     "final_stress": 0.4447199999999999,
+     "forbidden_scenes": 0,
+     "blocked": 0,
+     "stressed_cycles": 4,
+     "max_intensity_when_stressed": 0.4,
+     "vision_flags": 0,
+     "seed": 2
+    },
+    {
+     "cycles": 16,
+     "conv_final": 0.007461813184319159,
+     "conv_max": 0.045588889227468926,
+     "conv_auc": 0.013859705113770366,
+     "conv_monotonicity": 0.6,
+     "conv_dips": 3,
+     "conv_dips_recovered": 2,
+     "conv_recovery_rate": 0.6666666666666666,
+     "earned_corr": 0.8029246107714033,
+     "earned_gap": 0.0,
+     "dconv_when_met": 0.0,
+     "dconv_when_avoided": -0.005733676004770001,
+     "success_rate": 0.0,
+     "avoid_rate": 0.5625,
+     "journey_stage_seq": [
+      "call",
+      "call",
+      "call",
+      "threshold",
+      "call",
+      "threshold",
+      "mentor",
+      "mentor",
+      "mentor",
+      "ordeal",
+      "ordeal",
+      "ordeal",
+      "reward",
+      "ordeal",
+      "reward",
+      "return"
+     ],
+     "journey_distinct_stages": 6,
+     "journey_max_stage": 5,
+     "journey_reached_ordeal": 1,
+     "journey_in_order": 0,
+     "journey_max_backjump": 1,
+     "journey_unlabeled": 0,
+     "distinct_locations": 6,
+     "distinct_scene_ratio": 1.0,
+     "repeated_beat_ratio": 0.034482758620689655,
+     "distinct_nudge_ratio": 0.28,
+     "consecutive_identical_nudges": 0,
+     "theme_coverage": 1.0,
+     "themes_missed": [],
+     "distinct_scene_themes": 3,
+     "trait_deltas": {
+      "courage": 0.0,
+      "courage_confidence": 0.3306,
+      "honesty": 0.0,
+      "leadership_confidence": -0.1996,
+      "purpose_confidence": 0.44
+     },
+     "trait_delta_sum": 0.571,
+     "trait_delta_abs": 0.9702,
+     "goal_progress": [
+      0.0266,
+      0.0359
+     ],
+     "goal_progress_mean": 0.03125,
+     "lessons": 6,
+     "distinct_lesson_ratio": 0.8333333333333334,
+     "final_valence": -1.0,
+     "final_stress": 0.85132,
+     "forbidden_scenes": 0,
+     "blocked": 0,
+     "stressed_cycles": 3,
+     "max_intensity_when_stressed": 0.4,
+     "vision_flags": 0,
+     "seed": 3
+    },
+    {
+     "cycles": 16,
+     "conv_final": 0.020165743754294103,
+     "conv_max": 0.030139612045087378,
+     "conv_auc": 0.009252170038742739,
+     "conv_monotonicity": 0.8666666666666667,
+     "conv_dips": 2,
+     "conv_dips_recovered": 1,
+     "conv_recovery_rate": 0.5,
+     "earned_corr": 0.47834011718189334,
+     "earned_gap": 0.0,
+     "dconv_when_met": 0.0,
+     "dconv_when_avoided": -0.003525701237855588,
+     "success_rate": 0.0,
+     "avoid_rate": 0.4375,
+     "journey_stage_seq": [
+      "call",
+      "call",
+      "call",
+      "threshold",
+      "threshold",
+      "threshold",
+      "mentor",
+      "mentor",
+      "mentor",
+      "ordeal",
+      "ordeal",
+      "mentor",
+      "reward",
+      "reward",
+      "reward",
+      "return"
+     ],
+     "journey_distinct_stages": 6,
+     "journey_max_stage": 5,
+     "journey_reached_ordeal": 1,
+     "journey_in_order": 0,
+     "journey_max_backjump": 1,
+     "journey_unlabeled": 0,
+     "distinct_locations": 6,
+     "distinct_scene_ratio": 1.0,
+     "repeated_beat_ratio": 0.0,
+     "distinct_nudge_ratio": 0.25,
+     "consecutive_identical_nudges": 0,
+     "theme_coverage": 1.0,
+     "themes_missed": [],
+     "distinct_scene_themes": 3,
+     "trait_deltas": {
+      "courage": 0.0,
+      "courage_confidence": 0.44,
+      "honesty": 0.0,
+      "leadership_confidence": -0.1996,
+      "purpose_confidence": 0.44
+     },
+     "trait_delta_sum": 0.6804,
+     "trait_delta_abs": 1.0796000000000001,
+     "goal_progress": [
+      0.0314,
+      0.1704
+     ],
+     "goal_progress_mean": 0.10089999999999999,
+     "lessons": 6,
+     "distinct_lesson_ratio": 0.8333333333333334,
+     "final_valence": -0.8309000000000002,
+     "final_stress": 0.5831999999999998,
+     "forbidden_scenes": 0,
+     "blocked": 0,
+     "stressed_cycles": 1,
+     "max_intensity_when_stressed": 0.4,
+     "vision_flags": 0,
+     "seed": 4
+    },
+    {
+     "cycles": 16,
+     "conv_final": 0.026983730524012067,
+     "conv_max": 0.03384195007002821,
+     "conv_auc": 0.013948174849223999,
+     "conv_monotonicity": 0.8,
+     "conv_dips": 2,
+     "conv_dips_recovered": 1,
+     "conv_recovery_rate": 0.5,
+     "earned_corr": 0.6631941838631654,
+     "earned_gap": 0.0,
+     "dconv_when_met": 0.0,
+     "dconv_when_avoided": -0.0017782410414859911,
+     "success_rate": 0.0,
+     "avoid_rate": 0.4375,
+     "journey_stage_seq": [
+      "call",
+      "call",
+      "call",
+      "threshold",
+      "threshold",
+      "threshold",
+      "mentor",
+      "mentor",
+      "mentor",
+      "ordeal",
+      "ordeal",
+      "mentor",
+      "reward",
+      "reward",
+      "ordeal",
+      "return"
+     ],
+     "journey_distinct_stages": 6,
+     "journey_max_stage": 5,
+     "journey_reached_ordeal": 1,
+     "journey_in_order": 0,
+     "journey_max_backjump": 1,
+     "journey_unlabeled": 0,
+     "distinct_locations": 6,
+     "distinct_scene_ratio": 1.0,
+     "repeated_beat_ratio": 0.011764705882352941,
+     "distinct_nudge_ratio": 0.2916666666666667,
+     "consecutive_identical_nudges": 0,
+     "theme_coverage": 1.0,
+     "themes_missed": [],
+     "distinct_scene_themes": 3,
+     "trait_deltas": {
+      "courage": 0.0,
+      "courage_confidence": 0.44,
+      "honesty": 0.0,
+      "leadership_confidence": -0.1644,
+      "purpose_confidence": 0.3836
+     },
+     "trait_delta_sum": 0.6592,
+     "trait_delta_abs": 0.988,
+     "goal_progress": [
+      0.0827,
+      0.1316
+     ],
+     "goal_progress_mean": 0.10715,
+     "lessons": 6,
+     "distinct_lesson_ratio": 0.8333333333333334,
+     "final_valence": -0.7747500000000003,
+     "final_stress": 0.5019200000000001,
+     "forbidden_scenes": 0,
+     "blocked": 0,
+     "stressed_cycles": 0,
+     "max_intensity_when_stressed": 0.0,
+     "vision_flags": 0,
+     "seed": 5
+    }
+   ]
+  },
+  "mixed": {
+   "agg": {
+    "cycles": {
+     "mean": 16.0,
+     "min": 16.0,
+     "max": 16.0
+    },
+    "conv_final": {
+     "mean": 0.32674194809939605,
+     "min": 0.25272303144163294,
+     "max": 0.3847018669590788
+    },
+    "conv_max": {
+     "mean": 0.3302467033100525,
+     "min": 0.25272303144163294,
+     "max": 0.3847018669590788
+    },
+    "conv_auc": {
+     "mean": 0.1661492335707866,
+     "min": 0.09131314900878831,
+     "max": 0.21173332066650383
+    },
+    "conv_monotonicity": {
+     "mean": 0.8266666666666668,
+     "min": 0.7333333333333333,
+     "max": 0.9333333333333333
+    },
+    "conv_dips": {
+     "mean": 2.2,
+     "min": 1.0,
+     "max": 3.0
+    },
+    "conv_dips_recovered": {
+     "mean": 1.6,
+     "min": 1.0,
+     "max": 2.0
+    },
+    "conv_recovery_rate": {
+     "mean": 0.7666666666666666,
+     "min": 0.5,
+     "max": 1.0
+    },
+    "earned_corr": {
+     "mean": 0.8139431986665651,
+     "min": 0.7680594553864136,
+     "max": 0.8649127924111178
+    },
+    "earned_gap": {
+     "mean": 0.05837035954677492,
+     "min": 0.03619532698305992,
+     "max": 0.08537088075739657
+    },
+    "dconv_when_met": {
+     "mean": 0.040379996612699864,
+     "min": 0.03604446631733831,
+     "max": 0.0453537023050286
+    },
+    "dconv_when_avoided": {
+     "mean": -0.01799036293407506,
+     "min": -0.04001717845236798,
+     "max": -0.00015086066572160827
+    },
+    "success_rate": {
+     "mean": 0.475,
+     "min": 0.3125,
+     "max": 0.625
+    },
+    "avoid_rate": {
+     "mean": 0.2375,
+     "min": 0.125,
+     "max": 0.3125
+    },
+    "journey_distinct_stages": {
+     "mean": 6.0,
+     "min": 6.0,
+     "max": 6.0
+    },
+    "journey_max_stage": {
+     "mean": 5.0,
+     "min": 5.0,
+     "max": 5.0
+    },
+    "journey_reached_ordeal": {
+     "mean": 1.0,
+     "min": 1.0,
+     "max": 1.0
+    },
+    "journey_in_order": {
+     "mean": 0.0,
+     "min": 0.0,
+     "max": 0.0
+    },
+    "journey_max_backjump": {
+     "mean": 1.0,
+     "min": 1.0,
+     "max": 1.0
+    },
+    "journey_unlabeled": {
+     "mean": 0.0,
+     "min": 0.0,
+     "max": 0.0
+    },
+    "distinct_locations": {
+     "mean": 6.0,
+     "min": 6.0,
+     "max": 6.0
+    },
+    "distinct_scene_ratio": {
+     "mean": 1.0,
+     "min": 1.0,
+     "max": 1.0
+    },
+    "repeated_beat_ratio": {
+     "mean": 0.02297030554151014,
+     "min": 0.0,
+     "max": 0.046511627906976744
+    },
+    "distinct_nudge_ratio": {
+     "mean": 0.2759318156284789,
+     "min": 0.24444444444444444,
+     "max": 0.30434782608695654
+    },
+    "consecutive_identical_nudges": {
+     "mean": 0.0,
+     "min": 0.0,
+     "max": 0.0
+    },
+    "theme_coverage": {
+     "mean": 1.0,
+     "min": 1.0,
+     "max": 1.0
+    },
+    "distinct_scene_themes": {
+     "mean": 3.0,
+     "min": 3.0,
+     "max": 3.0
+    },
+    "trait_delta_sum": {
+     "mean": 1.49214,
+     "min": 1.1115,
+     "max": 1.8843
+    },
+    "trait_delta_abs": {
+     "mean": 1.49214,
+     "min": 1.1115,
+     "max": 1.8843
+    },
+    "goal_progress_mean": {
+     "mean": 0.3988,
+     "min": 0.29145,
+     "max": 0.5747
+    },
+    "lessons": {
+     "mean": 10.0,
+     "min": 8.0,
+     "max": 12.0
+    },
+    "distinct_lesson_ratio": {
+     "mean": 0.9666666666666666,
+     "min": 0.8333333333333334,
+     "max": 1.0
+    },
+    "final_valence": {
+     "mean": 0.9713099999999999,
+     "min": 0.8565499999999997,
+     "max": 1.0
+    },
+    "final_stress": {
+     "mean": 0.0,
+     "min": 0.0,
+     "max": 0.0
+    },
+    "forbidden_scenes": {
+     "mean": 0.0,
+     "min": 0.0,
+     "max": 0.0
+    },
+    "blocked": {
+     "mean": 0.0,
+     "min": 0.0,
+     "max": 0.0
+    },
+    "stressed_cycles": {
+     "mean": 0.0,
+     "min": 0.0,
+     "max": 0.0
+    },
+    "max_intensity_when_stressed": {
+     "mean": 0.0,
+     "min": 0.0,
+     "max": 0.0
+    },
+    "vision_flags": {
+     "mean": 0.4,
+     "min": 0.0,
+     "max": 2.0
+    },
+    "seed": {
+     "mean": 3.0,
+     "min": 1.0,
+     "max": 5.0
+    }
+   },
+   "runs": [
+    {
+     "cycles": 16,
+     "conv_final": 0.3231861738496257,
+     "conv_max": 0.3231861738496257,
+     "conv_auc": 0.17372728928927877,
+     "conv_monotonicity": 0.8,
+     "conv_dips": 3,
+     "conv_dips_recovered": 2,
+     "conv_recovery_rate": 0.6666666666666666,
+     "earned_corr": 0.7685672136674148,
+     "earned_gap": 0.058479037180224944,
+     "dconv_when_met": 0.038100667174502854,
+     "dconv_when_avoided": -0.020378370005722093,
+     "success_rate": 0.5,
+     "avoid_rate": 0.25,
+     "journey_stage_seq": [
+      "call",
+      "call",
+      "call",
+      "threshold",
+      "threshold",
+      "threshold",
+      "mentor",
+      "mentor",
+      "mentor",
+      "ordeal",
+      "ordeal",
+      "mentor",
+      "reward",
+      "ordeal",
+      "reward",
+      "return"
+     ],
+     "journey_distinct_stages": 6,
+     "journey_max_stage": 5,
+     "journey_reached_ordeal": 1,
+     "journey_in_order": 0,
+     "journey_max_backjump": 1,
+     "journey_unlabeled": 0,
+     "distinct_locations": 6,
+     "distinct_scene_ratio": 1.0,
+     "repeated_beat_ratio": 0.033707865168539325,
+     "distinct_nudge_ratio": 0.3023255813953488,
+     "consecutive_identical_nudges": 0,
+     "theme_coverage": 1.0,
+     "themes_missed": [],
+     "distinct_scene_themes": 3,
+     "trait_deltas": {
+      "courage": 0.0,
+      "honesty": 0.0,
+      "leadership_confidence": 0.2979,
+      "purpose_confidence": 0.8136
+     },
+     "trait_delta_sum": 1.1115,
+     "trait_delta_abs": 1.1115,
+     "goal_progress": [
+      0.6018,
+      0.5476
+     ],
+     "goal_progress_mean": 0.5747,
+     "lessons": 12,
+     "distinct_lesson_ratio": 0.8333333333333334,
+     "final_valence": 1.0,
+     "final_stress": 0.0,
+     "forbidden_scenes": 0,
+     "blocked": 0,
+     "stressed_cycles": 0,
+     "max_intensity_when_stressed": 0.0,
+     "vision_flags": 0,
+     "seed": 1
+    },
+    {
+     "cycles": 16,
+     "conv_final": 0.306653855779855,
+     "conv_max": 0.3241776318331374,
+     "conv_auc": 0.14246400500915166,
+     "conv_monotonicity": 0.7333333333333333,
+     "conv_dips": 3,
+     "conv_dips_recovered": 2,
+     "conv_recovery_rate": 0.6666666666666666,
+     "earned_corr": 0.8649127924111178,
+     "earned_gap": 0.05257366880103362,
+     "dconv_when_met": 0.04472139463094967,
+     "dconv_when_avoided": -0.007852274170083948,
+     "success_rate": 0.375,
+     "avoid_rate": 0.3125,
+     "journey_stage_seq": [
+      "call",
+      "call",
+      "call",
+      "threshold",
+      "threshold",
+      "call",
+      "mentor",
+      "mentor",
+      "mentor",
+      "ordeal",
+      "ordeal",
+      "mentor",
+      "reward",
+      "reward",
+      "reward",
+      "return"
+     ],
+     "journey_distinct_stages": 6,
+     "journey_max_stage": 5,
+     "journey_reached_ordeal": 1,
+     "journey_in_order": 0,
+     "journey_max_backjump": 1,
+     "journey_unlabeled": 0,
+     "distinct_locations": 6,
+     "distinct_scene_ratio": 1.0,
+     "repeated_beat_ratio": 0.011904761904761904,
+     "distinct_nudge_ratio": 0.2558139534883721,
+     "consecutive_identical_nudges": 0,
+     "theme_coverage": 1.0,
+     "themes_missed": [],
+     "distinct_scene_themes": 3,
+     "trait_deltas": {
+      "courage": 0.0,
+      "courage_confidence": 0.5566,
+      "honesty": 0.0,
+      "leadership_confidence": 0.0771,
+      "purpose_confidence": 0.7572
+     },
+     "trait_delta_sum": 1.3909,
+     "trait_delta_abs": 1.3909,
+     "goal_progress": [
+      0.4227,
+      0.1602
+     ],
+     "goal_progress_mean": 0.29145,
+     "lessons": 10,
+     "distinct_lesson_ratio": 1.0,
+     "final_valence": 1.0,
+     "final_stress": 0.0,
+     "forbidden_scenes": 0,
+     "blocked": 0,
+     "stressed_cycles": 0,
+     "max_intensity_when_stressed": 0.0,
+     "vision_flags": 0,
+     "seed": 2
+    },
+    {
+     "cycles": 16,
+     "conv_final": 0.3847018669590788,
+     "conv_max": 0.3847018669590788,
+     "conv_auc": 0.21150840388021033,
+     "conv_monotonicity": 0.8666666666666667,
+     "conv_dips": 2,
+     "conv_dips_recovered": 2,
+     "conv_recovery_rate": 1.0,
+     "earned_corr": 0.7680594553864136,
+     "earned_gap": 0.05923288401215955,
+     "dconv_when_met": 0.03767975263567988,
+     "dconv_when_avoided": -0.021553131376479674,
+     "success_rate": 0.5625,
+     "avoid_rate": 0.1875,
+     "journey_stage_seq": [
+      "call",
+      "call",
+      "call",
+      "threshold",
+      "call",
+      "threshold",
+      "mentor",
+      "mentor",
+      "mentor",
+      "ordeal",
+      "ordeal",
+      "ordeal",
+      "reward",
+      "ordeal",
+      "reward",
+      "return"
+     ],
+     "journey_distinct_stages": 6,
+     "journey_max_stage": 5,
+     "journey_reached_ordeal": 1,
+     "journey_in_order": 0,
+     "journey_max_backjump": 1,
+     "journey_unlabeled": 0,
+     "distinct_locations": 6,
+     "distinct_scene_ratio": 1.0,
+     "repeated_beat_ratio": 0.046511627906976744,
+     "distinct_nudge_ratio": 0.2727272727272727,
+     "consecutive_identical_nudges": 0,
+     "theme_coverage": 1.0,
+     "themes_missed": [],
+     "distinct_scene_themes": 3,
+     "trait_deltas": {
+      "courage": 0.0,
+      "courage_confidence": 0.7806,
+      "honesty": 0.0,
+      "leadership_confidence": 0.3111,
+      "purpose_confidence": 0.6349
+     },
+     "trait_delta_sum": 1.7266,
+     "trait_delta_abs": 1.7266,
+     "goal_progress": [
+      0.2532,
+      0.4398
+     ],
+     "goal_progress_mean": 0.34650000000000003,
+     "lessons": 10,
+     "distinct_lesson_ratio": 1.0,
+     "final_valence": 1.0,
+     "final_stress": 0.0,
+     "forbidden_scenes": 0,
+     "blocked": 0,
+     "stressed_cycles": 0,
+     "max_intensity_when_stressed": 0.0,
+     "vision_flags": 0,
+     "seed": 3
+    },
+    {
+     "cycles": 16,
+     "conv_final": 0.3664448124667877,
+     "conv_max": 0.3664448124667877,
+     "conv_auc": 0.21173332066650383,
+     "conv_monotonicity": 0.8,
+     "conv_dips": 2,
+     "conv_dips_recovered": 1,
+     "conv_recovery_rate": 0.5,
+     "earned_corr": 0.8262830300609509,
+     "earned_gap": 0.08537088075739657,
+     "dconv_when_met": 0.0453537023050286,
+     "dconv_when_avoided": -0.04001717845236798,
+     "success_rate": 0.625,
+     "avoid_rate": 0.125,
+     "journey_stage_seq": [
+      "call",
+      "call",
+      "call",
+      "threshold",
+      "threshold",
+      "threshold",
+      "mentor",
+      "mentor",
+      "threshold",
+      "ordeal",
+      "ordeal",
+      "mentor",
+      "reward",
+      "reward",
+      "reward",
+      "return"
+     ],
+     "journey_distinct_stages": 6,
+     "journey_max_stage": 5,
+     "journey_reached_ordeal": 1,
+     "journey_in_order": 0,
+     "journey_max_backjump": 1,
+     "journey_unlabeled": 0,
+     "distinct_locations": 6,
+     "distinct_scene_ratio": 1.0,
+     "repeated_beat_ratio": 0.0,
+     "distinct_nudge_ratio": 0.24444444444444444,
+     "consecutive_identical_nudges": 0,
+     "theme_coverage": 1.0,
+     "themes_missed": [],
+     "distinct_scene_themes": 3,
+     "trait_deltas": {
+      "courage": 0.0,
+      "courage_confidence": 0.7932,
+      "honesty": 0.0,
+      "leadership_confidence": 0.3921,
+      "purpose_confidence": 0.699
+     },
+     "trait_delta_sum": 1.8843,
+     "trait_delta_abs": 1.8843,
+     "goal_progress": [
+      0.2521,
+      0.6977
+     ],
+     "goal_progress_mean": 0.4749,
+     "lessons": 10,
+     "distinct_lesson_ratio": 1.0,
+     "final_valence": 1.0,
+     "final_stress": 0.0,
+     "forbidden_scenes": 0,
+     "blocked": 0,
+     "stressed_cycles": 0,
+     "max_intensity_when_stressed": 0.0,
+     "vision_flags": 2,
+     "seed": 4
+    },
+    {
+     "cycles": 16,
+     "conv_final": 0.25272303144163294,
+     "conv_max": 0.25272303144163294,
+     "conv_auc": 0.09131314900878831,
+     "conv_monotonicity": 0.9333333333333333,
+     "conv_dips": 1,
+     "conv_dips_recovered": 1,
+     "conv_recovery_rate": 1.0,
+     "earned_corr": 0.8418935018069279,
+     "earned_gap": 0.03619532698305992,
+     "dconv_when_met": 0.03604446631733831,
+     "dconv_when_avoided": -0.00015086066572160827,
+     "success_rate": 0.3125,
+     "avoid_rate": 0.3125,
+     "journey_stage_seq": [
+      "call",
+      "call",
+      "call",
+      "threshold",
+      "threshold",
+      "threshold",
+      "mentor",
+      "mentor",
+      "mentor",
+      "ordeal",
+      "ordeal",
+      "mentor",
+      "reward",
+      "reward",
+      "reward",
+      "return"
+     ],
+     "journey_distinct_stages": 6,
+     "journey_max_stage": 5,
+     "journey_reached_ordeal": 1,
+     "journey_in_order": 0,
+     "journey_max_backjump": 1,
+     "journey_unlabeled": 0,
+     "distinct_locations": 6,
+     "distinct_scene_ratio": 1.0,
+     "repeated_beat_ratio": 0.022727272727272728,
+     "distinct_nudge_ratio": 0.30434782608695654,
+     "consecutive_identical_nudges": 0,
+     "theme_coverage": 1.0,
+     "themes_missed": [],
+     "distinct_scene_themes": 3,
+     "trait_deltas": {
+      "courage": 0.0,
+      "courage_confidence": 0.6403,
+      "honesty": 0.0,
+      "leadership_confidence": 0.1998,
+      "purpose_confidence": 0.5073
+     },
+     "trait_delta_sum": 1.3474,
+     "trait_delta_abs": 1.3474,
+     "goal_progress": [
+      0.226,
+      0.3869
+     ],
+     "goal_progress_mean": 0.30645,
+     "lessons": 8,
+     "distinct_lesson_ratio": 1.0,
+     "final_valence": 0.8565499999999997,
+     "final_stress": 0.0,
+     "forbidden_scenes": 0,
+     "blocked": 0,
+     "stressed_cycles": 0,
+     "max_intensity_when_stressed": 0.0,
+     "vision_flags": 0,
+     "seed": 5
+    }
+   ]
+  },
+  "autonomous": {
+   "agg": {
+    "cycles": {
+     "mean": 16.0,
+     "min": 16.0,
+     "max": 16.0
+    },
+    "conv_final": {
+     "mean": 0.4183459105135948,
+     "min": 0.08442813903128847,
+     "max": 0.5573365698682389
+    },
+    "conv_max": {
+     "mean": 0.43559372204322777,
+     "min": 0.08442813903128847,
+     "max": 0.5838399321289227
+    },
+    "conv_auc": {
+     "mean": 0.24709628510523207,
+     "min": 0.023677612480729488,
+     "max": 0.36488326517182473
+    },
+    "conv_monotonicity": {
+     "mean": 0.8,
+     "min": 0.6666666666666666,
+     "max": 0.9333333333333333
+    },
+    "conv_dips": {
+     "mean": 2.2,
+     "min": 1.0,
+     "max": 4.0
+    },
+    "conv_dips_recovered": {
+     "mean": 2.0,
+     "min": 0.0,
+     "max": 4.0
+    },
+    "conv_recovery_rate": {
+     "mean": 0.8,
+     "min": 0.0,
+     "max": 1.0
+    },
+    "earned_corr": {
+     "mean": 0.3667133247264483,
+     "min": 0.0,
+     "max": 0.7185993299528981
+    },
+    "earned_gap": {
+     "mean": 0.01619672766000026,
+     "min": 0.0,
+     "max": 0.047738912791796734
+    },
+    "dconv_when_met": {
+     "mean": 0.03406354402039468,
+     "min": 0.030151259363624904,
+     "max": 0.03869149124289051
+    },
+    "dconv_when_avoided": {
+     "mean": -0.0018480148012909353,
+     "min": -0.00904742154890623,
+     "max": 0.0
+    },
+    "success_rate": {
+     "mean": 0.725,
+     "min": 0.0625,
+     "max": 1.0
+    },
+    "avoid_rate": {
+     "mean": 0.075,
+     "min": 0.0,
+     "max": 0.3125
+    },
+    "journey_distinct_stages": {
+     "mean": 6.0,
+     "min": 6.0,
+     "max": 6.0
+    },
+    "journey_max_stage": {
+     "mean": 5.0,
+     "min": 5.0,
+     "max": 5.0
+    },
+    "journey_reached_ordeal": {
+     "mean": 1.0,
+     "min": 1.0,
+     "max": 1.0
+    },
+    "journey_in_order": {
+     "mean": 0.0,
+     "min": 0.0,
+     "max": 0.0
+    },
+    "journey_max_backjump": {
+     "mean": 1.0,
+     "min": 1.0,
+     "max": 1.0
+    },
+    "journey_unlabeled": {
+     "mean": 0.0,
+     "min": 0.0,
+     "max": 0.0
+    },
+    "distinct_locations": {
+     "mean": 6.0,
+     "min": 6.0,
+     "max": 6.0
+    },
+    "distinct_scene_ratio": {
+     "mean": 1.0,
+     "min": 1.0,
+     "max": 1.0
+    },
+    "repeated_beat_ratio": {
+     "mean": 0.032115850354679724,
+     "min": 0.0,
+     "max": 0.06976744186046512
+    },
+    "distinct_nudge_ratio": {
+     "mean": 0.3193244289585753,
+     "min": 0.2857142857142857,
+     "max": 0.34146341463414637
+    },
+    "consecutive_identical_nudges": {
+     "mean": 0.0,
+     "min": 0.0,
+     "max": 0.0
+    },
+    "theme_coverage": {
+     "mean": 1.0,
+     "min": 1.0,
+     "max": 1.0
+    },
+    "distinct_scene_themes": {
+     "mean": 3.0,
+     "min": 3.0,
+     "max": 3.0
+    },
+    "trait_delta_sum": {
+     "mean": 1.7810400000000002,
+     "min": 0.34240000000000004,
+     "max": 2.2259
+    },
+    "trait_delta_abs": {
+     "mean": 1.7990400000000002,
+     "min": 0.4324,
+     "max": 2.2259
+    },
+    "goal_progress_mean": {
+     "mean": 0.52183,
+     "min": 0.12,
+     "max": 0.6388499999999999
+    },
+    "lessons": {
+     "mean": 11.4,
+     "min": 4.0,
+     "max": 15.0
+    },
+    "distinct_lesson_ratio": {
+     "mean": 0.8210256410256409,
+     "min": 0.7333333333333333,
+     "max": 1.0
+    },
+    "final_valence": {
+     "mean": 0.75489,
+     "min": -0.22554999999999997,
+     "max": 1.0
+    },
+    "final_stress": {
+     "mean": 0.0,
+     "min": 0.0,
+     "max": 0.0
+    },
+    "forbidden_scenes": {
+     "mean": 0.0,
+     "min": 0.0,
+     "max": 0.0
+    },
+    "blocked": {
+     "mean": 0.0,
+     "min": 0.0,
+     "max": 0.0
+    },
+    "stressed_cycles": {
+     "mean": 0.4,
+     "min": 0.0,
+     "max": 2.0
+    },
+    "max_intensity_when_stressed": {
+     "mean": 0.08,
+     "min": 0.0,
+     "max": 0.4
+    },
+    "vision_flags": {
+     "mean": 0.0,
+     "min": 0.0,
+     "max": 0.0
+    },
+    "seed": {
+     "mean": 3.0,
+     "min": 1.0,
+     "max": 5.0
+    }
+   },
+   "runs": [
+    {
+     "cycles": 16,
+     "conv_final": 0.08442813903128847,
+     "conv_max": 0.08442813903128847,
+     "conv_auc": 0.023677612480729488,
+     "conv_monotonicity": 0.7333333333333333,
+     "conv_dips": 3,
+     "conv_dips_recovered": 3,
+     "conv_recovery_rate": 1.0,
+     "earned_corr": 0.7185993299528981,
+     "earned_gap": 0.03324472550820456,
+     "dconv_when_met": 0.03305207305065611,
+     "dconv_when_avoided": -0.00019265245754844634,
+     "success_rate": 0.0625,
+     "avoid_rate": 0.3125,
+     "journey_stage_seq": [
+      "call",
+      "call",
+      "call",
+      "threshold",
+      "call",
+      "threshold",
+      "mentor",
+      "mentor",
+      "mentor",
+      "ordeal",
+      "ordeal",
+      "ordeal",
+      "reward",
+      "ordeal",
+      "reward",
+      "return"
+     ],
+     "journey_distinct_stages": 6,
+     "journey_max_stage": 5,
+     "journey_reached_ordeal": 1,
+     "journey_in_order": 0,
+     "journey_max_backjump": 1,
+     "journey_unlabeled": 0,
+     "distinct_locations": 6,
+     "distinct_scene_ratio": 1.0,
+     "repeated_beat_ratio": 0.011904761904761904,
+     "distinct_nudge_ratio": 0.3333333333333333,
+     "consecutive_identical_nudges": 0,
+     "theme_coverage": 1.0,
+     "themes_missed": [],
+     "distinct_scene_themes": 3,
+     "trait_deltas": {
+      "courage": 0.0,
+      "courage_confidence": 0.1067,
+      "honesty": 0.0,
+      "leadership_confidence": -0.045,
+      "purpose_confidence": 0.2807
+     },
+     "trait_delta_sum": 0.34240000000000004,
+     "trait_delta_abs": 0.4324,
+     "goal_progress": [
+      0.1518,
+      0.0882
+     ],
+     "goal_progress_mean": 0.12,
+     "lessons": 4,
+     "distinct_lesson_ratio": 1.0,
+     "final_valence": -0.22554999999999997,
+     "final_stress": 0.0,
+     "forbidden_scenes": 0,
+     "blocked": 0,
+     "stressed_cycles": 2,
+     "max_intensity_when_stressed": 0.4,
+     "vision_flags": 0,
+     "seed": 1
+    },
+    {
+     "cycles": 16,
+     "conv_final": 0.4429313691953478,
+     "conv_max": 0.4429313691953478,
+     "conv_auc": 0.29192091771641593,
+     "conv_monotonicity": 0.6666666666666666,
+     "conv_dips": 4,
+     "conv_dips_recovered": 4,
+     "conv_recovery_rate": 1.0,
+     "earned_corr": 0.2234435079599974,
+     "earned_gap": 0.0,
+     "dconv_when_met": 0.030151259363624904,
+     "dconv_when_avoided": 0.0,
+     "success_rate": 0.875,
+     "avoid_rate": 0.0,
+     "journey_stage_seq": [
+      "call",
+      "call",
+      "call",
+      "threshold",
+      "threshold",
+      "threshold",
+      "mentor",
+      "threshold",
+      "mentor",
+      "ordeal",
+      "mentor",
+      "ordeal",
+      "reward",
+      "ordeal",
+      "reward",
+      "return"
+     ],
+     "journey_distinct_stages": 6,
+     "journey_max_stage": 5,
+     "journey_reached_ordeal": 1,
+     "journey_in_order": 0,
+     "journey_max_backjump": 1,
+     "journey_unlabeled": 0,
+     "distinct_locations": 6,
+     "distinct_scene_ratio": 1.0,
+     "repeated_beat_ratio": 0.056179775280898875,
+     "distinct_nudge_ratio": 0.325,
+     "consecutive_identical_nudges": 0,
+     "theme_coverage": 1.0,
+     "themes_missed": [],
+     "distinct_scene_themes": 3,
+     "trait_deltas": {
+      "courage": 0.0,
+      "courage_confidence": 0.8768,
+      "honesty": 0.0,
+      "leadership_confidence": 0.5653,
+      "purpose_confidence": 0.6895
+     },
+     "trait_delta_sum": 2.1316,
+     "trait_delta_abs": 2.1316,
+     "goal_progress": [
+      0.24,
+      1.0
+     ],
+     "goal_progress_mean": 0.62,
+     "lessons": 13,
+     "distinct_lesson_ratio": 0.7692307692307693,
+     "final_valence": 1.0,
+     "final_stress": 0.0,
+     "forbidden_scenes": 0,
+     "blocked": 0,
+     "stressed_cycles": 0,
+     "max_intensity_when_stressed": 0.0,
+     "vision_flags": 0,
+     "seed": 2
+    },
+    {
+     "cycles": 16,
+     "conv_final": 0.4976008744807582,
+     "conv_max": 0.5838399321289227,
+     "conv_auc": 0.36488326517182473,
+     "conv_monotonicity": 0.8,
+     "conv_dips": 1,
+     "conv_dips_recovered": 0,
+     "conv_recovery_rate": 0.0,
+     "earned_corr": 0.0,
+     "earned_gap": 0.0,
+     "dconv_when_met": 0.031100054655047386,
+     "dconv_when_avoided": 0.0,
+     "success_rate": 1.0,
+     "avoid_rate": 0.0,
+     "journey_stage_seq": [
+      "call",
+      "call",
+      "call",
+      "threshold",
+      "threshold",
+      "threshold",
+      "mentor",
+      "mentor",
+      "mentor",
+      "ordeal",
+      "ordeal",
+      "ordeal",
+      "reward",
+      "reward",
+      "ordeal",
+      "return"
+     ],
+     "journey_distinct_stages": 6,
+     "journey_max_stage": 5,
+     "journey_reached_ordeal": 1,
+     "journey_in_order": 0,
+     "journey_max_backjump": 1,
+     "journey_unlabeled": 0,
+     "distinct_locations": 6,
+     "distinct_scene_ratio": 1.0,
+     "repeated_beat_ratio": 0.06976744186046512,
+     "distinct_nudge_ratio": 0.3111111111111111,
+     "consecutive_identical_nudges": 0,
+     "theme_coverage": 1.0,
+     "themes_missed": [],
+     "distinct_scene_themes": 3,
+     "trait_deltas": {
+      "courage": 0.0,
+      "courage_confidence": 0.879,
+      "honesty": 0.0,
+      "leadership_confidence": 0.5001,
+      "purpose_confidence": 0.8468
+     },
+     "trait_delta_sum": 2.2259,
+     "trait_delta_abs": 2.2259,
+     "goal_progress": [
+      0.5966,
+      0.6045
+     ],
+     "goal_progress_mean": 0.60055,
+     "lessons": 15,
+     "distinct_lesson_ratio": 0.7333333333333333,
+     "final_valence": 1.0,
+     "final_stress": 0.0,
+     "forbidden_scenes": 0,
+     "blocked": 0,
+     "stressed_cycles": 0,
+     "max_intensity_when_stressed": 0.0,
+     "vision_flags": 0,
+     "seed": 3
+    },
+    {
+     "cycles": 16,
+     "conv_final": 0.5573365698682389,
+     "conv_max": 0.5573365698682389,
+     "conv_auc": 0.30103411941250946,
+     "conv_monotonicity": 0.9333333333333333,
+     "conv_dips": 1,
+     "conv_dips_recovered": 1,
+     "conv_recovery_rate": 1.0,
+     "earned_corr": 0.3401771061726624,
+     "earned_gap": 0.0,
+     "dconv_when_met": 0.03732284178975449,
+     "dconv_when_avoided": 0.0,
+     "success_rate": 0.875,
+     "avoid_rate": 0.0,
+     "journey_stage_seq": [
+      "call",
+      "call",
+      "call",
+      "threshold",
+      "threshold",
+      "threshold",
+      "mentor",
+      "mentor",
+      "mentor",
+      "ordeal",
+      "ordeal",
+      "mentor",
+      "reward",
+      "reward",
+      "reward",
+      "return"
+     ],
+     "journey_distinct_stages": 6,
+     "journey_max_stage": 5,
+     "journey_reached_ordeal": 1,
+     "journey_in_order": 0,
+     "journey_max_backjump": 1,
+     "journey_unlabeled": 0,
+     "distinct_locations": 6,
+     "distinct_scene_ratio": 1.0,
+     "repeated_beat_ratio": 0.0,
+     "distinct_nudge_ratio": 0.2857142857142857,
+     "consecutive_identical_nudges": 0,
+     "theme_coverage": 1.0,
+     "themes_missed": [],
+     "distinct_scene_themes": 3,
+     "trait_deltas": {
+      "courage": 0.0,
+      "courage_confidence": 0.8079,
+      "honesty": 0.0,
+      "leadership_confidence": 0.4485,
+      "purpose_confidence": 0.8767
+     },
+     "trait_delta_sum": 2.1330999999999998,
+     "trait_delta_abs": 2.1330999999999998,
+     "goal_progress": [
+      0.6533,
+      0.6244
+     ],
+     "goal_progress_mean": 0.6388499999999999,
+     "lessons": 13,
+     "distinct_lesson_ratio": 0.7692307692307693,
+     "final_valence": 1.0,
+     "final_stress": 0.0,
+     "forbidden_scenes": 0,
+     "blocked": 0,
+     "stressed_cycles": 0,
+     "max_intensity_when_stressed": 0.0,
+     "vision_flags": 0,
+     "seed": 4
+    },
+    {
+     "cycles": 16,
+     "conv_final": 0.5094325999923408,
+     "conv_max": 0.5094325999923408,
+     "conv_auc": 0.2539655107446808,
+     "conv_monotonicity": 0.8666666666666667,
+     "conv_dips": 2,
+     "conv_dips_recovered": 2,
+     "conv_recovery_rate": 1.0,
+     "earned_corr": 0.5513466795466835,
+     "earned_gap": 0.047738912791796734,
+     "dconv_when_met": 0.03869149124289051,
+     "dconv_when_avoided": -0.00904742154890623,
+     "success_rate": 0.8125,
+     "avoid_rate": 0.0625,
+     "journey_stage_seq": [
+      "call",
+      "call",
+      "call",
+      "threshold",
+      "threshold",
+      "threshold",
+      "mentor",
+      "mentor",
+      "mentor",
+      "ordeal",
+      "ordeal",
+      "ordeal",
+      "reward",
+      "reward",
+      "ordeal",
+      "return"
+     ],
+     "journey_distinct_stages": 6,
+     "journey_max_stage": 5,
+     "journey_reached_ordeal": 1,
+     "journey_in_order": 0,
+     "journey_max_backjump": 1,
+     "journey_unlabeled": 0,
+     "distinct_locations": 6,
+     "distinct_scene_ratio": 1.0,
+     "repeated_beat_ratio": 0.022727272727272728,
+     "distinct_nudge_ratio": 0.34146341463414637,
+     "consecutive_identical_nudges": 0,
+     "theme_coverage": 1.0,
+     "themes_missed": [],
+     "distinct_scene_themes": 3,
+     "trait_deltas": {
+      "courage": 0.0,
+      "courage_confidence": 0.7471,
+      "honesty": 0.0,
+      "leadership_confidence": 0.4658,
+      "purpose_confidence": 0.8593
+     },
+     "trait_delta_sum": 2.0722,
+     "trait_delta_abs": 2.0722,
+     "goal_progress": [
+      0.7364,
+      0.5231
+     ],
+     "goal_progress_mean": 0.62975,
+     "lessons": 12,
+     "distinct_lesson_ratio": 0.8333333333333334,
+     "final_valence": 1.0,
+     "final_stress": 0.0,
+     "forbidden_scenes": 0,
+     "blocked": 0,
+     "stressed_cycles": 0,
+     "max_intensity_when_stressed": 0.0,
+     "vision_flags": 0,
+     "seed": 5
+    }
+   ]
+  },
+  "lighthouse": {
+   "agg": {
+    "cycles": {
+     "mean": 16.0,
+     "min": 16.0,
+     "max": 16.0
+    },
+    "conv_final": {
+     "mean": 0.35500697722658997,
+     "min": 0.2421161381595502,
+     "max": 0.4612151259295494
+    },
+    "conv_max": {
+     "mean": 0.37584141155783357,
+     "min": 0.2421161381595502,
+     "max": 0.46537524498594635
+    },
+    "conv_auc": {
+     "mean": 0.2519688641625134,
+     "min": 0.17169341430370658,
+     "max": 0.2947850443788935
+    },
+    "conv_monotonicity": {
+     "mean": 0.7333333333333333,
+     "min": 0.5333333333333333,
+     "max": 0.9333333333333333
+    },
+    "conv_dips": {
+     "mean": 1.8,
+     "min": 1.0,
+     "max": 3.0
+    },
+    "conv_dips_recovered": {
+     "mean": 0.2,
+     "min": 0.0,
+     "max": 1.0
+    },
+    "conv_recovery_rate": {
+     "mean": 0.1,
+     "min": 0.0,
+     "max": 0.5
+    },
+    "earned_corr": {
+     "mean": 0.6405590209468601,
+     "min": 0.2647057903601357,
+     "max": 0.7966728719890034
+    },
+    "earned_gap": {
+     "mean": 0.02802912170826835,
+     "min": 0.0,
+     "max": 0.08065979431448134
+    },
+    "dconv_when_met": {
+     "mean": 0.039141038364583255,
+     "min": 0.029773665161273995,
+     "max": 0.04637884800410535
+    },
+    "dconv_when_avoided": {
+     "mean": -0.011768900792216846,
+     "min": -0.04370578017749774,
+     "max": 0.0
+    },
+    "success_rate": {
+     "mean": 0.5875,
+     "min": 0.4375,
+     "max": 0.6875
+    },
+    "avoid_rate": {
+     "mean": 0.0375,
+     "min": 0.0,
+     "max": 0.125
+    },
+    "journey_distinct_stages": {
+     "mean": 6.0,
+     "min": 6.0,
+     "max": 6.0
+    },
+    "journey_max_stage": {
+     "mean": 5.0,
+     "min": 5.0,
+     "max": 5.0
+    },
+    "journey_reached_ordeal": {
+     "mean": 1.0,
+     "min": 1.0,
+     "max": 1.0
+    },
+    "journey_in_order": {
+     "mean": 0.2,
+     "min": 0.0,
+     "max": 1.0
+    },
+    "journey_max_backjump": {
+     "mean": 0.8,
+     "min": 0.0,
+     "max": 1.0
+    },
+    "journey_unlabeled": {
+     "mean": 0.0,
+     "min": 0.0,
+     "max": 0.0
+    },
+    "distinct_locations": {
+     "mean": 6.0,
+     "min": 6.0,
+     "max": 6.0
+    },
+    "distinct_scene_ratio": {
+     "mean": 1.0,
+     "min": 1.0,
+     "max": 1.0
+    },
+    "repeated_beat_ratio": {
+     "mean": 0.028708980604835,
+     "min": 0.0,
+     "max": 0.06521739130434782
+    },
+    "distinct_nudge_ratio": {
+     "mean": 0.2795033244477127,
+     "min": 0.2391304347826087,
+     "max": 0.3333333333333333
+    },
+    "consecutive_identical_nudges": {
+     "mean": 0.0,
+     "min": 0.0,
+     "max": 0.0
+    },
+    "theme_coverage": {
+     "mean": 1.0,
+     "min": 1.0,
+     "max": 1.0
+    },
+    "distinct_scene_themes": {
+     "mean": 3.0,
+     "min": 3.0,
+     "max": 3.0
+    },
+    "trait_delta_sum": {
+     "mean": 1.8326999999999998,
+     "min": 1.6317,
+     "max": 1.9284
+    },
+    "trait_delta_abs": {
+     "mean": 1.8326999999999998,
+     "min": 1.6317,
+     "max": 1.9284
+    },
+    "goal_progress_mean": {
+     "mean": 0.48499,
+     "min": 0.37355,
+     "max": 0.6084499999999999
+    },
+    "lessons": {
+     "mean": 9.8,
+     "min": 9.0,
+     "max": 11.0
+    },
+    "distinct_lesson_ratio": {
+     "mean": 0.8969696969696969,
+     "min": 0.7777777777777778,
+     "max": 1.0
+    },
+    "final_valence": {
+     "mean": 1.0,
+     "min": 1.0,
+     "max": 1.0
+    },
+    "final_stress": {
+     "mean": 0.0,
+     "min": 0.0,
+     "max": 0.0
+    },
+    "forbidden_scenes": {
+     "mean": 0.0,
+     "min": 0.0,
+     "max": 0.0
+    },
+    "blocked": {
+     "mean": 0.0,
+     "min": 0.0,
+     "max": 0.0
+    },
+    "stressed_cycles": {
+     "mean": 0.0,
+     "min": 0.0,
+     "max": 0.0
+    },
+    "max_intensity_when_stressed": {
+     "mean": 0.0,
+     "min": 0.0,
+     "max": 0.0
+    },
+    "vision_flags": {
+     "mean": 0.2,
+     "min": 0.0,
+     "max": 1.0
+    },
+    "seed": {
+     "mean": 3.0,
+     "min": 1.0,
+     "max": 5.0
+    }
+   },
+   "runs": [
+    {
+     "cycles": 16,
+     "conv_final": 0.38877672975113764,
+     "conv_max": 0.40268585191527023,
+     "conv_auc": 0.28622662302073526,
+     "conv_monotonicity": 0.6666666666666666,
+     "conv_dips": 2,
+     "conv_dips_recovered": 1,
+     "conv_recovery_rate": 0.5,
+     "earned_corr": 0.2647057903601357,
+     "earned_gap": 0.0,
+     "dconv_when_met": 0.029773665161273995,
+     "dconv_when_avoided": 0.0,
+     "success_rate": 0.6875,
+     "avoid_rate": 0.0,
+     "journey_stage_seq": [
+      "call",
+      "call",
+      "call",
+      "threshold",
+      "threshold",
+      "threshold",
+      "mentor",
+      "mentor",
+      "mentor",
+      "ordeal",
+      "ordeal",
+      "ordeal",
+      "reward",
+      "ordeal",
+      "reward",
+      "return"
+     ],
+     "journey_distinct_stages": 6,
+     "journey_max_stage": 5,
+     "journey_reached_ordeal": 1,
+     "journey_in_order": 0,
+     "journey_max_backjump": 1,
+     "journey_unlabeled": 0,
+     "distinct_locations": 6,
+     "distinct_scene_ratio": 1.0,
+     "repeated_beat_ratio": 0.0,
+     "distinct_nudge_ratio": 0.3333333333333333,
+     "consecutive_identical_nudges": 0,
+     "theme_coverage": 1.0,
+     "themes_missed": [],
+     "distinct_scene_themes": 3,
+     "trait_deltas": {
+      "courage": 0.0,
+      "courage_confidence": 0.8043,
+      "honesty": 0.0,
+      "leadership_confidence": 0.2764,
+      "purpose_confidence": 0.8477
+     },
+     "trait_delta_sum": 1.9284,
+     "trait_delta_abs": 1.9284,
+     "goal_progress": [
+      0.6279,
+      0.414
+     ],
+     "goal_progress_mean": 0.52095,
+     "lessons": 11,
+     "distinct_lesson_ratio": 0.8181818181818182,
+     "final_valence": 1.0,
+     "final_stress": 0.0,
+     "forbidden_scenes": 0,
+     "blocked": 0,
+     "stressed_cycles": 0,
+     "max_intensity_when_stressed": 0.0,
+     "vision_flags": 0,
+     "seed": 1
+    },
+    {
+     "cycles": 16,
+     "conv_final": 0.2421161381595502,
+     "conv_max": 0.2421161381595502,
+     "conv_auc": 0.17169341430370658,
+     "conv_monotonicity": 0.5333333333333333,
+     "conv_dips": 2,
+     "conv_dips_recovered": 0,
+     "conv_recovery_rate": 0.0,
+     "earned_corr": 0.7875031735998409,
+     "earned_gap": 0.059485814226860424,
+     "dconv_when_met": 0.04434709044327393,
+     "dconv_when_avoided": -0.015138723783586494,
+     "success_rate": 0.4375,
+     "avoid_rate": 0.125,
+     "journey_stage_seq": [
+      "call",
+      "call",
+      "call",
+      "threshold",
+      "threshold",
+      "threshold",
+      "mentor",
+      "threshold",
+      "mentor",
+      "ordeal",
+      "ordeal",
+      "mentor",
+      "reward",
+      "ordeal",
+      "reward",
+      "return"
+     ],
+     "journey_distinct_stages": 6,
+     "journey_max_stage": 5,
+     "journey_reached_ordeal": 1,
+     "journey_in_order": 0,
+     "journey_max_backjump": 1,
+     "journey_unlabeled": 0,
+     "distinct_locations": 6,
+     "distinct_scene_ratio": 1.0,
+     "repeated_beat_ratio": 0.06521739130434782,
+     "distinct_nudge_ratio": 0.2727272727272727,
+     "consecutive_identical_nudges": 0,
+     "theme_coverage": 1.0,
+     "themes_missed": [],
+     "distinct_scene_themes": 3,
+     "trait_deltas": {
+      "courage": 0.0,
+      "courage_confidence": 0.626,
+      "honesty": 0.0,
+      "leadership_confidence": 0.2895,
+      "purpose_confidence": 0.7162
+     },
+     "trait_delta_sum": 1.6317,
+     "trait_delta_abs": 1.6317,
+     "goal_progress": [
+      0.3177,
+      0.4294
+     ],
+     "goal_progress_mean": 0.37355,
+     "lessons": 9,
+     "distinct_lesson_ratio": 1.0,
+     "final_valence": 1.0,
+     "final_stress": 0.0,
+     "forbidden_scenes": 0,
+     "blocked": 0,
+     "stressed_cycles": 0,
+     "max_intensity_when_stressed": 0.0,
+     "vision_flags": 0,
+     "seed": 2
+    },
+    {
+     "cycles": 16,
+     "conv_final": 0.3732696663684134,
+     "conv_max": 0.4534351365656569,
+     "conv_auc": 0.2776174977496444,
+     "conv_monotonicity": 0.8,
+     "conv_dips": 1,
+     "conv_dips_recovered": 0,
+     "conv_recovery_rate": 0.0,
+     "earned_corr": 0.6538041183150227,
+     "earned_gap": 0.0,
+     "dconv_when_met": 0.038251574077279374,
+     "dconv_when_avoided": 0.0,
+     "success_rate": 0.625,
+     "avoid_rate": 0.0,
+     "journey_stage_seq": [
+      "call",
+      "call",
+      "call",
+      "threshold",
+      "threshold",
+      "threshold",
+      "mentor",
+      "mentor",
+      "mentor",
+      "ordeal",
+      "ordeal",
+      "ordeal",
+      "reward",
+      "reward",
+      "ordeal",
+      "return"
+     ],
+     "journey_distinct_stages": 6,
+     "journey_max_stage": 5,
+     "journey_reached_ordeal": 1,
+     "journey_in_order": 0,
+     "journey_max_backjump": 1,
+     "journey_unlabeled": 0,
+     "distinct_locations": 6,
+     "distinct_scene_ratio": 1.0,
+     "repeated_beat_ratio": 0.03409090909090909,
+     "distinct_nudge_ratio": 0.3023255813953488,
+     "consecutive_identical_nudges": 0,
+     "theme_coverage": 1.0,
+     "themes_missed": [],
+     "distinct_scene_themes": 3,
+     "trait_deltas": {
+      "courage": 0.0,
+      "courage_confidence": 0.8486,
+      "honesty": 0.0,
+      "leadership_confidence": 0.2626,
+      "purpose_confidence": 0.7564
+     },
+     "trait_delta_sum": 1.8676,
+     "trait_delta_abs": 1.8676,
+     "goal_progress": [
+      0.4499,
+      0.3618
+     ],
+     "goal_progress_mean": 0.40585000000000004,
+     "lessons": 9,
+     "distinct_lesson_ratio": 0.8888888888888888,
+     "final_valence": 1.0,
+     "final_stress": 0.0,
+     "forbidden_scenes": 0,
+     "blocked": 0,
+     "stressed_cycles": 0,
+     "max_intensity_when_stressed": 0.0,
+     "vision_flags": 0,
+     "seed": 3
+    },
+    {
+     "cycles": 16,
+     "conv_final": 0.30965722592429923,
+     "conv_max": 0.315594686162744,
+     "conv_auc": 0.22952174135958747,
+     "conv_monotonicity": 0.7333333333333333,
+     "conv_dips": 3,
+     "conv_dips_recovered": 0,
+     "conv_recovery_rate": 0.0,
+     "earned_corr": 0.7001091504702981,
+     "earned_gap": 0.08065979431448134,
+     "dconv_when_met": 0.036954014136983605,
+     "dconv_when_avoided": -0.04370578017749774,
+     "success_rate": 0.625,
+     "avoid_rate": 0.0625,
+     "journey_stage_seq": [
+      "call",
+      "call",
+      "call",
+      "threshold",
+      "threshold",
+      "threshold",
+      "mentor",
+      "mentor",
+      "threshold",
+      "ordeal",
+      "ordeal",
+      "ordeal",
+      "reward",
+      "reward",
+      "ordeal",
+      "return"
+     ],
+     "journey_distinct_stages": 6,
+     "journey_max_stage": 5,
+     "journey_reached_ordeal": 1,
+     "journey_in_order": 0,
+     "journey_max_backjump": 1,
+     "journey_unlabeled": 0,
+     "distinct_locations": 6,
+     "distinct_scene_ratio": 1.0,
+     "repeated_beat_ratio": 0.03260869565217391,
+     "distinct_nudge_ratio": 0.2391304347826087,
+     "consecutive_identical_nudges": 0,
+     "theme_coverage": 1.0,
+     "themes_missed": [],
+     "distinct_scene_themes": 3,
+     "trait_deltas": {
+      "courage": 0.0,
+      "courage_confidence": 0.8083,
+      "honesty": 0.0,
+      "leadership_confidence": 0.3412,
+      "purpose_confidence": 0.7592
+     },
+     "trait_delta_sum": 1.9087,
+     "trait_delta_abs": 1.9087,
+     "goal_progress": [
+      0.3662,
+      0.6661
+     ],
+     "goal_progress_mean": 0.51615,
+     "lessons": 11,
+     "distinct_lesson_ratio": 1.0,
+     "final_valence": 1.0,
+     "final_stress": 0.0,
+     "forbidden_scenes": 0,
+     "blocked": 0,
+     "stressed_cycles": 0,
+     "max_intensity_when_stressed": 0.0,
+     "vision_flags": 1,
+     "seed": 4
+    },
+    {
+     "cycles": 16,
+     "conv_final": 0.4612151259295494,
+     "conv_max": 0.46537524498594635,
+     "conv_auc": 0.2947850443788935,
+     "conv_monotonicity": 0.9333333333333333,
+     "conv_dips": 1,
+     "conv_dips_recovered": 0,
+     "conv_recovery_rate": 0.0,
+     "earned_corr": 0.7966728719890034,
+     "earned_gap": 0.0,
+     "dconv_when_met": 0.04637884800410535,
+     "dconv_when_avoided": 0.0,
+     "success_rate": 0.5625,
+     "avoid_rate": 0.0,
+     "journey_stage_seq": [
+      "call",
+      "call",
+      "call",
+      "threshold",
+      "threshold",
+      "threshold",
+      "mentor",
+      "mentor",
+      "mentor",
+      "ordeal",
+      "ordeal",
+      "ordeal",
+      "reward",
+      "reward",
+      "reward",
+      "return"
+     ],
+     "journey_distinct_stages": 6,
+     "journey_max_stage": 5,
+     "journey_reached_ordeal": 1,
+     "journey_in_order": 1,
+     "journey_max_backjump": 0,
+     "journey_unlabeled": 0,
+     "distinct_locations": 6,
+     "distinct_scene_ratio": 1.0,
+     "repeated_beat_ratio": 0.011627906976744186,
+     "distinct_nudge_ratio": 0.25,
+     "consecutive_identical_nudges": 0,
+     "theme_coverage": 1.0,
+     "themes_missed": [],
+     "distinct_scene_themes": 3,
+     "trait_deltas": {
+      "courage": 0.0,
+      "courage_confidence": 0.6021,
+      "honesty": 0.0,
+      "leadership_confidence": 0.3788,
+      "purpose_confidence": 0.8462
+     },
+     "trait_delta_sum": 1.8271,
+     "trait_delta_abs": 1.8271,
+     "goal_progress": [
+      0.6247,
+      0.5922
+     ],
+     "goal_progress_mean": 0.6084499999999999,
+     "lessons": 9,
+     "distinct_lesson_ratio": 0.7777777777777778,
+     "final_valence": 1.0,
+     "final_stress": 0.0,
+     "forbidden_scenes": 0,
+     "blocked": 0,
+     "stressed_cycles": 0,
+     "max_intensity_when_stressed": 0.0,
+     "vision_flags": 0,
+     "seed": 5
+    }
+   ]
+  }
+ },
+ "pooled": {
+  "earned_corr": 0.6117765163101403,
+  "n_cycles": 400
+ },
+ "rubric": [
+  {
+   "name": "engaged final convergence > avoidant",
+   "target": "engaged - avoidant > 0",
+   "value": 0.4903,
+   "pass": true
+  },
+  {
+   "name": "earnedness: corr(success, dConv) pooled over all runs",
+   "target": "> 0.3",
+   "value": 0.6118,
+   "pass": true
+  },
+  {
+   "name": "journey reaches ordeal or beyond within 16 cycles (engaged, every seed)",
+   "target": "== 1",
+   "value": 1.0,
+   "pass": true
+  },
+  {
+   "name": "consecutive identical nudges (worst run)",
+   "target": "== 0",
+   "value": 0.0,
+   "pass": true
+  },
+  {
+   "name": "repeated-beat ratio (worst profile mean)",
+   "target": "< 0.2",
+   "value": 0.0321,
+   "pass": true
+  },
+  {
+   "name": "theme coverage (worst run)",
+   "target": "== 1.0",
+   "value": 1.0,
+   "pass": true
+  },
+  {
+   "name": "forbidden-theme scenes (worst run)",
+   "target": "== 0",
+   "value": 0.0,
+   "pass": true
+  }
+ ],
+ "meta": {
+  "git": "43543cc Web viewer: bounded memory/disk, non-blocking SSE, host/origin guard",
+  "time": "2026-10-13 23:40:53 UTC",
+  "elapsed_s": 2.73
+ }
+}
