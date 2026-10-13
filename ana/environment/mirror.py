@@ -35,11 +35,13 @@ JOURNEY_PLACES = [
     "an unmarked threshold",
     "a town waking by the water",
     "the climbing road out of town",
-    "the high places where the wind lives",
     "the summit, with the storm all around",
+    "the high places where the wind lives, after the storm",
     "the long road home, changed",
 ]
 JOURNEY_HOURS = ["dawn", "morning", "midday", "late afternoon", "dusk", "first light"]
+# One place per Hero's-journey stage, in story order.
+STAGE_ORDER = ["call", "threshold", "mentor", "ordeal", "reward", "return"]
 
 
 class EnvironmentMirror:
@@ -47,12 +49,17 @@ class EnvironmentMirror:
         self.world = world or WorldState()
         self.follow_journey = follow_journey
 
-    def advance_place(self, convergence: float) -> None:
-        """Move the world's location/hour along the journey arc with convergence."""
+    def advance_place(self, convergence: float, stage: str | None = None) -> None:
+        """Move the world's location/hour along the journey. When the arc names a
+        Hero's-journey stage, the place follows the story; otherwise it follows
+        convergence."""
         if not self.follow_journey:
             return
-        idx = max(0, min(len(JOURNEY_PLACES) - 1,
-                         int(max(0.0, min(0.999, convergence)) * len(JOURNEY_PLACES))))
+        if stage in STAGE_ORDER:
+            idx = STAGE_ORDER.index(stage)
+        else:
+            idx = max(0, min(len(JOURNEY_PLACES) - 1,
+                             int(max(0.0, min(0.999, convergence)) * len(JOURNEY_PLACES))))
         self.world.location = JOURNEY_PLACES[idx]
         self.world.time_of_day = JOURNEY_HOURS[idx]
 
@@ -74,8 +81,18 @@ class EnvironmentMirror:
         # Surface motifs for active themes, more of them as the dial rises.
         budget = 1 + int(round(w.reflectiveness * 3))
         motifs: list[str] = []
-        for theme in identity.active_themes:
-            for motif in ARCHETYPAL_MAP.get(theme, []):
+        # Rotate through each theme's motif bank over time, so the world keeps
+        # finding new images for the same inner theme instead of one fixed prop.
+        themes = list(identity.active_themes)
+        if themes:
+            k = w.tick % len(themes)
+            themes = themes[k:] + themes[:k]
+        for theme in themes:
+            bank = ARCHETYPAL_MAP.get(theme, [])
+            if bank:
+                j = w.tick % len(bank)
+                bank = bank[j:] + bank[:j]
+            for motif in bank:
                 if motif not in motifs:
                     motifs.append(motif)
                 if len(motifs) >= budget:

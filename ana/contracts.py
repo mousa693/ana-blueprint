@@ -183,6 +183,7 @@ class Scene(BaseModel):
     symbols: list[str] = Field(default_factory=list)
     is_vision: bool = False            # flagged by harmonizer as non-literal
     source: Literal["llm", "deterministic"] = "deterministic"
+    stage: Optional[str] = None        # Hero's-journey stage this scene realised
 
 
 # ─────────────────────────────────────────────────────────────
@@ -210,6 +211,7 @@ class GenerationRequest(BaseModel):
     synchronicity: Optional[SynchronicityHint] = None
     recalled_shards: list[str] = Field(default_factory=list)
     constraints: list[str] = Field(default_factory=list)  # from harmonizer/alignment
+    stage: Optional[str] = None        # Hero's-journey stage the arc asks for
 
 
 class UserAction(BaseModel):

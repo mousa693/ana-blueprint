@@ -368,7 +368,12 @@ class TruthHarmonizer:
     # ────────────────────────────────────────────────────────────
 
     def _pick_grounding_note(self) -> str:
-        return self.rng.choice(_GROUNDING_NOTES)
+        # Don't repeat a grounding note until most of the others have been used.
+        used = getattr(self, "_used_notes", [])
+        pool = [n for n in _GROUNDING_NOTES if n not in used] or list(_GROUNDING_NOTES)
+        note = self.rng.choice(pool)
+        self._used_notes = (used + [note])[-(len(_GROUNDING_NOTES) - 2):]
+        return note
 
     def _decide_approval(self, scene: Scene, continuity_errors: list[str]) -> bool:
         """Approve unless the scene is genuinely incoherent beyond repair.

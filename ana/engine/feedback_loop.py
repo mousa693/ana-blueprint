@@ -42,6 +42,7 @@ from ..interfaces import (
 from ..identity.core import IdentityCore
 from ..environment.mirror import EnvironmentMirror
 from .convergence import ConvergenceEngine
+from .arc import JourneyArc
 
 
 class FeedbackLoopEngine:
@@ -79,12 +80,24 @@ class FeedbackLoopEngine:
         self._next_intensity = 0.4
         self._next_constraints: list[str] = []
         self.history: list[CycleRecord] = []
+        # The journey's arc: which Hero's-journey stage the story is in, the
+        # milestones so far, and whether it has come home.
+        self.arc = JourneyArc()
+        self.closed = False
 
     # ------------------------------------------------------------------
-    def run(self, cycles: int) -> list[CycleRecord]:
+    def run(self, cycles: int, *, until_close: bool = False) -> list[CycleRecord]:
+        """Run up to `cycles` heartbeats. With `until_close`, stop as soon as the
+        arc says the journey has come home (the return has been lived)."""
         for _ in range(cycles):
             self.step()
+            if until_close and self.closed:
+                break
         return self.history
+
+    def goal_progress(self) -> float:
+        goals = getattr(self.identity, "goals", []) or []
+        return max((g.progress for g in goals), default=0.0)
 
     def step(self) -> CycleRecord:
         ident = self.identity.snapshot()
@@ -96,9 +109,18 @@ class FeedbackLoopEngine:
             reflectiveness = min(1.0, reflectiveness + 0.15)
         # The outer journey advances with convergence, then the world is shaped
         # to mirror the self, scaled by the reflectiveness dial.
-        self.environment.advance_place(ident.convergence)
+        stage = self.arc.stage_hint(ident.convergence)
+        try:
+            self.environment.advance_place(ident.convergence, stage=stage)
+        except TypeError:
+            self.environment.advance_place(ident.convergence)
         world = self.environment.reflect(ident, reflectiveness)
-        world = self.npc.populate(world, ident)
+        # The arc proposes the stage this cycle should realise; the cast is
+        # populated for it (mentor returns at the ordeal, shadow must be faced...).
+        try:
+            world = self.npc.populate(world, ident, stage=stage)
+        except TypeError:  # an NPC layer without stage-aware callbacks
+            world = self.npc.populate(world, ident)
 
         # Synchronicity: a meaningful coincidence to weave in, maybe.
         hint = self.synchronicity.consider(ident, world)
@@ -134,6 +156,7 @@ class FeedbackLoopEngine:
             synchronicity=hint,
             recalled_shards=recalled,
             constraints=constraints,
+            stage=stage,
         )
 
         scene = self.generative.generate(request)
@@ -190,6 +213,9 @@ class FeedbackLoopEngine:
             alpha_surprise=conv.alpha_surprise,
         )
         self.history.append(record)
+        self.arc.record(record, stage=scene.stage or stage)
+        if self.arc.should_close(conv.convergence, self.goal_progress()):
+            self.closed = True
         for obs in self.observers:
             obs.on_cycle(record)
         return record

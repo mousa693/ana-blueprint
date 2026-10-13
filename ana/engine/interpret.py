@@ -115,10 +115,13 @@ class Interpreter:
         # Trait nudge on the theme (e.g. "leadership" -> "<theme>_confidence").
         trait_updates: dict[str, float] = {}
         trait_name = f"{theme}_confidence"
+        current = identity.trait(trait_name) or 0.5
         if success is True:
-            trait_updates[trait_name] = 0.12 + 0.1 * scene.intensity
+            # Diminishing returns: growth slows as a trait matures, so a strong
+            # trait is earned over a journey rather than saturating in a few scenes.
+            trait_updates[trait_name] = (0.10 + 0.08 * scene.intensity) * (1.0 - current) * 1.4
         elif success is False:
-            trait_updates[trait_name] = -0.06
+            trait_updates[trait_name] = -0.06 * (0.5 + current)
 
         # Lesson: mint one when a themed challenge of real intensity was met.
         lesson = None

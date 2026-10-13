@@ -41,7 +41,7 @@ def _seed_lighthouse_identity() -> IdentityCore:
 
 
 @app.command()
-def demo(cycles: int = 8, log: str = ""):
+def demo(cycles: int = 8, log: str = "", until_close: bool = False, debrief: str = ""):
     """Run the deterministic lighthouse journey (no API key required)."""
     cfg = ANAConfig(use_llm=False, max_cycles=cycles)
     observers = [ConsoleObserver()]
@@ -55,21 +55,24 @@ def demo(cycles: int = 8, log: str = ""):
                              "I speak honestly to the council about what happened.",
                              "I accept the role they offer, uneasy but willing.",
                          ]))
-    sess.run()
+    sess.run(until_close=until_close)
     _summary(sess)
+    _debrief(sess, debrief)
     sess.close()
 
 
 @app.command()
-def auto(cycles: int = 10, seed: int = 42, use_llm: bool = False, log: str = ""):
+def auto(cycles: int = 10, seed: int = 42, use_llm: bool = False, log: str = "",
+         until_close: bool = False, debrief: str = ""):
     """An autonomous journey: the self acts for itself each cycle."""
     cfg = ANAConfig(use_llm=use_llm, max_cycles=cycles, seed=seed)
     observers = [ConsoleObserver()]
     if log:
         observers.append(JSONLObserver(log))
     sess = build_session(cfg, identity=_seed_lighthouse_identity(), observers=observers)
-    sess.run()
+    sess.run(until_close=until_close)
     _summary(sess)
+    _debrief(sess, debrief)
     sess.close()
 
 
@@ -80,8 +83,9 @@ def play(cycles: int = 8, use_llm: bool = True):
     sess = build_session(cfg, identity=_seed_lighthouse_identity(),
                          observers=[ConsoleObserver(show_telemetry=False)],
                          driver=HumanDriver())
-    sess.run()
+    sess.run(until_close=until_close)
     _summary(sess)
+    _debrief(sess, debrief)
     sess.close()
 
 
@@ -137,10 +141,39 @@ def llm_check(cycles: int = 2, effort: str = "medium"):
     console.print("[green]model path live[/]" if ok else "[yellow]some cycles fell back to deterministic[/]")
 
 
+@app.command()
+def journey(seed: int = 42, max_cycles: int = 30, use_llm: bool = False,
+            log: str = "", debrief: str = "", quiet: bool = False):
+    """A whole journey: the self lives until it has come home, then a debrief."""
+    cfg = ANAConfig(use_llm=use_llm, max_cycles=max_cycles, seed=seed)
+    observers = [] if quiet else [ConsoleObserver()]
+    if log:
+        observers.append(JSONLObserver(log))
+    sess = build_session(cfg, identity=_seed_lighthouse_identity(), observers=observers)
+    sess.run(until_close=True)
+    _summary(sess)
+    _debrief(sess, debrief)
+    sess.close()
+
+
+def _debrief(sess, path: str = "") -> None:
+    d = sess.debrief()
+    md = d.to_markdown()
+    console.print(f"\n{'═' * 70}")
+    console.print(md, markup=False, highlight=False)
+    if path:
+        from pathlib import Path
+        Path(path).write_text(md, encoding="utf-8")
+        console.print(f"\n[dim]debrief written to {path}[/]")
+
+
 def _summary(sess) -> None:
     ident = sess.identity
     console.print(f"\n{'═' * 70}")
     console.print("[bold]Journey complete[/bold]")
+    console.print(f"  cycles lived: {len(sess.engine.history)}"
+                  f"{'  (came home)' if sess.engine.closed else ''}")
+    console.print(f"  {sess.arc.current_chapter()}")
     console.print(f"  final convergence: {ident.convergence:.2f}")
     console.print(f"  traits:")
     for name, t in sorted(ident.traits.items()):

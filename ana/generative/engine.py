@@ -51,36 +51,42 @@ HERO_JOURNEY: dict[str, dict] = {
     "call": {
         "label": "the call to adventure",
         "event": "A summons arrives that cannot be unheard — {motif} marks the beginning of something.",
+        "events": ['A summons arrives that cannot be unheard — {motif} marks the beginning of something.', 'Someone runs up the road calling a name, and it is yours; behind them, {motif}.', 'The ordinary day cracks open around {motif}, and something on the other side is waiting.', 'A message meant for someone braver lands in your hands, near {motif}.'],
         "choices": ["Answer the call", "Hesitate at the edge", "Ask what it will cost"],
         "symbol": "the threshold-bell",
     },
     "threshold": {
         "label": "crossing the threshold",
         "event": "The way forward narrows to a single door, and {motif} waits on the far side.",
+        "events": ['The way forward narrows to a single door, and {motif} waits on the far side.', 'The path you know ends here. Past {motif}, nothing is familiar.', 'A gatekeeper steps out beside {motif} and asks what you are willing to leave behind.', 'The ground changes under your feet at {motif}; going back would now be its own decision.'],
         "choices": ["Step across", "Turn back once more", "Leave a token behind"],
         "symbol": "the crossing",
     },
     "mentor": {
         "label": "meeting the mentor",
         "event": "A knowing presence offers what you did not know you needed, near {motif}.",
+        "events": ['A knowing presence offers what you did not know you needed, near {motif}.', 'Someone who has walked this road before sits by {motif} and waits for your question.', 'An old hand presses something into yours beside {motif}: not an answer, a tool.', 'Near {motif}, a voice you trust says the thing you have been refusing to hear.'],
         "choices": ["Accept the gift", "Question the giver", "Offer something in return"],
         "symbol": "the given key",
     },
     "ordeal": {
         "label": "the ordeal",
         "event": "Everything you have been avoiding gathers here around {motif}, and will not be deferred.",
+        "events": ['Everything you have been avoiding gathers here around {motif}, and will not be deferred.', 'The storm arrives all at once at {motif}; there is no one else to decide.', 'At {motif} the thing you feared turns to face you, and it knows your name.', 'Someone is depending on you, and {motif} is where it happens, now.'],
         "choices": ["Face it directly", "Find another way through", "Call for help"],
         "symbol": "the dark water",
     },
     "reward": {
         "label": "seizing the reward",
         "event": "What you came for lies within reach — {motif} glints with the thing itself.",
+        "events": ['What you came for lies within reach — {motif} glints with the thing itself.', 'The danger passes, and at {motif} people are looking at you differently.', 'At {motif}, you find what you came for, and it is not what you expected it to be.', 'Something is given back to you at {motif}, something you thought was gone.'],
         "choices": ["Take it openly", "Take only what you need", "Share it at once"],
         "symbol": "the found thing",
     },
     "return": {
         "label": "the return",
         "event": "The road bends homeward, changed, and {motif} looks different than it did.",
+        "events": ['The road bends homeward, changed, and {motif} looks different than it did.', 'You walk back past {motif}, and the place that once scared you is only a place.', 'Home is close. At {motif} you realise you are bringing something back with you.', 'The people at {motif} ask what happened out there, and you find you can tell them.'],
         "choices": ["Carry it home", "Rest before the last mile", "Look back one time"],
         "symbol": "the long road",
     },
@@ -195,6 +201,7 @@ class ExperienceEngine:
     def _llm_prompt(self, request: GenerationRequest) -> str:
         idn, world = request.identity, request.world
         lines = [
+            f"Journey stage to realise: {HERO_JOURNEY[request.stage]['label'] if request.stage in HERO_JOURNEY else 'whatever fits the self now'}",
             f"Directive: {request.directive}",
             f"Target theme: {request.target_theme or (idn.active_themes[0] if idn.active_themes else 'exploration')}",
             f"Target intensity (0..1): {request.target_intensity:.2f}",
@@ -258,13 +265,15 @@ class ExperienceEngine:
             choices=choices[:4],
             symbols=symbols or list(request.world.motifs),
             source="llm",
+            stage=request.stage if request.stage in HERO_JOURNEY else None,
         )
 
     # -- deterministic path ---------------------------------------------
     def _generate_deterministic(self, request: GenerationRequest) -> Scene:
         idn, world = request.identity, request.world
         theme = self._pick_theme(request)
-        stage_key = self._pick_stage(theme, idn)
+        stage_key = (request.stage if request.stage in HERO_JOURNEY
+                     else self._pick_stage(theme, idn))
         stage = HERO_JOURNEY[stage_key]
         gentle = self._is_gentle(request)
 
@@ -290,7 +299,8 @@ class ExperienceEngine:
 
         # 5) Event — realise the directive / target theme via the chosen stage.
         motif = self._pick_motif(world)
-        event_text = stage["event"].format(motif=motif)
+        event_text = self._fresh(
+            [e.format(motif=motif) for e in stage.get("events", [stage["event"]])])
         event_text = self._apply_directive(event_text, request.directive, theme, gentle)
         beats.append(SceneBeat(kind="event", text=event_text, symbol=stage["symbol"]))
         introduced.append(stage["symbol"])
@@ -305,6 +315,7 @@ class ExperienceEngine:
         summary = self._make_summary(stage, theme, world, gentle)
 
         return Scene(
+            stage=stage_key,
             title=title,
             summary=summary,
             beats=beats,
@@ -391,6 +402,11 @@ class ExperienceEngine:
             f"\"{voice['open']} {represents}. {voice['close']}\"",
             f"\"You stand at {stage['label']}, whether you name it or not.\"",
             f"\"They never tell you {voice['secret']} about {represents}.\"",
+            f"\"{voice['close']}\"",
+            f"\"I have been watching you circle {represents}. {voice['close']}\"",
+            f"\"Ask me about {represents}. Or don't — you already know.\"",
+            f"\"This is {stage['label']}. {voice['close']}\"",
+            f"\"Here is what nobody told me about {represents}: {voice['secret']}.\"",
         ]
         line = self._fresh(templates)
         if gentle:
@@ -556,4 +572,10 @@ def _humanize(value: str, fallback: str) -> str:
     v = v.replace("_", " ").strip()
     if len(v.split()) > 5:
         return fallback
+    words = v.split()
+    if words and words[0].lower() in ("find", "become", "learn", "be", "get", "make",
+                                      "build", "stop", "start", "forgive", "lead"):
+        v = "the wish to " + " ".join(
+            {"my": "your", "me": "you", "i": "you", "myself": "yourself"}.get(w.lower(), w)
+            for w in words)
     return v or fallback

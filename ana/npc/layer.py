@@ -21,6 +21,21 @@ out for aid, one villager follows them into the storm and another flees. Same
 event, divergent autonomous reactions. :meth:`NPCDirector.react` reproduces that
 texture.
 
+3. **A persistent cast with memory.** Every NPC enters a registry that outlives
+   the cycle (:class:`CastMember`): how often they were met, how they reacted
+   (answered the call / fled), how the protagonist treated them (helped,
+   followed, confronted, ignored, fled — read from the action text) and the
+   resulting disposition drift, plus a *story role* (mentor, shadow, ally,
+   trickster, guardian, herald). Roles already filled are re-used, so the same
+   faces recur instead of a new stranger every cycle.
+4. **Deliberate callbacks.** Given the Hero's-Journey stage
+   (``populate(..., stage=...)``), the late stages bring earlier people back on
+   purpose: the Mentor returns and the Shadow must be faced at the *ordeal*, an
+   early ally helps at the *reward*, the villager who fled when you called comes
+   back asking for trust (the blueprint's lighthouse aftermath), and someone from
+   the *call* witnesses the *return*. :meth:`NPCDirector.cast_summary` exposes the
+   whole cast for debriefs and viewers.
+
 Everything here is deterministic given a seed (all randomness flows through a
 single ``random.Random``) and runs with no network. The optional
 :class:`~ana.llm.gateway.ModelGateway` may colour persona text and reactions when
@@ -30,7 +45,8 @@ always complete on its own.
 from __future__ import annotations
 
 import random
-from typing import Optional
+from dataclasses import dataclass, field
+from typing import Iterable, Optional
 
 from ..contracts import (
     Archetype,
@@ -212,6 +228,152 @@ _ENTROPY_BY_CUE: dict[str, list[tuple[str, Optional[str]]]] = {
 }
 
 
+# ─────────────────────────────────────────────────────────────
+# Persistent cast — story roles, relationships, callbacks
+# ─────────────────────────────────────────────────────────────
+
+STORY_ROLES: tuple[str, ...] = ("mentor", "shadow", "ally", "trickster", "guardian", "herald")
+
+_ROLE_BY_ARCH: dict[Archetype, str] = {
+    Archetype.MENTOR: "mentor",
+    Archetype.SELF: "mentor",
+    Archetype.SHADOW: "shadow",
+    Archetype.ALLY: "ally",
+    Archetype.HERO: "ally",
+    Archetype.ANIMA: "ally",
+    Archetype.ANIMUS: "ally",
+    Archetype.TRICKSTER: "trickster",
+    Archetype.THRESHOLD_GUARDIAN: "guardian",
+    Archetype.HERALD: "herald",
+}
+
+_STAGES = ("call", "threshold", "mentor", "ordeal", "reward", "return")
+
+_STAGE_PHRASE: dict[str, str] = {
+    "call": "at the very start, when the call first came",
+    "threshold": "at the threshold",
+    "mentor": "when you were first being guided",
+    "ordeal": "in the ordeal",
+    "reward": "at the reward",
+    "return": "on the road home",
+}
+
+
+def _norm_stage(stage: Optional[str]) -> Optional[str]:
+    if not stage:
+        return None
+    s = str(stage).strip().lower()
+    if s in _STAGES:
+        return s
+    for key in _STAGES:
+        if key in s:
+            return key
+    return None
+
+
+# How the protagonist treated someone, read from free action text. Checked in
+# order: retreat words win over engagement words ("I refuse to help" is a
+# refusal), confrontation before help ("I face him and help" is a facing).
+_TREATMENT_WORDS: list[tuple[str, tuple[str, ...]]] = [
+    ("fled", ("flee", "fled", "run away", "run from", "i run", "hide", "escape",
+              "retreat", "turn back", "back away", "abandon")),
+    ("ignored", ("ignore", "refuse", "walk past", "walk away", "dismiss", "avoid",
+                 "leave them", "leave him", "leave her", "turn away", "hesitate")),
+    ("confronted", ("confront", "face", "challenge", "stand up to", "stand against",
+                    "argue", "defy", "fight")),
+    ("followed", ("follow", "listen", "heed", "accept", "trust", "ask", "take the advice",
+                  "take their advice", "call for help", "learn from")),
+    ("helped", ("help", "save", "protect", "rescue", "share", "give", "offer",
+                "comfort", "carry", "lead", "organize", "organise", "thank", "shelter",
+                "answer the call", "stay with", "support")),
+]
+
+# Disposition drift per treatment, by story role (default row first).
+_DRIFT: dict[str, dict[str, float]] = {
+    "default": {"helped": 0.15, "followed": 0.12, "confronted": -0.08,
+                "ignored": -0.08, "fled": -0.12},
+    # Facing the Shadow integrates it: it grows less hostile. Fleeing feeds it.
+    "shadow": {"helped": 0.05, "followed": -0.05, "confronted": 0.15,
+               "ignored": -0.1, "fled": -0.15},
+    # Guardians respect being met head-on.
+    "guardian": {"helped": 0.1, "followed": 0.08, "confronted": 0.06,
+                 "ignored": -0.1, "fled": -0.12},
+    "mentor": {"helped": 0.12, "followed": 0.15, "confronted": -0.04,
+               "ignored": -0.12, "fled": -0.1},
+}
+
+
+def classify_action(text: str) -> Optional[str]:
+    """Read how an action treats others: helped / followed / confronted /
+    ignored / fled, or ``None`` for a neutral action ("I explore")."""
+    t = f" {text.lower()} "
+    for kind, words in _TREATMENT_WORDS:
+        if any(w in t for w in words):
+            return kind
+    return None
+
+
+@dataclass
+class CastMember:
+    """A registry entry: one NPC's life across the whole journey."""
+
+    npc: NPC
+    role: str
+    first_cycle: int
+    first_stage: Optional[str]
+    last_cycle: int
+    disposition_start: float
+    managed: bool = True                  # created by the director (may rotate)
+    times_met: int = 0                    # cycles present in the world
+    last_met: int = -1
+    interactions: int = 0                 # times they reacted to the protagonist
+    helped_you: int = 0                   # times they answered your call
+    fled: int = 0                         # times they fled / refused you
+    faced: bool = False                   # a Shadow the protagonist confronted
+    treatment: dict[str, int] = field(default_factory=dict)
+    callbacks: list[str] = field(default_factory=list)       # stages they returned at
+    callback_kinds: list[str] = field(default_factory=list)
+
+    @property
+    def name(self) -> str:
+        return self.npc.name
+
+    @property
+    def disposition(self) -> float:
+        return self.npc.disposition
+
+    @property
+    def trend(self) -> str:
+        d = self.npc.disposition - self.disposition_start
+        if d >= 0.1:
+            return "warmer"
+        if d <= -0.1:
+            return "cooler"
+        return "steady"
+
+    def to_dict(self) -> dict:
+        return {
+            "name": self.name,
+            "archetype": self.npc.archetype.value,
+            "role": self.role,
+            "represents": self.npc.represents,
+            "times_met": self.times_met,
+            "interactions": self.interactions,
+            "first_cycle": self.first_cycle,
+            "first_stage": self.first_stage,
+            "last_cycle": self.last_cycle,
+            "disposition_start": round(self.disposition_start, 2),
+            "disposition": round(self.npc.disposition, 2),
+            "trend": self.trend,
+            "helped_you": self.helped_you,
+            "fled": self.fled,
+            "faced": self.faced,
+            "treatment": dict(self.treatment),
+            "callbacks": list(self.callbacks),
+            "alive": self.npc.alive,
+        }
+
+
 class NPCDirector:
     """Deterministic NPC + entropy layer implementing ``NPCEntropyLayer``.
 
@@ -226,12 +388,41 @@ class NPCDirector:
         seed: int = 42,
         entropy_prob: float = 0.3,
         use_llm: bool = False,
+        *,
+        max_present: int = 5,
+        newcomer_prob: float = 0.25,
     ) -> None:
         self.gateway = gateway
         self.seed = seed
         self.entropy_prob = max(0.0, min(1.0, entropy_prob))
         self.use_llm = use_llm
         self.rng = random.Random(seed)
+        self.max_present = max(1, max_present)
+        self.newcomer_prob = max(0.0, min(1.0, newcomer_prob))
+        # The persistent cast registry (name -> CastMember), insertion-ordered.
+        self._cast: dict[str, CastMember] = {}
+        self._cycle = 0                       # populate() calls so far
+        self._stage: Optional[str] = None     # stage given to the last populate()
+        self._pending: list[tuple[str, str, str]] = []   # (name, kind, stage)
+        self._callback_scenes: set[str] = set()
+
+    # -- registry API ----------------------------------------------------
+    @property
+    def cast(self) -> dict[str, "CastMember"]:
+        """The live registry (name -> :class:`CastMember`)."""
+        return self._cast
+
+    def member(self, name: str) -> Optional["CastMember"]:
+        return self._cast.get(name)
+
+    def cast_summary(self) -> list[dict]:
+        """Everyone met so far, earliest first, as plain dicts for debriefs and
+        viewers: name, archetype, role, represents, times_met, interactions,
+        first_cycle/first_stage/last_cycle, disposition_start/disposition,
+        trend (warmer/cooler/steady), helped_you, fled, faced, treatment counts,
+        callbacks (stages they returned at), alive."""
+        members = sorted(self._cast.values(), key=lambda m: (m.first_cycle, list(self._cast).index(m.name)))
+        return [m.to_dict() for m in members]
 
     # -- helpers ---------------------------------------------------------
     def _llm_ready(self) -> bool:
@@ -274,32 +465,97 @@ class NPCDirector:
                 pass
         return base
 
+    # -- cast registry helpers -------------------------------------------
+    def _register(self, npc: NPC, stage: Optional[str], managed: bool) -> "CastMember":
+        m = self._cast.get(npc.name)
+        if m is None:
+            m = CastMember(
+                npc=npc,
+                role=_ROLE_BY_ARCH.get(npc.archetype, "ally"),
+                first_cycle=self._cycle,
+                first_stage=stage,
+                last_cycle=self._cycle,
+                disposition_start=npc.disposition,
+                managed=managed,
+            )
+            self._cast[npc.name] = m
+        elif m.npc is not npc:
+            # Same name, a fresh object (e.g. a reloaded world): keep the
+            # registry's evolved disposition authoritative.
+            npc.disposition = m.npc.disposition
+            m.npc = npc
+        return m
+
+    def _find(self, role: str, represents: Optional[str] = None,
+              exclude: Iterable[str] = ()) -> Optional["CastMember"]:
+        """Earliest-met cast member in `role` (optionally matching `represents`)."""
+        ex = set(exclude)
+        pool = [m for m in self._cast.values()
+                if m.role == role and m.npc.alive and m.name not in ex]
+        if represents is not None:
+            exact = [m for m in pool if m.npc.represents == represents]
+            pool = exact or pool
+        return min(pool, key=lambda m: m.first_cycle) if pool else None
+
+    @staticmethod
+    def _ensure_present(world: WorldState, npc: NPC) -> None:
+        if all(n is not npc and n.name != npc.name for n in world.npcs):
+            world.npcs = list(world.npcs) + [npc]
+
     # -- NPCEntropyLayer protocol ---------------------------------------
-    def populate(self, world: WorldState, identity: IdentitySnapshot) -> WorldState:
-        """Seed a small cast (1-3) of NPCs for this world and identity.
+    def populate(self, world: WorldState, identity: IdentitySnapshot,
+                 stage: Optional[str] = None) -> WorldState:
+        """Seed / maintain the cast for this world and identity.
 
         Builds *mirror* NPCs that personify identity elements — a ``SHADOW`` for
         a low or conflicted trait, a ``MENTOR`` for a live goal or theme — and at
         least one autonomous *world* NPC (high ``autonomy``, ``represents=None``)
-        so the world is more than a reflection of the user. Existing NPCs
-        (matched by name) are never duplicated.
+        so the world is more than a reflection of the user.
+
+        The cast is **persistent**: every NPC goes into a registry that outlives
+        the cycle, and a role that is already filled (the Shadow of
+        ``leadership_confidence``, the Mentor of "find purpose") is *re-used*
+        rather than re-cast, so the same faces recur and their relationship with
+        the protagonist can evolve. Existing NPCs (matched by name) are never
+        duplicated, and at most ``max_present`` registry-managed NPCs stand in
+        the world at once (newcomers rotate older bystanders off-stage; they stay
+        in the registry for later callbacks).
+
+        ``stage`` (a Hero's-Journey key: call/threshold/mentor/ordeal/reward/
+        return) is optional. ``None`` keeps the stage-agnostic behaviour. When
+        it is ``ordeal``, ``reward`` or ``return`` the director plans deliberate
+        **callbacks**: the Mentor returns and the Shadow must be faced at the
+        ordeal; an early ally helps at the reward; the one who fled when you
+        called comes back asking for trust; someone from the call witnesses the
+        return. Callback NPCs are re-added and moved to the front of
+        ``world.npcs`` (so the generator voices them first), and their beats are
+        appended to the scene by :meth:`inject_entropy` (automatically) or by
+        :meth:`inject_callback` (explicitly) — each callback is announced once.
         """
-        existing_names = {n.name for n in world.npcs}
-        desired: list[NPC] = []
+        self._cycle += 1
+        st = _norm_stage(stage)
+        self._stage = st
+        self._pending = []
+
+        # Anything already in the world joins the registry (externally placed
+        # NPCs are tracked but never rotated out).
+        for n in list(world.npcs):
+            self._register(n, st, managed=n.name in self._cast and self._cast[n.name].managed)
+
+        existing_names = {n.name for n in world.npcs} | set(self._cast)
+        added: list[NPC] = []
 
         # 1. SHADOW mirror for the weakest / most conflicted trait, if any.
         if identity.traits:
             weak = min(identity.traits, key=lambda t: t.value)
             if weak.value <= 0.45:
-                desired.append(
-                    self._build_npc(
-                        Archetype.SHADOW,
-                        existing_names,
-                        represents=weak.name,
-                        disposition=-0.3,
-                        autonomy=0.3,
-                    )
-                )
+                m = self._find("shadow", represents=weak.name)
+                if m is not None and m.npc.represents in (weak.name, None):
+                    self._ensure_present(world, m.npc)
+                else:
+                    added.append(self._build_npc(
+                        Archetype.SHADOW, existing_names, represents=weak.name,
+                        disposition=-0.3, autonomy=0.3))
 
         # 2. MENTOR mirror for a goal or an active theme, if any.
         focus: Optional[str] = None
@@ -308,36 +564,175 @@ class NPCDirector:
         elif identity.active_themes:
             focus = identity.active_themes[0]
         if focus is not None:
-            desired.append(
-                self._build_npc(
-                    Archetype.MENTOR,
-                    existing_names,
-                    represents=focus,
-                    disposition=0.5,
-                    autonomy=0.4,
-                )
-            )
+            m = self._find("mentor")
+            if m is not None:
+                self._ensure_present(world, m.npc)
+            else:
+                added.append(self._build_npc(
+                    Archetype.MENTOR, existing_names, represents=focus,
+                    disposition=0.5, autonomy=0.4))
 
-        # 3. At least one fully autonomous "world" NPC for realism.
-        world_arch = self.rng.choice(
-            [Archetype.ALLY, Archetype.TRICKSTER, Archetype.THRESHOLD_GUARDIAN, Archetype.HERALD]
-        )
-        desired.append(
-            self._build_npc(
-                world_arch,
-                existing_names,
-                represents=None,
+        # 3. At least one fully autonomous "world" NPC for realism; now and then a
+        #    newcomer arrives, so the world keeps its own life.
+        world_present = [n for n in world.npcs
+                         if n.represents is None and n.autonomy >= 0.6 and n.alive]
+        if not world_present or self.rng.random() < self.newcomer_prob:
+            world_arch = self.rng.choice(
+                [Archetype.ALLY, Archetype.TRICKSTER, Archetype.THRESHOLD_GUARDIAN, Archetype.HERALD]
+            )
+            added.append(self._build_npc(
+                world_arch, existing_names, represents=None,
                 disposition=self._lib(world_arch)["disposition"],
-                autonomy=round(self.rng.uniform(0.7, 0.95), 2),
-            )
-        )
+                autonomy=round(self.rng.uniform(0.7, 0.95), 2)))
 
-        # Keep the cast small (1-3 new) and deterministic.
-        if len(desired) > 3:
-            desired = desired[:3]
+        added = added[:3]
+        world.npcs = list(world.npcs) + added
+        for n in added:
+            self._register(n, st, managed=True)
 
-        world.npcs = list(world.npcs) + desired
+        # Deliberate callbacks for the late stages.
+        callback_names = self._plan_callbacks(world, st) if st else []
+
+        self._trim(world, keep=set(callback_names) | {n.name for n in added})
+
+        # Callback NPCs speak first.
+        if callback_names:
+            front = [n for nm in callback_names for n in world.npcs if n.name == nm]
+            rest = [n for n in world.npcs if n.name not in callback_names]
+            world.npcs = front + rest
+
+        for n in world.npcs:
+            m = self._cast.get(n.name)
+            if m is not None and m.last_met != self._cycle:
+                m.times_met += 1
+                m.last_met = self._cycle
+                m.last_cycle = self._cycle
         return world
+
+    def _trim(self, world: WorldState, keep: set[str]) -> None:
+        """Rotate the oldest managed bystanders off-stage beyond ``max_present``."""
+        managed = [n for n in world.npcs
+                   if n.name in self._cast and self._cast[n.name].managed]
+        excess = len(managed) - self.max_present
+        if excess <= 0:
+            return
+        removable = [n for n in managed if n.name not in keep
+                     and self._cast[n.name].role not in ("mentor", "shadow")]
+        removable.sort(key=lambda n: (self._cast[n.name].last_cycle,
+                                      self._cast[n.name].first_cycle))
+        drop = {n.name for n in removable[:excess]}
+        world.npcs = [n for n in world.npcs if n.name not in drop]
+
+    # -- callbacks -------------------------------------------------------
+    def _plan_callbacks(self, world: WorldState, stage: Optional[str]) -> list[str]:
+        """Choose who returns at this stage; queue their (one-time) beats."""
+        if stage not in ("ordeal", "reward", "return"):
+            return []
+        earlier = [m for m in self._cast.values()
+                   if m.first_cycle < self._cycle and m.npc.alive]
+        plan: list[tuple[CastMember, str]] = []
+        used: set[str] = set()
+
+        def pick(cands: list[CastMember]) -> Optional[CastMember]:
+            cands = [c for c in cands if c.name not in used]
+            return min(cands, key=lambda m: (m.first_cycle, m.name)) if cands else None
+
+        if stage == "ordeal":
+            mentor = pick([m for m in earlier if m.role == "mentor"])
+            if mentor:
+                plan.append((mentor, "mentor_returns")); used.add(mentor.name)
+            shadow = pick([m for m in earlier if m.role == "shadow"])
+            if shadow:
+                plan.append((shadow, "shadow_faced")); used.add(shadow.name)
+        if stage in ("reward", "return"):
+            fled = pick([m for m in earlier if m.fled and m.role != "shadow"
+                         and "trust_issue" not in m.callback_kinds])
+            if fled:
+                plan.append((fled, "trust_issue")); used.add(fled.name)
+        if stage == "reward":
+            allies = [m for m in earlier if m.role not in ("shadow", "mentor")
+                      and (m.role == "ally" or m.helped_you or m.disposition > 0.3)
+                      and m.npc.disposition > 0.0]
+            ally = pick(allies)
+            if ally:
+                plan.append((ally, "ally_helps")); used.add(ally.name)
+        if stage == "return":
+            from_call = [m for m in earlier if m.role != "shadow"
+                         and (m.first_stage == "call"
+                              or (m.first_stage is None and m.first_cycle == 1))]
+            witness = pick(from_call) or pick([m for m in earlier if m.role != "shadow"])
+            if witness:
+                plan.append((witness, "witness")); used.add(witness.name)
+
+        names: list[str] = []
+        for m, kind in plan:
+            self._ensure_present(world, m.npc)
+            names.append(m.name)
+            if stage not in m.callbacks:
+                m.callbacks.append(stage)
+            if kind not in m.callback_kinds:
+                m.callback_kinds.append(kind)
+                self._pending.append((m.name, kind, stage))
+        return names
+
+    def inject_callback(self, scene: Scene, world: WorldState,
+                        stage: Optional[str] = None) -> Scene:
+        """Append the beats for this cycle's callbacks to ``scene``.
+
+        Uses the callbacks planned by the last :meth:`populate` call; passing a
+        ``stage`` different from the one ``populate`` saw (or calling without a
+        prior staged ``populate``) plans them now. Idempotent per scene: a scene
+        never receives the same callbacks twice, so it is safe to call this and
+        then :meth:`inject_entropy` (which also flushes pending callbacks).
+        """
+        st = _norm_stage(stage) if stage is not None else self._stage
+        if st is not None and st != self._stage:
+            self._stage = st
+            self._plan_callbacks(world, st)
+        if not self._pending or scene.id in self._callback_scenes:
+            return scene
+        new_beats: list[SceneBeat] = []
+        for name, kind, cb_stage in self._pending:
+            m = self._cast.get(name)
+            if m is None:
+                continue
+            new_beats.append(self._callback_beat(m, kind))
+        self._pending = []
+        self._callback_scenes.add(scene.id)
+        if new_beats:
+            scene.beats = list(scene.beats) + new_beats
+        return scene
+
+    def _callback_beat(self, m: "CastMember", kind: str) -> SceneBeat:
+        when = _STAGE_PHRASE.get(m.first_stage or "", "earlier on the road")
+        helped_before = m.treatment.get("helped", 0) + m.treatment.get("followed", 0)
+        if kind == "mentor_returns":
+            text = (f"{m.name}, who first met you {when}, is here again where it is "
+                    f"hardest. \"I said we'd meet once more. You already carry what "
+                    f"you need — use it.\"")
+            sym = "the mentor's return"
+        elif kind == "shadow_faced":
+            text = (f"{m.name} steps out of the dark and, this time, does not move "
+                    f"aside. \"No more going around me. Whatever you do next, you "
+                    f"do it facing me.\"")
+            sym = "the shadow"
+        elif kind == "ally_helps":
+            why = ("You helped me once. Let me return it." if helped_before
+                   else "You let me walk with you. I'm still walking.")
+            text = (f"{m.name}, who stood beside you {when}, arrives with exactly "
+                    f"what is needed. \"{why}\"")
+            sym = "the returning ally"
+        elif kind == "trust_issue":
+            text = (f"{m.name} — the one who fled when you called — comes back, eyes "
+                    f"low. \"I ran. I know I did. Will you trust me to stand with "
+                    f"you this time?\"")
+            sym = "trust"
+        else:  # witness
+            text = (f"{m.name}, who saw you {when}, is waiting at the edge of home "
+                    f"to see who has come back.")
+            sym = "the witness"
+        return SceneBeat(kind="dialogue", text=text, speaker=m.name,
+                         archetype=m.npc.archetype, symbol=sym)
 
     def _build_npc(
         self,
@@ -365,7 +760,13 @@ class NPCDirector:
         from the bucket best matching the world's location and the scene's theme,
         so the surprise *belongs* to the place (controlled entropy, not noise).
         Otherwise the scene is returned untouched.
+
+        Any callbacks planned by a staged :meth:`populate` are flushed into the
+        scene first (see :meth:`inject_callback`), so a loop that passes
+        ``stage=`` to ``populate`` needs no extra call.
         """
+        if self._pending:
+            scene = self.inject_callback(scene, world)
         if self.rng.random() >= self.entropy_prob:
             return scene
 
@@ -413,15 +814,49 @@ class NPCDirector:
         # Choose up to 3 reacting NPCs, prioritising variety of archetype.
         self.rng.shuffle(present)
         reactors = present[: min(3, len(present))]
-        if not reactors:
-            reactors = present[:1]
 
         reactions: list[str] = []
         for npc in reactors:
-            reactions.append(self._react_one(npc, action))
-        return reactions[:3] if reactions else [self._react_one(present[0], action)]
+            line, kind = self._react_one_kind(npc, action)
+            reactions.append(line)
+            self._note_reaction(npc, kind)
+        self._drift(present, action)
+        return reactions[:3]
+
+    def _note_reaction(self, npc: NPC, kind: str) -> None:
+        m = self._cast.get(npc.name) or self._register(npc, self._stage, managed=False)
+        m.interactions += 1
+        if kind == "help":
+            m.helped_you += 1
+        elif kind == "flee":
+            m.fled += 1
+
+    def _drift(self, present: list[NPC], action: UserAction) -> None:
+        """Move each present NPC's disposition by how the protagonist treated
+        them. NPCs named in the action feel it most; bystanders feel an echo."""
+        kind = classify_action(action.raw or "")
+        if kind is None:
+            return
+        low = (action.raw or "").lower()
+        named = [n for n in present if n.name.lower() in low]
+        for npc in present:
+            m = self._cast.get(npc.name) or self._register(npc, self._stage, managed=False)
+            table = _DRIFT.get(m.role, _DRIFT["default"])
+            weight = 1.0 if not named else (1.5 if npc in named else 0.3)
+            # Confronting a Shadow is the thing itself; confronting a bystander
+            # who isn't the target barely registers.
+            if kind == "confronted" and m.role == "shadow" and (not named or npc in named):
+                m.faced = True
+            delta = table[kind] * weight
+            npc.disposition = round(max(-1.0, min(1.0, npc.disposition + delta)), 3)
+            m.treatment[kind] = m.treatment.get(kind, 0) + 1
 
     def _react_one(self, npc: NPC, action: UserAction) -> str:
+        return self._react_one_kind(npc, action)[0]
+
+    def _react_one_kind(self, npc: NPC, action: UserAction) -> tuple[str, str]:
+        """One NPC's reaction line plus its kind: ``help``, ``flee``/``hold`` or
+        ``neutral``."""
         lib = self._lib(npc.archetype)
         # Base inclination to help, blending disposition and archetype bias.
         help_score = 0.5 + 0.5 * npc.disposition + 0.5 * lib.get("help_bias", 0.0)
@@ -430,15 +865,20 @@ class NPCDirector:
         swing = (self.rng.random() - 0.5) * 2.0 * npc.autonomy
         help_score += swing
 
+        kind = "neutral"
         if help_score >= 0.55:
             template = self.rng.choice(lib["reactions"])
             line = template.format(name=npc.name)
+            if lib.get("help_bias", 0.0) > 0.0:
+                kind = "help"
         elif help_score <= 0.2:
             # Defection / retreat — autonomous pushback.
             if npc.autonomy >= 0.6:
                 line = f"{npc.name} turns and flees, wanting no part of it"
+                kind = "flee"
             else:
                 line = f"{npc.name} hesitates and holds back, unwilling to commit"
+                kind = "hold"
         else:
             template = self.rng.choice(lib["reactions"])
             line = template.format(name=npc.name)
@@ -456,7 +896,7 @@ class NPCDirector:
                     ),
                 )
                 if text:
-                    return text.strip().split("\n")[0][:160]
+                    return text.strip().split("\n")[0][:160], kind
             except Exception:
                 pass
-        return line
+        return line, kind

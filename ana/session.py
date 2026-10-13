@@ -36,8 +36,23 @@ class ANASession:
         self.engine = engine
         self.config = config
 
-    def run(self, cycles: Optional[int] = None) -> list[CycleRecord]:
-        return self.engine.run(cycles if cycles is not None else self.config.max_cycles)
+    def run(self, cycles: Optional[int] = None, *, until_close: bool = False) -> list[CycleRecord]:
+        return self.engine.run(cycles if cycles is not None else self.config.max_cycles,
+                               until_close=until_close)
+
+    @property
+    def arc(self):
+        return self.engine.arc
+
+    def debrief(self, use_llm: Optional[bool] = None):
+        """A reflection back to the person on the journey so far (see engine.arc)."""
+        from .engine.arc import build_debrief
+
+        cast = getattr(self.engine.npc, "cast_summary", lambda: None)()
+        return build_debrief(
+            self.engine.history, gateway=self.gateway,
+            use_llm=self.config.use_llm if use_llm is None else use_llm,
+            arc=self.engine.arc, cast=cast)
 
     def step(self) -> CycleRecord:
         return self.engine.step()
