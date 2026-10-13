@@ -108,6 +108,35 @@ def doctor():
     console.print("[green]ready[/]" if ok else "[red]problems found[/]")
 
 
+@app.command("llm-check")
+def llm_check(cycles: int = 2, effort: str = "medium"):
+    """Live check of the Claude path: run a short journey with the model in the
+    loop and report exactly what came from the model vs. the fallback."""
+    from .llm.gateway import ModelGateway
+
+    gw = ModelGateway(effort=effort)
+    if not gw.available:
+        console.print("[yellow]No Anthropic credentials found.[/] Set ANTHROPIC_API_KEY "
+                      "(or run `ant auth login`) and try again.")
+        raise typer.Exit(1)
+    cfg = ANAConfig(use_llm=True, max_cycles=cycles, effort=effort)
+    sess = build_session(cfg, identity=_seed_lighthouse_identity(),
+                         observers=[ConsoleObserver()], gateway=gw)
+    records = sess.run()
+    sess.close()
+    from_model = sum(1 for r in records if r.scene.source == "llm")
+    s = gw.stats
+    console.print(f"\n[bold]Claude path check[/bold] ({gw.model}, effort={effort})")
+    console.print(f"  scenes from the model: {from_model}/{len(records)}")
+    console.print(f"  calls={s['calls']} ok={s['ok']} refusals={s['refusals']} "
+                  f"fallbacks_used={s['fallbacks_used']} errors={s['errors'] or 'none'}")
+    console.print(f"  tokens: in={s['input_tokens']} out={s['output_tokens']}")
+    if gw.last_error:
+        console.print(f"  last error: {gw.last_error}")
+    ok = from_model == len(records)
+    console.print("[green]model path live[/]" if ok else "[yellow]some cycles fell back to deterministic[/]")
+
+
 def _summary(sess) -> None:
     ident = sess.identity
     console.print(f"\n{'═' * 70}")

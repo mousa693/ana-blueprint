@@ -113,14 +113,21 @@ class Interpreter:
     # -- optional LLM ----------------------------------------------------
     def _interpret_llm(self, scene: Scene, action: UserAction, world: WorldState,
                        identity: IdentitySnapshot) -> Optional[Outcome]:
+        from ..llm.schemas import OUTCOME_SCHEMA
+
         system = (
-            "You are the interpretation step of ANA's Feedback Loop Engine. Given a "
-            "scene, the protagonist's action, and their identity, report the "
-            "consequences for the self as JSON with keys: summary (str), "
-            "themes_touched (list[str]), symbols (list[str]), lesson (str or null), "
-            "success (true/false/null), valence_delta (-1..1), arousal_delta (0..1), "
-            "stress_delta (-1..1), trait_updates (object mapping trait name to delta "
-            "-0.3..0.3). Be psychologically grounded and concise."
+            "You are the interpretation step of ANA, a simulation in which a "
+            "person's identity and a symbolic world shape each other. Given the "
+            "scene the protagonist just lived and what they chose to do, describe "
+            "what it meant for them: a one-sentence summary, the themes it "
+            "touched, the symbols that mattered, and — only if the moment earned "
+            "one — a short first-person lesson. `success` is true if they met the "
+            "challenge, false if they turned from it, null if neither applies. "
+            "Emotional deltas are small and honest: valence and stress in "
+            "[-0.4, 0.4], arousal in [0, 0.4]. Trait updates are deltas in "
+            "[-0.3, 0.3] on traits named like '<theme>_confidence' or the traits "
+            "the protagonist already has. Avoiding a challenge is not a moral "
+            "failure; read it with the same care as engaging."
         )
         user = (
             f"THEME: {scene.theme}\nINTENSITY: {scene.intensity}\n"
@@ -128,27 +135,41 @@ class Interpreter:
             f"BEATS:\n" + "\n".join(f"- {b.kind}: {b.text}" for b in scene.beats[:8]) +
             f"\nACTION: {action.raw}\n"
             f"ACTIVE THEMES: {identity.active_themes}\n"
+            f"CURRENT TRAITS: {[(t.name, round(t.value, 2)) for t in identity.traits]}\n"
         )
-        data = self.gateway.complete_json(system, user)
+        data = self.gateway.structured(system, user, OUTCOME_SCHEMA, effort="low")
         if not data:
             return None
+
+        def clamp(x, lo, hi):
+            return max(lo, min(hi, float(x)))
+
         try:
+            raw_traits = data.get("trait_updates") or []
+            if isinstance(raw_traits, dict):  # tolerate the legacy mapping shape
+                raw_traits = [{"trait": k, "delta": v} for k, v in raw_traits.items()]
+            trait_updates = {
+                str(t["trait"]): clamp(t["delta"], -0.3, 0.3)
+                for t in raw_traits if isinstance(t, dict) and t.get("trait")
+            }
+            themes = [str(t) for t in (data.get("themes_touched") or []) if str(t).strip()]
+            success = data.get("success")
             return Outcome(
                 scene_id=scene.id,
                 summary=str(data.get("summary", "")),
                 user_action=action,
                 emotion_delta=EmotionalState(
-                    valence=float(data.get("valence_delta", 0.0)),
-                    arousal=float(data.get("arousal_delta", 0.0)),
-                    stress=float(data.get("stress_delta", 0.0)),
+                    valence=clamp(data.get("valence_delta", 0.0), -0.4, 0.4),
+                    arousal=clamp(data.get("arousal_delta", 0.0), 0.0, 0.4),
+                    stress=clamp(data.get("stress_delta", 0.0), -0.4, 0.4),
                 ),
-                themes_touched=list(data.get("themes_touched") or [scene.theme]),
-                symbols=list(data.get("symbols") or scene.symbols)[:6],
-                lesson=data.get("lesson") or None,
-                trait_updates={k: float(v) for k, v in (data.get("trait_updates") or {}).items()},
-                success=data.get("success"),
+                themes_touched=themes or [scene.theme],
+                symbols=[str(s) for s in (data.get("symbols") or scene.symbols)][:6],
+                lesson=(str(data["lesson"]).strip() or None) if data.get("lesson") else None,
+                trait_updates=trait_updates,
+                success=success if isinstance(success, bool) else None,
             )
-        except (TypeError, ValueError):
+        except (TypeError, ValueError, KeyError):
             return None
 
 

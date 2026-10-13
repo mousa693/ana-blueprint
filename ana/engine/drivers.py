@@ -109,10 +109,14 @@ class AutonomousDriver:
         return UserAction(raw=scene.choices[idx], choice_index=idx)
 
     def _act_llm(self, scene: Scene, identity: IdentitySnapshot) -> Optional[UserAction]:
+        from ..llm.schemas import ACTION_SCHEMA
+
         system = (
-            "You roleplay the protagonist of an inner-journey simulation. Given the "
-            "scene and your identity, respond with ONE short first-person action "
-            "(1-2 sentences), in character. Output only the action text."
+            "You are the protagonist of an inner-journey simulation, acting from "
+            "your traits and mood rather than from what would be ideal. Given the "
+            "scene, say what you do next in one or two first-person sentences. If "
+            "one of the offered choices is what you do, set choice_index to its "
+            "0-based index; otherwise null."
         )
         user = (
             f"MY TRAITS: {[(t.name, round(t.value,2)) for t in identity.traits]}\n"
@@ -121,7 +125,10 @@ class AutonomousDriver:
             + "\n".join(f"- {b.text}" for b in scene.beats[:6])
             + (f"\nCHOICES: {scene.choices}" if scene.choices else "")
         )
-        text = self.gateway.complete(system, user)
-        if not text:
+        data = self.gateway.structured(system, user, ACTION_SCHEMA, effort="low")
+        if not data or not str(data.get("action", "")).strip():
             return None
-        return UserAction(raw=text.strip())
+        idx = data.get("choice_index")
+        if not (isinstance(idx, int) and 0 <= idx < len(scene.choices)):
+            idx = None
+        return UserAction(raw=str(data["action"]).strip(), choice_index=idx)

@@ -42,6 +42,10 @@ class ANASession:
     def step(self) -> CycleRecord:
         return self.engine.step()
 
+    @property
+    def gateway(self) -> Optional[ModelGateway]:
+        return getattr(self.engine.generative, "gateway", None)
+
     def close(self) -> None:
         self.identity.close()
 
@@ -53,6 +57,7 @@ def build_session(
     driver: Optional[Driver] = None,
     observers: Optional[list[Observer]] = None,
     persist_shards: bool = False,
+    gateway: Optional[ModelGateway] = None,
 ) -> ANASession:
     """Assemble a full ANA session with the default module implementations.
 
@@ -63,8 +68,9 @@ def build_session(
     config = config or ANAConfig()
     config.ensure_dirs()
 
-    gateway = ModelGateway(model=config.model, max_tokens=config.max_tokens,
-                           enabled=config.use_llm)
+    gateway = gateway or ModelGateway(
+        model=config.model, max_tokens=config.max_tokens, enabled=config.use_llm,
+        effort=config.effort, use_fallbacks=config.use_fallbacks)
 
     if identity is None:
         mem = ShardMemory(db_path=config.shard_db if persist_shards else None)

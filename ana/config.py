@@ -10,8 +10,9 @@ class ANAConfig:
     # Model gateway
     model: str = "claude-opus-5-5"
     use_llm: bool = True            # if False, everything runs deterministically
-    max_tokens: int = 2000
-    temperature_hint: str = "adaptive"  # thinking mode hint
+    max_tokens: int = 16000          # non-streaming ceiling; scenes use far less
+    effort: str = "medium"           # Opus 5.5 effort: low|medium|high|xhigh|max
+    use_fallbacks: bool = True       # server-side refusal fallbacks
 
     # Loop
     max_cycles: int = 12

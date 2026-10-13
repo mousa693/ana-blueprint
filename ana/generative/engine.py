@@ -109,6 +109,33 @@ _COOL = ["grey", "slate", "pale", "thin", "steel-blue"]
 _NEUTRAL = ["even", "muted", "quiet", "level", "clear"]
 
 
+_SCENE_SYSTEM = """\
+You are the Generative Experience Engine of ANA, a simulation in which a person's
+inner identity ("Me") and a symbolic world ("Myself") shape each other in a loop.
+Your job is to dream the next scene the protagonist lives through.
+
+What makes a scene good here:
+- It is a concrete, sensory moment in a specific place, not an abstract lesson.
+  The world mirrors the protagonist's inner state through symbol and situation,
+  without ever naming the psychology outright.
+- It realises the current Hero's-Journey movement and the target theme, and it
+  leaves the protagonist a real decision: 2-4 choices that differ in what they
+  cost, including at least one quieter or reflective option.
+- NPCs speak as themselves, in short lines, with their own wants. A Shadow figure
+  can be uncomfortable; a Mentor can be wrong. Nobody lectures.
+- Recalled memories and any synchronicity are woven in lightly, as echoes the
+  protagonist might or might not notice.
+- Intensity should land near the requested value. If the constraints ask for
+  gentleness or hope, the scene is safe, warm, and unhurried.
+- The material is symbolic and personal and can be dark, but it never depicts
+  graphic violence, self-harm, or content that could hurt the person reading it.
+
+Write 3-6 beats. Keep each beat to one to three sentences. Put spoken lines in
+"dialogue" beats with the speaker's name, and use a "synchronicity" beat only if a
+synchronicity was requested. `symbols` lists the symbolic objects that appear.
+"""
+
+
 class ExperienceEngine:
     """Deterministic-first implementation of the ``GenerativeEngine`` protocol.
 
@@ -144,20 +171,12 @@ class ExperienceEngine:
 
     # -- LLM path --------------------------------------------------------
     def _generate_llm(self, request: GenerationRequest) -> Optional[Scene]:
-        """Ask the gateway for a scene as JSON and map it into a Scene."""
-        system = (
-            "You are ANA's Generative Experience Engine, the dream-maker in a "
-            "recursive loop between an Identity Core and an Environment Mirror. "
-            "Dream the next scene the protagonist lives through, as an "
-            "instantiation of a Hero's Journey stage fitted to their themes. "
-            "Return JSON with keys: title (str), summary (str), theme (str), "
-            "intensity (number 0..1), beats (list of {kind, text, speaker?, "
-            "symbol?} where kind is one of description|dialogue|event|choice|"
-            "synchronicity), choices (list of str), symbols (list of str)."
-        )
+        """Ask the gateway for a schema-conformant scene and map it into a Scene."""
+        from ..llm.schemas import SCENE_SCHEMA
+
         user = self._llm_prompt(request)
         try:
-            data = self.gateway.complete_json(system, user)
+            data = self.gateway.structured(_SCENE_SYSTEM, user, SCENE_SCHEMA)
         except Exception:
             data = None
         if not isinstance(data, dict):
@@ -216,6 +235,13 @@ class ExperienceEngine:
             intensity = float(data.get("intensity", request.target_intensity))
         except (TypeError, ValueError):
             intensity = request.target_intensity
+        # The Self-Alignment Protocols own pacing: keep the model's chosen
+        # intensity near what alignment asked for, and cap it when gentleness was
+        # requested.
+        t = request.target_intensity
+        intensity = max(t - 0.2, min(t + 0.15, intensity))
+        if self._is_gentle(request):
+            intensity = min(intensity, 0.4)
         theme = str(data.get("theme") or self._pick_theme(request))
         return Scene(
             title=str(data.get("title") or theme.title()),
