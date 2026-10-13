@@ -41,6 +41,11 @@ class ANASession:
                                until_close=until_close)
 
     @property
+    def persistent(self) -> bool:
+        """True iff the identity's shards are being written to disk."""
+        return self.identity.memory.persistent
+
+    @property
     def arc(self):
         return self.engine.arc
 
@@ -77,8 +82,22 @@ def build_session(
     """Assemble a full ANA session with the default module implementations.
 
     If `identity` is not supplied, an empty Identity Core is created (seed it
-    afterwards or before calling .run). `persist_shards=True` backs the memory
-    with an on-disk SQLite store at config.shard_db.
+    afterwards or before calling .run).
+
+    `persist_shards=True` backs the identity's memory with the SQLite store at
+    config.shard_db, scoped to the identity's `identity_id` (so different
+    identities sharing one DB never recall each other's shards):
+
+      * no `identity` -> a new identity (id = config.identity_id or derived from
+        its name) with persistent memory;
+      * an `identity` whose memory is already persistent -> used as is;
+      * an `identity` with in-memory memory (the usual seeded case) -> its
+        memory is attached to config.shard_db via
+        `IdentityCore.attach_persistent_memory`: earlier sessions' shards for
+        that identity are loaded and the seeded shards are copied across.
+
+    If the DB cannot be opened, a RuntimeWarning is issued, the error is logged
+    and `session.persistent` is False (memory stays in-process).
     """
     config = config or ANAConfig()
     config.ensure_dirs()
@@ -88,8 +107,13 @@ def build_session(
         effort=config.effort, use_fallbacks=config.use_fallbacks)
 
     if identity is None:
-        mem = ShardMemory(db_path=config.shard_db if persist_shards else None)
-        identity = IdentityCore(memory=mem)
+        if persist_shards:
+            identity = IdentityCore.with_persistent_memory(
+                config.shard_db, identity_id=config.identity_id)
+        else:
+            identity = IdentityCore(memory=ShardMemory(), identity_id=config.identity_id)
+    elif persist_shards and not identity.memory.persistent:
+        identity.attach_persistent_memory(config.shard_db)
 
     environment = EnvironmentMirror()
     generative = ExperienceEngine(gateway=gateway, seed=config.seed,

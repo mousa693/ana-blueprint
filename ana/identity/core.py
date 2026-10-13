@@ -33,7 +33,7 @@ from ..contracts import (
     Trait,
 )
 from .journal import Journal
-from .memory import ShardMemory
+from .memory import ShardMemory, scope_id
 
 # ─────────────────────────────────────────────────────────────
 # Theme lexicon — word stems that point at a canonical theme
@@ -157,9 +157,27 @@ def first_person_past(description: str) -> str:
 
 
 class IdentityCore:
+    """The protagonist's self-state.
+
+    `identity_id` is a stable, tag-safe key for this identity (explicit, else the
+    memory's scope, else derived from `name`: "the wanderer" -> "the-wanderer").
+    Persistent memories are scoped by it, so several identities can share one
+    shard DB without recalling each other's visions or lessons. To create a
+    persistent identity use `IdentityCore.with_persistent_memory(db_path, ...)`
+    (or `IdentityCore(memory=ShardMemory(db_path=..., scope=<id>))`); an existing
+    in-memory identity can be moved onto a DB with `attach_persistent_memory`.
+    """
+
     def __init__(self, *, name: str = "the protagonist",
-                 memory: Optional[ShardMemory] = None):
+                 memory: Optional[ShardMemory] = None,
+                 identity_id: Optional[str] = None):
         self.name = name
+        if identity_id:
+            self.identity_id = scope_id(identity_id)
+        elif memory is not None and memory.scope:
+            self.identity_id = memory.scope
+        else:
+            self.identity_id = scope_id(name)
         self.tick = 0
         self.traits: dict[str, Trait] = {}
         self.beliefs: list[str] = []
@@ -171,6 +189,32 @@ class IdentityCore:
         self.journal = Journal()
         # Fulfilment statements ("I became ...") in the order they happened.
         self._fulfilled: list[str] = []
+
+    # -- persistence -----------------------------------------------------
+    @classmethod
+    def with_persistent_memory(cls, db_path: str, *, name: str = "the protagonist",
+                               identity_id: Optional[str] = None,
+                               strict: bool = False) -> "IdentityCore":
+        """An identity whose shards persist in `db_path`, scoped to its id."""
+        iid = scope_id(identity_id or name)
+        return cls(name=name, identity_id=iid,
+                   memory=ShardMemory(db_path=db_path, scope=iid, strict=strict))
+
+    def attach_persistent_memory(self, db_path: str, *, strict: bool = False) -> int:
+        """Move this identity's memory onto the SQLite store at `db_path`, scoped
+        to `identity_id`. Shards from earlier sessions of the same identity are
+        loaded; anything already recorded in the current (in-memory) memory —
+        e.g. seeded beliefs and visions — is copied across, skipping content the
+        store already holds. No-op if the memory is already persistent.
+        Returns the number of nodes copied."""
+        if self.memory.persistent:
+            return 0
+        new = ShardMemory(db_path=db_path, scope=self.identity_id, strict=strict)
+        old = self.memory
+        copied = new.import_from(old)
+        self.memory = new
+        old.close()
+        return copied
 
     # -- seeding ---------------------------------------------------------
     def set_trait(self, name: str, value: float, confidence: float = 0.6) -> None:
@@ -262,9 +306,10 @@ class IdentityCore:
         # traits
         for name, delta in outcome.trait_updates.items():
             cur = self.traits.get(name)
-            base = cur.value if cur else 0.5
-            self.set_trait(name, base + delta,
-                           confidence=min(1.0, (cur.confidence if cur else 0.5) + 0.05))
+            # Explicit None checks: a trait of exactly 0.0 must stay 0.0-based.
+            base = cur.value if cur is not None else 0.5
+            conf = cur.confidence if cur is not None else 0.5
+            self.set_trait(name, base + delta, confidence=min(1.0, conf + 0.05))
 
         # themes
         for theme in outcome.themes_touched:

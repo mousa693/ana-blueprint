@@ -397,6 +397,11 @@ class MemoryNode:
         )
 
 
+def _stable_key(node: MemoryNode) -> Tuple[float, str]:
+    """ANA fix: deterministic tie‑breaker that never depends on the random id."""
+    return (node.created, str(node.content))
+
+
 @dataclass
 class MemoryCluster:
     """Hierarchical grouping of memory nodes."""
@@ -612,9 +617,18 @@ class MCMG:
         self._last_decay = time.time()
         self._decay_count = 0
         self._db: Optional[sqlite3.Connection] = None
+        # ANA fix: remember why a requested DB could not be opened so callers can
+        # detect the in-memory fallback instead of degrading silently.
+        self.db_path: Optional[str] = db_path
+        self.db_error: Optional[str] = None
         if db_path:
             try:
-                Path(self.config.shard_dir).mkdir(exist_ok=True)
+                # ANA fix: parents=True, and also create the DB file's own parent
+                # directory; previously a missing ./ana_run made mkdir raise and the
+                # engine silently fell back to in-memory only.
+                Path(self.config.shard_dir).mkdir(parents=True, exist_ok=True)
+                if db_path != ":memory:":
+                    Path(db_path).parent.mkdir(parents=True, exist_ok=True)
                 # allow cross‑thread use; SQLite remains synchronous
                 self._db = sqlite3.connect(db_path, check_same_thread=False)
                 self._db.row_factory = sqlite3.Row
@@ -623,7 +637,13 @@ class MCMG:
                 self._load_shards()
             except Exception as e:
                 logger.error(f"Failed to initialise DB at {db_path}: {e}")
+                self.db_error = f"{type(e).__name__}: {e}"  # ANA fix: expose failure
                 self._db = None  # fallback to in‑memory only
+
+    @property
+    def persistent(self) -> bool:
+        """ANA fix: True iff nodes are being durably written to SQLite."""
+        return self._db is not None
 
     # ------------------------------------------------------------------
     # Private helpers
@@ -678,14 +698,22 @@ class MCMG:
                 "SELECT data FROM nodes WHERE is_shard = 1 OR origin = ?",
                 (CoreOrigin.IDENTITY.value,),
             )
+            loaded: List[MemoryNode] = []
             for row in cursor:
                 try:
                     node_dict = json.loads(row["data"])
-                    node = MemoryNode.from_dict(node_dict)
-                    self._nodes[node.id] = node
-                    self._index.add(node)
+                    loaded.append(MemoryNode.from_dict(node_dict))
                 except json.JSONDecodeError as e:
                     logger.warning(f"Failed to load shard: {e}")
+            # ANA fix: SQLite row order is unspecified (INSERT OR REPLACE re-rowids
+            # on every touch), so insert in creation order for deterministic
+            # iteration; and recompute embeddings (they are not persisted), else
+            # semantic recall over reloaded shards silently returns nothing.
+            loaded.sort(key=_stable_key)
+            for node in loaded:
+                node.embedding = self._embedder.embed(str(node.content))
+                self._nodes[node.id] = node
+                self._index.add(node)
             logger.info("Loaded %d shards/identity nodes from DB", len(self._nodes))
         except Exception as e:
             logger.error(f"Failed to load shards: {e}")
@@ -716,6 +744,15 @@ class MCMG:
     def _collect_persistable_nodes_unsafe(self) -> List[MemoryNode]:
         """Return a list of nodes that need durable persistence (shards and identity)."""
         return [n for n in self._nodes.values() if n.is_shard or n.origin == CoreOrigin.IDENTITY]
+
+    def _ordered_unsafe(self, ids: FrozenSet[str]) -> List[MemoryNode]:
+        """ANA fix: nodes for ``ids`` ranked by effective score, ties broken by
+        creation time then content.  Iterates the insertion‑ordered node dict
+        rather than the frozenset, whose order follows the (random UUID4) ids'
+        string hashes and made tag recall order vary run to run."""
+        nodes = [n for n in self._nodes.values() if n.id in ids]
+        nodes.sort(key=lambda n: (-n.effective_score(),) + _stable_key(n))
+        return nodes
 
     def _eligible(
         self,
@@ -925,7 +962,10 @@ class MCMG:
                             visited.add(assoc.target_id)
                             next_frontier.append((assoc.target_id, score))
                     frontier = next_frontier
-            results = sorted(candidates.values())[:top_k] if top_k else sorted(candidates.values())
+            # ANA fix: explicit deterministic tie-break (creation time, then content)
+            # rather than relying on dict/BFS order for equal scores.
+            ordered = sorted(candidates.values(), key=lambda r: (-r.score,) + _stable_key(r.node))
+            results = ordered[:top_k] if top_k else ordered
             # touch and mark persistable nodes
             for r in results:
                 r.node.touch()
@@ -936,14 +976,21 @@ class MCMG:
             await self._persist_node(n)
         return results
 
-    async def recall_by_tag(self, tag: str, allow_restricted: bool = False) -> List[MemoryNode]:
+    async def recall_by_tag(
+        self,
+        tag: str,
+        allow_restricted: bool = False,
+        *,
+        context_tags: Optional[Set[str]] = None,
+    ) -> List[MemoryNode]:
+        # ANA fix: optional ``context_tags`` narrows to nodes that also carry all
+        # of those tags (ANA uses it to scope recall to one identity).
         persist_nodes: List[MemoryNode] = []
         async with self._lock:
-            ids = self._index.by_tag(tag)
-            nodes = [self._nodes[i] for i in ids if i in self._nodes]
+            ids = self._index.by_tags({tag} | set(context_tags)) if context_tags else self._index.by_tag(tag)
+            nodes = self._ordered_unsafe(ids)
             if not allow_restricted:
                 nodes = [n for n in nodes if not n.is_restricted]
-            nodes.sort(key=lambda n: n.effective_score(), reverse=True)
             for n in nodes:
                 if n.is_shard or n.origin == CoreOrigin.IDENTITY:
                     persist_nodes.append(n)
@@ -956,10 +1003,9 @@ class MCMG:
         persist_nodes: List[MemoryNode] = []
         async with self._lock:
             ids = self._index.by_cluster(cluster_id)
-            nodes = [self._nodes[i] for i in ids if i in self._nodes]
+            nodes = self._ordered_unsafe(ids)  # ANA fix: deterministic order
             if not allow_restricted:
                 nodes = [n for n in nodes if not n.is_restricted]
-            nodes.sort(key=lambda n: n.effective_score(), reverse=True)
             for n in nodes:
                 if n.is_shard or n.origin == CoreOrigin.IDENTITY:
                     persist_nodes.append(n)

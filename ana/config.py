@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Optional
 
 
 @dataclass
@@ -34,7 +35,20 @@ class ANAConfig:
 
     # Persistence
     data_dir: Path = Path("./ana_run")
-    shard_db: str = "./ana_run/shards.db"
+    # SQLite shard store used when build_session(persist_shards=True). Defaults
+    # to <data_dir>/shards.db. One DB may hold many identities: shards are
+    # scoped per IdentityCore.identity_id.
+    shard_db: Optional[str] = None
+    # Identity id for the default identity build_session creates when none is
+    # supplied (None -> derived from its name, "the-protagonist").
+    identity_id: Optional[str] = None
+
+    def __post_init__(self) -> None:
+        self.data_dir = Path(self.data_dir)
+        if self.shard_db is None:
+            self.shard_db = str(self.data_dir / "shards.db")
 
     def ensure_dirs(self) -> None:
         self.data_dir.mkdir(parents=True, exist_ok=True)
+        if self.shard_db and self.shard_db != ":memory:":
+            Path(self.shard_db).parent.mkdir(parents=True, exist_ok=True)
