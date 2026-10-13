@@ -32,11 +32,12 @@
       </div>
 
       <form id="live-form" class="control-group live" aria-label="Start live journey">
-        <label class="field"><span>cycles</span><input id="live-cycles" type="number" min="1" max="200" value="8" inputmode="numeric"></label>
+        <label class="field"><span id="live-cycles-label">max cycles</span><input id="live-cycles" type="number" min="1" max="200" value="40" inputmode="numeric"></label>
         <label class="field"><span>seed</span><input id="live-seed" type="number" value="42" inputmode="numeric"></label>
         <label class="field"><span>driver</span>
           <select id="live-driver"><option value="auto">auto</option><option value="scripted">scripted</option></select>
         </label>
+        <label class="field check" title="Stop when the journey comes home (the return has been lived)"><input id="live-until" type="checkbox" checked><span>until home</span></label>
         <button type="submit" class="btn btn-primary" id="live-start">
           <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 4v12l10-6z"/></svg>
           <span>Start live journey</span>
@@ -57,6 +58,14 @@
     <section id="run-view" hidden>
       <div id="tiles" class="tiles" aria-label="Run summary"></div>
 
+      <section class="panel track-panel" aria-labelledby="track-title">
+        <header class="track-head">
+          <h2 id="track-title">Hero's journey</h2>
+          <p id="track-chapter" class="panel-sub"></p>
+        </header>
+        <ol id="track" class="track" aria-label="Stages of the journey"></ol>
+      </section>
+
       <div class="layout">
         <aside class="instruments" aria-label="Instruments">
           <section class="panel">
@@ -66,6 +75,24 @@
             </header>
             <div id="chart-convergence" class="chart chart-lg"></div>
             <div id="legend-convergence" class="legend"></div>
+          </section>
+
+          <section class="panel">
+            <header class="panel-head">
+              <h2>Chapters &amp; milestones</h2>
+              <p class="panel-sub">consecutive cycles in one stage form a chapter</p>
+            </header>
+            <ol id="chapters" class="chapters" aria-label="Chapters"></ol>
+            <h3 class="mini-head">Milestones</h3>
+            <ul id="milestones" class="milestones"></ul>
+          </section>
+
+          <section id="cast-panel" class="panel" hidden>
+            <header class="panel-head">
+              <h2>Cast</h2>
+              <p class="panel-sub">who you met, and how they came to feel about you</p>
+            </header>
+            <table id="cast" class="cast-table" aria-label="Cast"></table>
           </section>
 
           <section class="panel">
@@ -102,9 +129,11 @@
           <header class="timeline-head">
             <h2>Journey</h2>
             <p id="run-meta" class="panel-sub"></p>
+            <a id="jump-debrief" class="jump" href="#debrief" hidden>Read the debrief ↓</a>
           </header>
           <ol id="timeline" class="timeline"></ol>
           <div id="live-tail" class="live-tail" hidden><span class="pulse"></span><span>dreaming the next cycle…</span></div>
+          <section id="debrief" class="panel debrief" aria-label="Debrief" hidden></section>
         </section>
       </div>
     </section>

@@ -30,15 +30,20 @@ interpreter, and the autonomous driver can use it; otherwise each falls back to 
 transparent deterministic path. Nothing else in the system imports the provider.
 
 ```bash
-pip install -e .          # or: pip install -e ".[llm,dev]"
-ana-run doctor            # environment check
-ana-run demo              # the deterministic "lighthouse" journey from the PDF
-ana-run auto --cycles 12  # an autonomous journey: the self acts for itself
-ana-run play              # interactive: you are the protagonist
+pip install -e .            # or: pip install -e ".[llm,dev]"
+ana-run doctor              # environment check
+ana-run journey --seed 4    # a whole journey: lives until it comes home, then a debrief
+ana-run demo                # the deterministic "lighthouse" journey from the PDF
+ana-run auto --cycles 12    # an autonomous journey: the self acts for itself
+ana-run play                # interactive: you are the protagonist
+python -m ana.web           # the journey viewer at http://127.0.0.1:8765
+python -m ana.eval          # the evaluation rubric (docs/EVAL.md)
 ```
 
-Add `--use-llm` to `auto` (with credentials) to let Claude dream the scenes and
-roleplay the protagonist. Add `--log run.jsonl` to record every cycle for replay.
+With credentials (`ANTHROPIC_API_KEY`, or `ant auth login`), add `--use-llm` to let
+Claude Opus 5.5 dream the scenes, interpret what they meant, roleplay the
+protagonist, and write the debrief. `ana-run llm-check` is a one-command live
+check of that path. `--log run.jsonl` records every cycle for the viewer.
 
 ## The loop
 
@@ -63,12 +68,35 @@ scene, alignment report, harmonizer verdict, outcome, convergence, surprises).
 
 ## What "alive" means here
 
-The loop is a single persistent process that carries one continuous, evolving
-model of a self forward across cycles, acts on its own clock via the autonomous
-driver, and changes itself from what happens. Run `ana-run auto` and watch the
-Hero's‑Journey stage advance (Call → Threshold → Mentor → Ordeal → Reward →
-Return), the world move, traits shift, lessons form, and convergence climb from
-near‑zero toward one.
+The loop is a single persistent process carrying one continuous, evolving model
+of a self. It acts on its own clock, changes itself from what happens, and
+remembers itself: a journal notices trends ("growing in leadership, 4 of 4 met;
+still turning from purpose"), goals advance by meaning, and "memories of the
+future" are reinforced as the self grows toward them and marked fulfilled when it
+gets there.
+
+**Convergence is earned.** Each cycle the Self-Alignment Protocols turn what
+actually happened — was the theme reflected, did the self meet or turn from the
+challenge, was a lesson integrated, was there a shock — into a signal coupled
+into the pi-phi cores. An engaged self converges; an avoidant one doesn't; a
+shock dips it and it recovers. Across the evaluation suite the correlation
+between meeting a challenge and convergence rising is 0.68 (it was 0.09 when
+convergence was time-driven).
+
+**The journey has a shape.** A journey arc walks the Hero's Journey in order —
+Call, Threshold, Mentor, Ordeal, Reward, Return — the place follows the story,
+the cast persists and calls back (the mentor returns at the ordeal, the shadow
+must be faced, an early ally helps at the reward, someone witnesses the
+homecoming), and when the self has come home the run ends with a **debrief**: a
+warm, specific reflection on the chapters, turning points, lessons, how the self
+changed, who walked with it, and questions to carry home. See
+`examples/sample_debrief.md`.
+
+**It is measured.** `python -m ana.eval` runs engaged, avoidant, mixed,
+autonomous and scripted selves across seeds and scores the journeys against a
+rubric (earned convergence, journey progression, variety, theme coverage,
+safety). Current: 7/7 — see `docs/EVAL.md`, and `docs/EVAL_BASELINE.md` for where
+it started (2/7).
 
 ## Layout
 
@@ -79,16 +107,21 @@ ana/
   interfaces.py     Protocols: each module is swappable
   config.py         runtime configuration
   llm/gateway.py    replaceable, optional model bridge (Claude Opus 5.5)
-  identity/         Identity Core ("Me") + Memory Shard System (over MCMG)
+  identity/         Identity Core ("Me"), journal / meta-analysis,
+                    Memory Shard System (over MCMG)
   environment/      Environment Mirror ("Myself") + reflectiveness dial
-  engine/           convergence (pi-phi), interpreter, drivers, feedback loop
+  engine/           convergence (pi-phi, earned), arc + debrief, interpreter,
+                    drivers, feedback loop
   generative/       Generative Experience Engine (the dream-maker)
   npc/              NPC / Entropy Layer
   subsystems/       Synchronicity · Self-Alignment · World-Truth Harmonizer
   observers.py      console + JSONL cycle observers
   session.py        assembles a full session from config
-  cli.py            demo / auto / play / doctor
-tests/              hermetic, offline test suite
+  cli.py            journey / demo / auto / play / doctor / llm-check
+  web/              journey viewer (FastAPI + vanilla JS, live SSE runs)
+  eval/             evaluation harness + rubric
+tests/              hermetic, offline test suite (incl. the Claude path via a
+                    mocked transport)
 docs/ARCHITECTURE.md   blueprint section → module map
 ```
 

@@ -223,7 +223,7 @@ _ENTROPY_BY_CUE: dict[str, list[tuple[str, Optional[str]]]] = {
     "generic": [
         ("The air shifts without warning; something in the scene is subtly wrong.", "entropy"),
         ("A small object turns up where nothing should be — and it seems meant for you.", "gift"),
-        ("Someone nearby does the unexpected, and the moment tilts.", "surprise"),
+        ("Someone nearby does the unexpected, and the moment tilts.", "the unexpected turn"),
     ],
 }
 

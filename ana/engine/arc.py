@@ -339,7 +339,11 @@ class JourneyArc:
         faced = self._faced_shadow()
         if faced is not None:
             events.append((faced, 13, f"faced the Shadow at cycle {faced}"))
-        through = next((e for e in self.entries if e.stage == "ordeal" and e.success is True), None)
+        # "Came through" = the last ordeal cycle met before the reward began.
+        first_reward = next((e for e in self.entries if e.stage == "reward"), None)
+        ordeal_wins = [e for e in self.entries if e.stage == "ordeal" and e.success is True
+                       and (first_reward is None or e.cycle < first_reward.cycle)]
+        through = ordeal_wins[-1] if (ordeal_wins and first_reward) else None
         if through:
             events.append((through.cycle, 14, f"came through the ordeal at cycle {through.cycle}"))
         mirror = next((e for e in self.entries if e.convergence >= 0.5), None)

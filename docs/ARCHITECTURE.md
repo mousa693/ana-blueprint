@@ -30,19 +30,74 @@ converges: Omega expands, Alpha compresses, each keeps a predictive model of the
 other, and convergence is reached when those models stop being surprised.
 
 `ana/engine/convergence.py` steps that engine once per ANA cycle and reads a
-**journey‑scaled convergence** in `[0,1]`:
+**journey-scaled, earned convergence** in `[0,1]`:
 
 - **Omega (expansion)** = the environment / generative novelty pressure ("Myself").
 - **Alpha (compression)** = the identity integrating experience ("Me").
-- Convergence is a slow integrator seeded at **0** (fully divergent). It eases
-  toward the mutual‑prediction target as Me and Myself learn each other, and a
-  **surprise shock** from a turbulent scene transiently re‑opens the gap — exactly
-  the blueprint's "polarity convergence that can be perturbed and must be
-  re‑earned."
+- Each cycle the Self-Alignment Protocols compute an `AlignmentSignal` from what
+  actually happened: reflection `r` (did the world carry the self's themes),
+  engagement `e` (+1 met, -1 avoided), integration `i` (a lesson learned / a
+  trait grew), external surprise `x` (vision, entropy, intensity).
+- The signal is **coupled into the pi-phi state**: mismatch `(1-r)` and avoidance
+  add noise to what each core observes of the other, so their mutual prediction
+  `m` falls when self and world disagree.
+- Earned evidence accumulates: recent merit `M ← M + λ(μ − M)` with
+  `μ = 0.30r + 0.35e + 0.35i`, and a slow integrated-growth store
+  `I ← I + κ·i·(1−I) − δ·max(0,−e)·I`.
+- Target `T = m^γ · clip(0.45M + 0.55I)`; convergence eases toward it
+  (faster down than up), avoidance pulls it back, shocks dip it.
 
-Convergence then drives the Environment Mirror's reflectiveness dial and the
-Hero's‑Journey stage selection, so the inner dynamic literally shapes the outer
-world and the arc of the story.
+So an engaged, learning self converges (≈0.5–0.7 in 16 cycles), an avoidant one
+does not (≈0), a shock dips and recovers. Convergence drives the Environment
+Mirror's reflectiveness dial; the **journey arc** (below) drives the story stage.
+Phases: divergent → awakening → engaging → integrating → converged.
+
+## Journey arc, cast, and debrief (`ana/engine/arc.py`, `ana/npc/layer.py`)
+
+- `JourneyArc` tracks the Hero's-journey stage of every cycle and proposes the
+  next one: it moves forward when the self is ready (or after dwelling three
+  cycles), steps back at most once after a real slide, and never unwinds the
+  return. It records milestones and decides when the journey has come home.
+- The stage drives the world's place, the generated scene, and the cast. The
+  `NPCDirector` keeps a persistent registry whose dispositions drift with how
+  the protagonist treats each character, and stages callbacks: the mentor
+  returns and the shadow must be faced at the ordeal, an early ally helps at the
+  reward, a villager who fled asks to be trusted again, someone witnesses the
+  return.
+- `build_debrief(records, ...)` writes the reflection the blueprint calls for
+  under *User Control and Transparency*: chapters, turning points, lessons, how
+  the self changed, who walked with it, recurring symbols, open questions, a
+  closing image. Deterministic, or Claude-written via a strict schema.
+
+## Self-remembering (`ana/identity/core.py`, `ana/identity/journal.py`)
+
+- Goals carry themes from a lexicon, so "become someone who can lead" advances
+  when leadership is met (weighted by success, intensity, lessons, horizon) and
+  never advances on avoidance.
+- The `Journal` is the blueprint's *Meta-Analysis*: per-theme met/avoided
+  records, trends ("consistently improving on courage but still struggling with
+  purpose"), recurring symbols, symbols that have gone quiet (callbacks), and the
+  most-avoided theme (offered as the grand test). Insights travel in the
+  `IdentitySnapshot` and steer generation.
+- Memories of the future are reinforced each time the self advances toward them;
+  at 60% they are marked realised and a Prime shard "I became …" is linked to
+  the original vision in MCMG.
+
+## The Claude path (`ana/llm/`)
+
+One replaceable gateway; nothing else imports the provider. Requests use Claude
+Opus 5.5 with structured outputs (strict JSON schemas for scenes, outcomes,
+actions, debriefs), explicit effort, thinking left at its always-on default,
+server-side refusal fallbacks (`fallbacks: "default"`), and `stop_reason`
+checked before content. Any refusal, error, or truncation degrades to the
+deterministic path; every call is counted. `tests/test_llm.py` drives the real
+SDK through a mocked transport; `ana-run llm-check` verifies it live.
+
+## Evaluation (`ana/eval/`)
+
+A rubric over many seeded journeys: earned convergence (engaged > avoidant;
+correlation of success with convergence change), journey progression,
+repetition, nudge variety, theme coverage, and safety. Baseline 2/7 → 7/7.
 
 ## Data flow (one cycle)
 

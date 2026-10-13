@@ -47,24 +47,33 @@
   const cap = (s) => { s = str(s); return s ? s[0].toUpperCase() + s.slice(1) : s; };
 
   const STAGES = [
-    { key: "call", label: "The call to adventure", match: "call to adventure" },
-    { key: "threshold", label: "Crossing the threshold", match: "crossing the threshold" },
-    { key: "mentor", label: "Meeting the mentor", match: "meeting the mentor" },
-    { key: "ordeal", label: "The ordeal", match: "the ordeal" },
-    { key: "reward", label: "Seizing the reward", match: "seizing the reward" },
-    { key: "return", label: "The return", match: "the return" },
+    { key: "call", short: "Call", label: "The call to adventure", match: "call to adventure" },
+    { key: "threshold", short: "Threshold", label: "Crossing the threshold", match: "crossing the threshold" },
+    { key: "mentor", short: "Mentor", label: "Meeting the mentor", match: "meeting the mentor" },
+    { key: "ordeal", short: "Ordeal", label: "The ordeal", match: "the ordeal" },
+    { key: "reward", short: "Reward", label: "Seizing the reward", match: "seizing the reward" },
+    { key: "return", short: "Return", label: "The return", match: "the return" },
   ];
+  const stageIndex = (v) => {
+    const e = str(v).toLowerCase().trim();
+    return e ? STAGES.findIndex((s) => s.key === e || e.includes(s.match)) : -1;
+  };
 
-  /** Hero's-journey stage: explicit field if a future schema adds one, else the
-   *  stage label embedded in the title, else derived from convergence the same
-   *  way the generative engine picks it (marked `derived`). */
+  /** Hero's-journey stage, most exact first: `scene.stage` (logged by the
+   *  engine), a top-level stage field, the server's arc for this tick (it reads
+   *  stage symbols too), the stage label in the title, and finally derived from
+   *  convergence the way the generative engine picks it (marked `derived`). */
   function stageOf(r) {
-    const explicit = [r.stage, r.journey_stage, obj(r.scene).stage, obj(r.scene).journey_stage]
+    const explicit = [obj(r.scene).stage, r.stage, r.journey_stage, obj(r.scene).journey_stage]
       .find((v) => typeof v === "string" && v);
     if (explicit) {
-      const e = explicit.toLowerCase();
-      const i = STAGES.findIndex((s) => s.key === e || e.includes(s.match));
-      return { index: i, label: i >= 0 ? STAGES[i].label : cap(explicit), derived: false };
+      const i = stageIndex(explicit);
+      if (i >= 0) return { index: i, label: STAGES[i].label, derived: false, exact: true };
+    }
+    const fromArc = state.arcStage.get(num(r.tick));
+    if (fromArc !== undefined) {
+      const i = stageIndex(fromArc);
+      if (i >= 0) return { index: i, label: STAGES[i].label, derived: false };
     }
     const title = str(obj(r.scene).title).toLowerCase();
     let i = STAGES.findIndex((s) => title.includes(s.match));
@@ -76,6 +85,20 @@
 
   const worldOf = (r) => obj(obj(r.request).world);
   const tickOf = (r, i) => { const t = num(r.tick); return t === null ? i : t; };
+  // Cycles are numbered from 1, matching the engine's chapters and milestones.
+  const cycleNo = (i) => i + 1;
+
+  /** Consecutive same-stage runs over the loaded records. */
+  function chaptersOf(records) {
+    const out = [];
+    records.forEach((r, i) => {
+      const st = stageOf(r);
+      const last = out[out.length - 1];
+      if (last && last.index === st.index) last.end = i;
+      else out.push({ index: st.index, start: i, end: i, derived: st.derived });
+    });
+    return out;
+  }
 
   // ── state ───────────────────────────────────────────────────
   const state = {
@@ -85,6 +108,10 @@
     es: null,           // EventSource for live streams
     selected: null,     // index of the highlighted cycle
     traitOrder: [],     // stable first-seen order => stable colors
+    arc: null,          // /api/runs/{id}/arc payload
+    arcStage: new Map(),// tick -> stage from the server's arc
+    liveChapter: "",    // latest SSE `arc` chapter
+    debrief: null,      // /api/runs/{id}/debrief payload
   };
   const SERIES = ["--s1", "--s2", "--s3", "--s4", "--s5", "--s6", "--s7", "--s8"];
   const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
@@ -133,8 +160,14 @@
     }
     status("Loading run…");
     try {
-      const data = await api(`/api/runs/${encodeURIComponent(id)}`);
+      const enc = encodeURIComponent(id);
+      const [data, arc] = await Promise.all([
+        api(`/api/runs/${enc}`),
+        api(`/api/runs/${enc}/arc`).catch(() => null),
+      ]);
+      setArc(arc);
       startView(data, arr(data.records));
+      loadDebrief(id);
       const notes = [];
       if (num(data.skipped, 0)) notes.push(`${data.skipped} unreadable line(s) skipped`);
       if (num(data.partial, 0)) notes.push(`${data.partial} record(s) only partly matched the schema`);
@@ -172,12 +205,77 @@
         status(`Live run failed: ${msg}`, "bad");
       }
     });
-    es.addEventListener("done", () => {
+    es.addEventListener("arc", (ev) => {
+      let a;
+      try { a = JSON.parse(ev.data); } catch (_) { return; }
+      if (!isObj(a)) return;
+      state.liveChapter = str(a.chapter);
+      loadArcSoon(id);
+      scheduleRender();
+    });
+    es.addEventListener("done", (ev) => {
+      let d = {};
+      try { d = obj(JSON.parse(ev.data)); } catch (_) { /* ignore */ }
       stopStream();
-      status(`Live journey complete — ${state.records.length} cycles.`, "ok");
+      const n = num(d.cycles, state.records.length);
+      if (d.status === "error") { /* the error event already set the status */ }
+      else if (d.closed === true) status(`The journey came home after ${n} cycle${n === 1 ? "" : "s"}. Debrief below.`, "ok");
+      else status(`Live journey stopped at ${n} cycle${n === 1 ? "" : "s"}${d.closed === false ? " — it had not yet come home" : ""}.`, "ok");
+      if (state.run && state.run.id === id) {
+        state.run.closed = d.closed;
+        state.run.status = d.status === "error" ? "error" : "complete";
+        scheduleRender();
+      }
       $("#live-start").disabled = false;
       refreshRuns(id).catch(() => {});
+      loadArc(id).then(() => scheduleRender());
+      loadDebrief(id);
     });
+  }
+
+  // ── arc + debrief ───────────────────────────────────────────
+  function setArc(a) {
+    state.arc = isObj(a) ? a : null;
+    state.arcStage = new Map();
+    for (const e of arr(state.arc && state.arc.entries)) {
+      const t = num(obj(e).tick);
+      if (t !== null && e.stage) state.arcStage.set(t, str(e.stage));
+    }
+  }
+
+  async function loadArc(id) {
+    try {
+      const a = await api(`/api/runs/${encodeURIComponent(id)}/arc`);
+      if (state.run && state.run.id === id) setArc(a);
+    } catch (_) { /* the panel falls back to client-side chapters */ }
+  }
+
+  // At most one arc request in flight during a live stream (plus one trailing).
+  let arcBusy = false, arcAgain = false;
+  function loadArcSoon(id) {
+    if (arcBusy) { arcAgain = true; return; }
+    arcBusy = true;
+    loadArc(id).finally(() => {
+      arcBusy = false;
+      scheduleRender();
+      if (arcAgain) { arcAgain = false; loadArcSoon(id); }
+    });
+  }
+
+  async function loadDebrief(id) {
+    try {
+      const d = await api(`/api/runs/${encodeURIComponent(id)}/debrief`);
+      if (!state.run || state.run.id !== id) return;
+      state.debrief = obj(d);
+      renderDebrief();
+      renderCast();
+    } catch (e) {
+      if (state.run && state.run.id === id) {
+        const el = clear($("#debrief"));
+        el.hidden = false;
+        el.append(h("p", { class: "panel-sub" }, `No debrief: ${e.message}`));
+      }
+    }
   }
 
   // ── view lifecycle ──────────────────────────────────────────
@@ -186,18 +284,25 @@
     state.records = [];
     state.selected = null;
     state.traitOrder = [];
+    state.debrief = null;
+    state.liveChapter = "";
+    if (!records.length) setArc(null);
     clear($("#timeline"));
+    clear($("#debrief")).hidden = true;
+    $("#jump-debrief").hidden = true;
+    clear($("#cast")); $("#cast-panel").hidden = true;
     $("#empty").hidden = true;
     $("#run-view").hidden = false;
     for (const r of records) addRecord(r, { quiet: true });
     renderSummary();
     renderCharts();
+    renderChapters();
   }
 
   let pending = 0;
   function scheduleRender() {
     if (pending) return;
-    pending = requestAnimationFrame(() => { pending = 0; renderSummary(); renderCharts(); });
+    pending = requestAnimationFrame(() => { pending = 0; renderSummary(); renderCharts(); renderChapters(); });
   }
 
   function addRecord(rec, { quiet = false } = {}) {
@@ -210,6 +315,7 @@
     const card = renderCard(rec, i);
     if (!quiet) card.classList.add("enter");
     $("#timeline").appendChild(card);
+    markRealised(i);
     if (!quiet) {
       scheduleRender();
       if (window.scrollY + window.innerHeight >= document.body.scrollHeight - 400) {
@@ -251,10 +357,17 @@
     const visions = recs.filter((r) => obj(r.scene).is_vision).length;
     const flags = recs.filter((r) => obj(r.alignment).blocked || arr(obj(r.harmonizer).continuity_errors).length).length;
     const st = stageOf(last);
+    const chapters = chaptersOf(recs);
+    const chapterName = (state.run && state.run.status === "running" && state.liveChapter) ||
+      str(state.arc && state.arc.chapter) ||
+      `Chapter ${chapters.length}: ${STAGES[st.index].label}`;
+    renderTrack(recs, st, chapterName);
     el.append(
       tile("Cycles", String(recs.length), state.run && state.run.status === "running" ? "live · streaming" : str(state.run && state.run.source)),
-      tile("Convergence", fmt(c1), `${c1 >= c0 ? "+" : ""}${(c1 - c0).toFixed(2)} since cycle ${tickOf(first, 0)}`),
+      tile("Convergence", fmt(c1), `${c1 >= c0 ? "+" : ""}${(c1 - c0).toFixed(2)} since cycle 1`),
       tile("Stage", st.label, `${st.derived ? "≈ derived · " : ""}${humanize(worldOf(last).location) || "unknown place"}`, true),
+      tile("Journey", state.run && state.run.closed === true ? "Came home" : state.run && state.run.status === "running" ? "Under way" : `${chapters.length} chapter${chapters.length === 1 ? "" : "s"}`,
+        chapterName.replace(/^Chapter \d+:\s*/, "now: "), true),
       tile("Synchronicities", String(syncs), `${visions} vision${visions === 1 ? "" : "s"}`),
       tile("Flags", String(flags), flags ? "blocks or continuity errors" : "no blocks or continuity errors"),
     );
@@ -287,7 +400,7 @@
    */
   function lineChart(container, opts) {
     clear(container);
-    const { series, compact = false, yMin = 0, zero = null, valueFmt = (v) => fmt(v), endLabels = false } = opts;
+    const { series, compact = false, yMin = 0, zero = null, valueFmt = (v) => fmt(v), endLabels = false, marks = [] } = opts;
     const n = state.records.length;
     const W = Math.max(120, container.clientWidth || 300);
     const H = Math.max(50, container.clientHeight || 120);
@@ -295,7 +408,7 @@
     const yMax = opts.yMax !== undefined ? Math.max(opts.yMax, ...all) : Math.max(1, ...all);
     const m = compact
       ? { l: 26, r: 6, t: 6, b: 16 }
-      : { l: 32, r: endLabels ? 96 : 12, t: 10, b: 22 };
+      : { l: 32, r: endLabels ? 96 : 12, t: marks.length ? 20 : 10, b: 22 };
     const iw = W - m.l - m.r, ih = H - m.t - m.b;
     const x = (i) => m.l + (n <= 1 ? iw / 2 : (i * iw) / (n - 1));
     const y = (v) => m.t + ih - ((v - yMin) / (yMax - yMin || 1)) * ih;
@@ -322,9 +435,27 @@
     const maxLabels = Math.max(2, Math.floor(iw / (compact ? 34 : 40)));
     const step = Math.max(1, Math.ceil(n / maxLabels));
     for (let i = 0; i < n; i += step) {
-      ax.append(svg("text", { x: x(i), y: H - (compact ? 3 : 6), "text-anchor": "middle" }, String(tickOf(state.records[i], i))));
+      ax.append(svg("text", { x: x(i), y: H - (compact ? 3 : 6), "text-anchor": "middle" }, String(cycleNo(i))));
     }
     root.append(g, ax);
+
+    // chapter boundaries: a dashed rule between the last cycle of one chapter
+    // and the first of the next, numbered at the top
+    if (marks.length && n > 1) {
+      const mg = svg("g", { class: "marks" });
+      let lastX = -Infinity;
+      for (const mk of marks) {
+        if (mk.i <= 0 || mk.i >= n) continue;
+        const mx = (x(mk.i - 1) + x(mk.i)) / 2;
+        mg.append(svg("line", { class: "chapter-rule", x1: mx, x2: mx, y1: m.t - 4, y2: m.t + ih },
+          svg("title", null, mk.title)));
+        if (mx - lastX >= 14) {
+          mg.append(svg("text", { class: "chapter-lbl", x: mx, y: m.t - 7, "text-anchor": "middle" }, mk.label));
+          lastX = mx;
+        }
+      }
+      root.append(mg);
+    }
 
     // series
     for (const s of series) {
@@ -395,7 +526,7 @@
         rows.push([s.name, s.color, valueFmt(v)]);
       }
       const rec = state.records[i];
-      showTip(evt.clientX, evt.clientY, `Cycle ${tickOf(rec, i)} · ${str(obj(rec.scene).title) || stageOf(rec).label}`, rows, "click to open this cycle");
+      showTip(evt.clientX, evt.clientY, `Cycle ${cycleNo(i)} · ${str(obj(rec.scene).title) || stageOf(rec).label}`, rows, "click to open this cycle");
     };
     hit.addEventListener("pointermove", onMove);
     hit.addEventListener("pointerdown", onMove);
@@ -433,7 +564,11 @@
       { name: "Ω surprise", color: css("--s2"), values: R.map((r) => num(r.omega_surprise)), dashed: true },
       { name: "α surprise", color: css("--s3"), values: R.map((r) => num(r.alpha_surprise)), dashed: true },
     ];
-    lineChart($("#chart-convergence"), { series: conv, yMax: 1, endLabels: true, label: "Convergence and surprise per cycle" });
+    const marks = chaptersOf(R).slice(1).map((c, k) => ({
+      i: c.start, label: String(k + 2),
+      title: `Chapter ${k + 2}: ${STAGES[c.index].label} (from cycle ${cycleNo(c.start)})`,
+    }));
+    lineChart($("#chart-convergence"), { series: conv, yMax: 1, endLabels: true, marks, label: "Convergence and surprise per cycle, with chapter boundaries" });
     legend($("#legend-convergence"), conv);
 
     const al = (k) => R.map((r) => num(obj(r.alignment)[k]));
@@ -511,7 +646,7 @@
         const on = arr(obj(r.identity_before).active_themes).includes(th);
         el.append(h("span", {
           class: `tg-cell${on ? " on" : ""}`,
-          title: `cycle ${tickOf(r, i)}: ${th} ${on ? "active" : "inactive"}`,
+          title: `cycle ${cycleNo(i)}: ${th} ${on ? "active" : "inactive"}`,
           onclick: () => selectCycle(i),
         }));
       });
@@ -564,8 +699,8 @@
     const actRaw = str(act.raw);
 
     const top = h("div", { class: "card-top" },
-      h("span", { class: "cycle-no" }, `Cycle ${tickOf(r, i)}`),
-      h("span", { class: "chip stage", title: st.derived ? "derived from convergence" : "" }, `${st.derived ? "≈ " : ""}${st.label}`),
+      h("span", { class: "cycle-no" }, `Cycle ${cycleNo(i)}`),
+      h("span", { class: "chip stage", title: st.derived ? "derived from convergence" : st.exact ? "stage logged by the engine" : "stage inferred from the scene" }, `${st.derived ? "≈ " : ""}${st.label}`),
       scene.is_vision ? h("span", { class: "chip vision" }, "◈ Vision") : null,
       hasSync ? h("span", { class: "chip sync" }, "✦ Synchronicity") : null,
       al.blocked ? h("span", { class: "chip bad" }, "⛔ Blocked") : null,
@@ -590,6 +725,14 @@
       choices.map((c, k) => h("li", { class: (taken === k || (taken === null && c === actRaw)) ? "taken" : "" }, c))) : null;
 
     const traitMoves = Object.entries(obj(out.trait_updates)).filter(([, v]) => num(v) !== null);
+
+    // identity_before.insights — chips; ones not present last cycle are marked new
+    const prevInsights = i > 0 ? arr(obj(state.records[i - 1] && state.records[i - 1].identity_before).insights).map(str) : [];
+    const insights = arr(obj(r.identity_before).insights).map(str).filter(Boolean);
+    const insightRow = insights.length ? h("div", { class: "insights" },
+      h("span", { class: "label" }, "Insights"),
+      insights.map((t) => h("span", { class: `chip insight${prevInsights.includes(t) ? "" : " new"}`,
+        title: prevInsights.includes(t) ? "" : "new this cycle" }, t))) : null;
 
     const alignSummary = h("summary", null, "Alignment & harmonizer",
       h("span", { class: al.blocked ? "chip bad" : "chip" }, al.blocked ? "blocked" : (al.in_safe_band === false ? "outside safe band" : "in safe band")),
@@ -620,8 +763,10 @@
 
     return h("li", { class: `card${scene.is_vision ? " is-vision" : ""}`, id: `cycle-${i}` },
       top, arc,
-      h("h3", null, str(scene.title) || cap(str(scene.theme)) || `Cycle ${tickOf(r, i)}`),
+      h("h3", null, str(scene.title) || cap(str(scene.theme)) || `Cycle ${cycleNo(i)}`),
       where,
+      insightRow,
+      h("div", { class: "realised", id: `cycle-${i}-realised` }),
       scene.summary ? h("p", { class: "summary" }, str(scene.summary)) : null,
       beats.length ? h("ol", { class: "beats" }, beats.map(renderBeat)) : null,
       choiceList,
@@ -635,9 +780,164 @@
         h("span", null, "Ω", h("b", null, fmt(r.omega_surprise, 3))),
         h("span", null, "α", h("b", null, fmt(r.alpha_surprise, 3))),
         h("span", null, "theme", h("b", null, str(scene.theme) || "—")),
+        num(r.tick) !== null ? h("span", null, "tick", h("b", null, String(r.tick))) : null,
         traitMoves.length ? h("span", { class: "trait-moves" }, "traits",
           traitMoves.map(([k, v]) => h("b", { class: v >= 0 ? "delta-up" : "delta-down" }, `${humanize(k)} ${v >= 0 ? "+" : "−"}${Math.abs(v).toFixed(2)}`))) : null),
       details,
+    );
+  }
+
+  /** Goals realised / visions fulfilled that first show up in record i's
+   *  identity_before happened during an earlier cycle: the one whose tick is the
+   *  goal's `realised_at` when present, else the previous cycle. */
+  function markRealised(i) {
+    if (i === 0) return;
+    const now = obj(state.records[i].identity_before), before = obj(state.records[i - 1].identity_before);
+    const doneBefore = new Set(arr(before.goals).filter((g) => obj(g).realised).map((g) => str(g.description)));
+    const visionsBefore = new Set(arr(before.fulfilled_visions).map(str));
+    const notes = [];
+    for (const g of arr(now.goals)) {
+      if (!obj(g).realised || doneBefore.has(str(g.description))) continue;
+      const at = num(g.realised_at);
+      let target = at === null ? -1 : state.records.findIndex((r) => num(r.tick) === at);
+      if (target < 0) target = i - 1;
+      notes.push([target, "goal", "★ Goal realised", str(g.description)]);
+    }
+    for (const v of arr(now.fulfilled_visions).map(str)) {
+      if (v && !visionsBefore.has(v)) {
+        const goalNote = notes.find((n) => n[1] === "goal");
+        notes.push([goalNote ? goalNote[0] : i - 1, "vision", "◈ Vision fulfilled", v]);
+      }
+    }
+    for (const [target, kind, head, text] of notes) {
+      const box = document.getElementById(`cycle-${target}-realised`);
+      if (!box) continue;
+      box.append(h("div", { class: `realised-note ${kind}` }, h("span", { class: "realised-head" }, head), text));
+      const card = document.getElementById(`cycle-${target}`);
+      if (card) card.classList.add("has-realised");
+    }
+  }
+
+  // ── journey track + chapters ────────────────────────────────
+  function renderTrack(recs, st, chapterName) {
+    const el = clear($("#track"));
+    const counts = STAGES.map(() => 0);
+    let furthest = -1, anyDerived = false;
+    for (const r of recs) {
+      const s = stageOf(r);
+      if (s.index >= 0) { counts[s.index] += 1; furthest = Math.max(furthest, s.index); }
+      anyDerived = anyDerived || s.derived;
+    }
+    const cur = recs.length ? st.index : -1;
+    STAGES.forEach((s, k) => {
+      const cls = k === cur ? "now" : counts[k] ? "visited" : k < furthest ? "skipped" : "ahead";
+      el.append(h("li", { class: `station ${cls}${k <= furthest ? " reached" : ""}`,
+        "aria-current": k === cur ? "step" : null,
+        title: `${s.label}: ${counts[k]} cycle${counts[k] === 1 ? "" : "s"}` },
+        h("span", { class: "station-dot", "aria-hidden": "true" }, counts[k] ? String(counts[k]) : ""),
+        h("span", { class: "station-name" }, s.short),
+        h("span", { class: "station-n" }, counts[k] ? `${counts[k]} cycle${counts[k] === 1 ? "" : "s"}` : "—")));
+    });
+    const sub = clear($("#track-chapter"));
+    if (recs.length) {
+      sub.append(chapterName);
+      if (state.run && state.run.closed === true) sub.append(" · came home");
+      if (anyDerived) sub.append(" · ≈ some stages derived from convergence");
+    } else {
+      sub.append("Prologue");
+    }
+  }
+
+  function renderChapters() {
+    if ($("#run-view").hidden) return;
+    const R = state.records;
+    const el = clear($("#chapters"));
+    const chapters = chaptersOf(R);
+    if (!chapters.length) el.append(h("li", { class: "none" }, "no cycles yet"));
+    chapters.forEach((c, k) => {
+      const span = c.start === c.end ? `cycle ${cycleNo(c.start)}` : `cycles ${cycleNo(c.start)}–${cycleNo(c.end)}`;
+      const last = k === chapters.length - 1;
+      el.append(h("li", { class: `chapter${last ? " current" : ""}` },
+        h("button", { type: "button", class: "chapter-btn", onclick: () => selectCycle(c.start) },
+          h("span", { class: "chapter-no" }, String(k + 1)),
+          h("span", { class: "chapter-name" }, `${c.derived ? "≈ " : ""}${STAGES[c.index].label}`),
+          h("span", { class: "chapter-span" }, span))));
+    });
+    const ms = clear($("#milestones"));
+    const items = arr(state.arc && state.arc.milestones).map(str).filter(Boolean);
+    if (!items.length) {
+      ms.append(h("li", { class: "none" }, state.arc ? "none yet" : "loading…"));
+      return;
+    }
+    for (const m of items) {
+      const mt = /cycle (\d+)/.exec(m);
+      const idx = mt ? Number(mt[1]) - 1 : -1;
+      ms.append(h("li", null, idx >= 0 && idx < R.length
+        ? h("button", { type: "button", class: "link", onclick: () => selectCycle(idx) }, cap(m))
+        : cap(m)));
+    }
+  }
+
+  // ── cast (live runs) ────────────────────────────────────────
+  function renderCast() {
+    const cast = arr(state.debrief && state.debrief.cast).filter(isObj);
+    const panel = $("#cast-panel"), t = clear($("#cast"));
+    panel.hidden = !cast.length;
+    if (!cast.length) return;
+    t.append(h("thead", null, h("tr", null, h("th", null, "Name"), h("th", null, "Role"),
+      h("th", { class: "num" }, "Met"), h("th", { class: "num" }, "Disposition"))));
+    const body = h("tbody");
+    for (const c of cast) {
+      const trend = str(c.trend);
+      const d0 = num(c.disposition_start), d1 = num(c.disposition);
+      const [arrow, cls, word] = trend === "warmer" ? ["↗", "delta-up", "grew warmer"]
+        : trend === "cooler" ? ["↘", "delta-down", "grew cooler"] : ["→", "delta-flat", "steady"];
+      body.append(h("tr", null,
+        h("td", null, h("span", { class: "cast-name" }, str(c.name)), c.alive === false ? h("span", { class: "cast-gone", title: "no longer in the story" }, " †") : null),
+        h("td", { class: "cast-role" }, humanize(c.role || c.archetype)),
+        h("td", { class: "num" }, num(c.times_met) === null ? "—" : String(c.times_met)),
+        h("td", { class: "num" },
+          h("span", { class: "disp" }, `${d0 === null ? "—" : d0.toFixed(1)} `),
+          h("b", { class: cls, title: word, "aria-label": word }, arrow),
+          h("span", { class: "disp" }, ` ${d1 === null ? "—" : d1.toFixed(1)}`))));
+    }
+    t.append(body);
+  }
+
+  // ── debrief ─────────────────────────────────────────────────
+  function renderDebrief() {
+    const el = clear($("#debrief"));
+    const data = obj(state.debrief), d = obj(data.debrief);
+    if (!Object.keys(d).length) { el.hidden = true; return; }
+    el.hidden = false;
+    $("#jump-debrief").hidden = false;
+    const id = state.run && state.run.id;
+    const sec = (head, items, cls) => {
+      const xs = arr(items).map(str).filter(Boolean);
+      if (!xs.length) return null;
+      const List = cls === "ol" ? "ol" : "ul";
+      return h("section", { class: "db-sec" }, h("h3", { class: "mini-head" }, head),
+        h(List, { class: `db-list${cls === "ol" ? " numbered" : ""}` }, xs.map((x) => h("li", null, x))));
+    };
+    const symbols = arr(d.recurring_symbols).map(str).filter(Boolean);
+    el.append(
+      h("header", { class: "db-head" },
+        h("p", { class: "db-kicker" }, "Debrief", data.closed === true ? " · the journey came home" : "",
+          d.source ? h("span", { class: "chip" }, str(d.source)) : null),
+        h("h2", { class: "db-title" }, str(d.title) || "Your journey"),
+        id ? h("a", { class: "btn btn-ghost db-dl", href: `/api/runs/${encodeURIComponent(id)}/debrief?format=md`, download: "" },
+          svg("svg", { viewBox: "0 0 20 20", "aria-hidden": "true" }, svg("path", { d: "M10 3v10m0 0-4-4m4 4 4-4M3 13v3a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-3" })),
+          "Download debrief (.md)") : null),
+      d.arc_summary ? h("p", { class: "db-summary" }, str(d.arc_summary)) : null,
+      sec("Chapters", d.chapters, "ol"),
+      sec("Turning points", d.turning_points),
+      sec("What you learned", d.lessons),
+      sec("How you changed", d.how_you_changed),
+      sec("Who walked with you", d.companions),
+      symbols.length ? h("section", { class: "db-sec" }, h("h3", { class: "mini-head" }, "Symbols that kept returning"),
+        h("div", { class: "db-symbols" }, symbols.map((x) => h("span", { class: "chip" }, x)))) : null,
+      sec("Questions to carry home", d.open_questions),
+      d.closing_image ? h("blockquote", { class: "pull-quote" }, h("p", null, str(d.closing_image))) : null,
     );
   }
 
@@ -665,7 +965,8 @@
 
   $("#live-form").addEventListener("submit", async (e) => {
     e.preventDefault();
-    const cycles = Math.max(1, Math.min(200, parseInt($("#live-cycles").value, 10) || 8));
+    const cycles = Math.max(1, Math.min(200, parseInt($("#live-cycles").value, 10) || 40));
+    const untilClose = $("#live-until").checked;
     const seed = parseInt($("#live-seed").value, 10);
     const btn = $("#live-start");
     btn.disabled = true;
@@ -673,7 +974,7 @@
       const res = await api("/api/live", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ cycles, seed: Number.isFinite(seed) ? seed : 42, use_llm: false, driver: $("#live-driver").value }),
+        body: JSON.stringify({ cycles, until_close: untilClose, seed: Number.isFinite(seed) ? seed : 42, use_llm: false, driver: $("#live-driver").value }),
       });
       await refreshRuns(res.id);
       try { history.replaceState(null, "", `#run=${encodeURIComponent(res.id)}`); } catch (_) { /* ignore */ }
@@ -683,6 +984,14 @@
       btn.disabled = false;
       status(`Could not start live journey: ${err.message}`, "bad");
     }
+  });
+
+  $("#live-until").addEventListener("change", (e) => {
+    $("#live-cycles-label").textContent = e.target.checked ? "max cycles" : "cycles";
+  });
+  $("#jump-debrief").addEventListener("click", (e) => {
+    e.preventDefault();
+    $("#debrief").scrollIntoView({ block: "start", behavior: "smooth" });
   });
 
   // Re-render charts at the new width (and on theme flips, since colors are read from CSS).

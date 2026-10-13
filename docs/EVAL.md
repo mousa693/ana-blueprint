@@ -1,6 +1,6 @@
 # ANA evaluation report
 
-_Engine commit: `01d6785 Earned convergence, self-remembering identity, eval harness, web viewer` · generated 2026-10-13 23:11:05 UTC_
+_Engine commit: `28ab238 Journey arc, debriefs, recurring cast; eval rubric 7/7` · generated 2026-10-13 23:21:02 UTC_
 
 Profiles: engaged, avoidant, mixed, autonomous, lighthouse · seeds: [1, 2, 3, 4, 5] · cycles: 16 · use_llm: False · forbidden list: ['drowning', 'abandonment']
 

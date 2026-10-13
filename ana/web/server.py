@@ -6,8 +6,12 @@ GET  /                         single-page app (static, offline, no build step)
 GET  /api/runs                 list loaded runs (metadata only)
 POST /api/runs/upload          upload a JSONL run log (multipart `file` or raw body)
 GET  /api/runs/{id}            a run's metadata + cycle records
+GET  /api/runs/{id}/arc        Hero's-journey chapters + milestones
+GET  /api/runs/{id}/debrief    the journey debrief (JSON + markdown; ?format=md
+                               downloads the markdown)
 POST /api/live                 start an in-process deterministic session
-GET  /api/live/{id}/stream     Server-Sent Events: one `cycle` event per record
+GET  /api/live/{id}/stream     Server-Sent Events: `cycle` per record (+ `arc`),
+                               then `done` {status, cycles, closed}
 
 Records are kept as plain JSON dicts (not re-serialised pydantic models) so any
 extra fields other engineers add to `CycleRecord` survive the round-trip to the
@@ -17,6 +21,7 @@ from __future__ import annotations
 
 import json
 import math
+import re
 import tempfile
 import threading
 import time
@@ -26,7 +31,8 @@ from pathlib import Path
 from typing import Any, Iterator, Literal, Optional
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
+from fastapi.responses import (FileResponse, JSONResponse, PlainTextResponse,
+                               StreamingResponse)
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, ValidationError
 
@@ -128,6 +134,13 @@ class Run:
     params: dict = field(default_factory=dict)
     created: float = field(default_factory=time.time)
     cond: threading.Condition = field(default_factory=threading.Condition, repr=False)
+    # Journey shape. `arcs[i]` is the arc snapshot taken right after record i
+    # (live runs only; drives the SSE `arc` event).
+    arcs: list[Optional[dict]] = field(default_factory=list, repr=False)
+    closed: Optional[bool] = None          # live: did the journey come home?
+    live_arc: Any = field(default=None, repr=False)  # live: the session's JourneyArc
+    arc_payload: Optional[dict] = None     # captured / cached /arc response
+    debrief: Optional[dict] = None         # captured / cached /debrief response
 
     def meta(self) -> dict:
         with self.cond:
@@ -136,12 +149,13 @@ class Run:
             "id": self.id, "name": self.name, "source": self.source,
             "status": self.status, "cycles": n, "skipped": self.skipped,
             "partial": self.partial, "errors": self.errors, "error": self.error,
-            "params": self.params, "created": self.created,
+            "params": self.params, "created": self.created, "closed": self.closed,
         }
 
-    def push(self, record: dict) -> None:
+    def push(self, record: dict, arc: Optional[dict] = None) -> None:
         with self.cond:
             self.records.append(record)
+            self.arcs.append(arc)
             self.cond.notify_all()
 
     def finish(self, status: str, error: Optional[str] = None) -> None:
@@ -195,7 +209,10 @@ def _new_id(prefix: str) -> str:
 
 
 class LiveRequest(BaseModel):
-    cycles: int = Field(default=8, ge=1, le=MAX_LIVE_CYCLES)
+    # With until_close, `cycles` is the maximum: the run stops as soon as the
+    # journey comes home (JourneyArc.should_close).
+    cycles: int = Field(default=40, ge=1, le=MAX_LIVE_CYCLES)
+    until_close: bool = True
     seed: int = 42
     use_llm: bool = False
     driver: Literal["auto", "scripted"] = "auto"
@@ -211,9 +228,19 @@ class _RunObserver:
 
     def __init__(self, run: Run):
         self.run = run
+        self.arc: Any = None  # set once the session exists
 
     def on_cycle(self, record: CycleRecord) -> None:
-        self.run.push(_clean(json.loads(record.model_dump_json())))
+        snap = None
+        if self.arc is not None:
+            # The engine records the cycle into its arc before notifying observers.
+            try:
+                snap = {"chapter": self.arc.current_chapter(), "stage": self.arc.stage,
+                        "furthest_stage": self.arc.furthest_stage,
+                        "cycle": len(self.arc.entries), "tick": record.tick}
+            except Exception:
+                snap = None
+        self.run.push(_clean(json.loads(record.model_dump_json())), snap)
 
 
 _LIVE_DATA_DIR = Path(tempfile.gettempdir()) / "ana_web_live"
@@ -231,10 +258,16 @@ def _run_live(run: Run, req: LiveRequest) -> None:
                         data_dir=_LIVE_DATA_DIR,
                         shard_db=str(_LIVE_DATA_DIR / "shards.db"))
         driver = ScriptedDriver(DEMO_ACTIONS) if req.driver == "scripted" else None
+        observer = _RunObserver(run)
         sess = build_session(cfg, identity=seed_identity(),
-                             observers=[_RunObserver(run)], driver=driver)
+                             observers=[observer], driver=driver)
+        observer.arc = getattr(sess, "arc", None)
+        run.live_arc = observer.arc
         for _ in range(req.cycles):
             sess.step()
+            if req.until_close and getattr(sess.engine, "closed", False):
+                break
+        _capture_live_journey(run, sess)
         run.finish("complete")
     except Exception as e:  # surfaced to the UI via the SSE `error` event
         run.finish("error", f"{type(e).__name__}: {e}")
@@ -244,6 +277,85 @@ def _run_live(run: Run, req: LiveRequest) -> None:
                 sess.close()
             except Exception:
                 pass
+
+
+def _capture_live_journey(run: Run, sess: Any) -> None:
+    """Snapshot the session's own debrief (with its cast) and arc before the
+    session is closed. Failures here never fail the run: the endpoints fall
+    back to rebuilding from the records."""
+    run.closed = bool(getattr(sess.engine, "closed", False))
+    cast = None
+    try:
+        cast = _clean(json.loads(json.dumps(sess.engine.npc.cast_summary(), default=str)))
+    except Exception:
+        cast = None
+    try:
+        if sess.arc is not None:
+            run.arc_payload = _arc_payload(sess.arc)
+    except Exception:
+        run.arc_payload = None
+    try:
+        d = sess.debrief()
+        run.debrief = {"debrief": _clean(d.model_dump()), "markdown": d.to_markdown(),
+                       "cast": cast, "closed": run.closed, "cycles": len(run.records),
+                       "from": "session"}
+    except Exception:
+        run.debrief = None
+        if cast is not None:
+            run.debrief = {"cast": cast}  # keep the cast for a records-based debrief
+
+
+# ─────────────────────────────────────────────────────────────
+# Arc + debrief (built from records for files/uploads)
+# ─────────────────────────────────────────────────────────────
+
+
+def _to_cycle_records(records: list[dict]) -> list[CycleRecord]:
+    """Parse record dicts back to CycleRecords, skipping partial ones."""
+    out: list[CycleRecord] = []
+    for r in records:
+        try:
+            out.append(CycleRecord.model_validate(r))
+        except (ValidationError, TypeError, ValueError):
+            continue
+    return out
+
+
+def _arc_payload(arc: Any) -> dict:
+    """JourneyArc -> JSON: to_dict() plus per-cycle entries and chapter ticks so
+    the UI can map chapters onto record ticks."""
+    base = arc.to_dict()
+    entries = list(arc.entries)
+    by_cycle = {e.cycle: e.tick for e in entries}
+    chapters = []
+    for c in arc.chapters():
+        chapters.append({"stage": c["stage"], "name": c["name"], "start": c["start"],
+                         "end": c["end"], "length": len(c["cycles"]),
+                         "start_tick": by_cycle.get(c["start"]),
+                         "end_tick": by_cycle.get(c["end"])})
+    base["chapters"] = chapters
+    base["entries"] = [{"cycle": e.cycle, "tick": e.tick, "stage": e.stage} for e in entries]
+    base["stage_counts"] = {st: sum(1 for e in entries if e.stage == st)
+                            for st in ("call", "threshold", "mentor", "ordeal", "reward", "return")}
+    return _clean(base)
+
+
+def _arc_from_records(records: list[dict]) -> dict:
+    from ..engine.arc import JourneyArc
+
+    arc = JourneyArc(max_cycles=None, max_chapters=10_000)
+    for r in _to_cycle_records(records):
+        arc.record(r, stage=r.scene.stage)  # exact stage when logged, else inferred
+    return _arc_payload(arc)
+
+
+def _debrief_from_records(records: list[dict], cast: Optional[list] = None) -> dict:
+    from ..engine.arc import build_debrief
+
+    recs = _to_cycle_records(records)
+    d = build_debrief(recs, stages=[r.scene.stage for r in recs], cast=cast)
+    return {"debrief": _clean(d.model_dump()), "markdown": d.to_markdown(),
+            "cast": cast, "cycles": len(recs), "from": "records"}
 
 
 def _sse(event: str, data: Any, event_id: Optional[int] = None) -> str:
@@ -264,11 +376,14 @@ def _stream_run(run: Run, start: int = 0,
             status, error = run.status, run.error
         for rec in batch:
             yield _sse("cycle", rec, i)
+            snap = run.arcs[i] if i < len(run.arcs) else None
+            if snap:
+                yield _sse("arc", snap)
             i += 1
         if status != "running" and not batch:
             if status == "error":
                 yield _sse("error", {"error": error})
-            yield _sse("done", {"status": status, "cycles": i})
+            yield _sse("done", {"status": status, "cycles": i, "closed": run.closed})
             return
         if not batch:
             yield ": keepalive\n\n"
@@ -328,6 +443,44 @@ def create_app(logs: Optional[list[str]] = None,
             meta["records"] = list(run.records)
         return JSONResponse(meta)
 
+    @app.get("/api/runs/{run_id}/arc")
+    def get_arc(run_id: str) -> JSONResponse:
+        run = store.get(run_id)
+        if run.arc_payload is not None:
+            return JSONResponse(run.arc_payload)
+        if run.status == "running" and run.live_arc is not None:
+            try:
+                return JSONResponse(_arc_payload(run.live_arc))
+            except Exception:
+                pass  # mid-update; fall back to the records
+        with run.cond:
+            records = list(run.records)
+        payload = _arc_from_records(records)
+        if run.status != "running":
+            run.arc_payload = payload
+        return JSONResponse(payload)
+
+    @app.get("/api/runs/{run_id}/debrief")
+    def get_debrief(run_id: str, format: str = "json"):
+        run = store.get(run_id)
+        if run.status == "running":
+            raise HTTPException(status_code=409,
+                                detail="the journey is still running; the debrief comes at the end")
+        data = run.debrief
+        if not data or "debrief" not in data:
+            with run.cond:
+                records = list(run.records)
+            cast = (data or {}).get("cast")
+            data = _debrief_from_records(records, cast=cast)
+            data["closed"] = run.closed
+            run.debrief = data
+        if format == "md":
+            stem = re.sub(r"[^A-Za-z0-9_]+", "-", Path(run.name).stem)[:60].strip("-") or "journey"
+            return PlainTextResponse(
+                data["markdown"], media_type="text/markdown; charset=utf-8",
+                headers={"Content-Disposition": f'attachment; filename="{stem}-debrief.md"'})
+        return JSONResponse(data)
+
     @app.post("/api/runs/upload")
     async def upload(request: Request) -> JSONResponse:
         too_big = HTTPException(
@@ -372,7 +525,7 @@ def create_app(logs: Optional[list[str]] = None,
             raise HTTPException(status_code=429, detail="too many live runs in progress")
         run = store.add(Run(
             id=_new_id("live"),
-            name=f"live · seed {req.seed} · {req.driver}",
+            name=f"live · seed {req.seed} · {req.driver}" + (" · until home" if req.until_close else ""),
             source="live", status="running", params=req.model_dump()))
         threading.Thread(target=_run_live, args=(run, req), daemon=True,
                          name=f"ana-live-{run.id}").start()
