@@ -74,7 +74,9 @@ class ModelGateway:
         try:
             import anthropic  # type: ignore
 
-            self._client = anthropic.Anthropic()
+            # A bounded timeout keeps a stuck call from pinning a live journey for
+            # many minutes; the SDK still retries transient failures.
+            self._client = anthropic.Anthropic(timeout=120.0, max_retries=2)
         except Exception as e:  # pragma: no cover - env dependent
             logger.warning("anthropic SDK unavailable (%s); offline mode.", e)
             self._client = None
@@ -146,8 +148,6 @@ class ModelGateway:
         text = "\n".join(t for t in texts if t).strip()
         if not text:
             return self._fail("empty", RuntimeError("no text content"))
-        self.stats["ok"] += 1
-        self.last_error = None
         return text
 
     def _fail(self, kind: str, err: Exception) -> None:
@@ -166,17 +166,23 @@ class ModelGateway:
             return None
         try:
             data = json.loads(text)
-        except json.JSONDecodeError:
+        except (ValueError, RecursionError):
             data = _extract_json(text)
         if not isinstance(data, dict):
             self._fail("invalid_json", ValueError("unparseable structured output"))
             return None
+        self.stats["ok"] += 1
+        self.last_error = None
         return data
 
     def complete(self, system: str, user: str, *, effort: Optional[str] = None,
                  max_tokens: Optional[int] = None) -> Optional[str]:
         """Return plain text, or None."""
-        return self._call(system, user, schema=None, effort=effort, max_tokens=max_tokens)
+        text = self._call(system, user, schema=None, effort=effort, max_tokens=max_tokens)
+        if text is not None:
+            self.stats["ok"] += 1
+            self.last_error = None
+        return text
 
     def complete_json(self, system: str, user: str) -> Optional[dict]:
         """Legacy schema-less JSON request (kept for callers without a schema)."""
@@ -211,6 +217,6 @@ def _extract_json(text: str) -> Optional[dict]:
                 if depth == 0:
                     try:
                         return json.loads(text[start : i + 1])
-                    except json.JSONDecodeError:
+                    except (ValueError, RecursionError):
                         return None
     return None

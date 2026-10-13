@@ -77,7 +77,7 @@ def auto(cycles: int = 10, seed: int = 42, use_llm: bool = False, log: str = "",
 
 
 @app.command()
-def play(cycles: int = 8, use_llm: bool = True):
+def play(cycles: int = 30, use_llm: bool = True, until_close: bool = True, debrief: str = ""):
     """Interactive journey — you type the protagonist's actions."""
     cfg = ANAConfig(use_llm=use_llm, max_cycles=cycles)
     sess = build_session(cfg, identity=_seed_lighthouse_identity(),
