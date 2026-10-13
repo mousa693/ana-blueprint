@@ -40,6 +40,33 @@ from ..contracts import (
 )
 from ..llm.gateway import ModelGateway
 
+# A constraint of this form tells the engine a theme must never be depicted
+# (the Feedback Loop Engine adds one per forbidden theme).
+NEVER_DEPICT = "never depict:"
+
+# Neutral themes to fall back on when every candidate theme is forbidden.
+_NEUTRAL_THEMES = ("exploration", "the road", "wonder", "stillness")
+_NEUTRAL_BEAT = "A pause. The scene settles, and waits for you."
+
+
+def forbidden_from_constraints(constraints: list[str]) -> list[str]:
+    """Themes named by ``"never depict: X"`` constraints."""
+    out: list[str] = []
+    for c in constraints or []:
+        low = (c or "").strip()
+        if low.lower().startswith(NEVER_DEPICT):
+            t = low[len(NEVER_DEPICT):].strip().strip("'\"").lower()
+            if t and t not in out:
+                out.append(t)
+    return out
+
+
+def _hits(text: Optional[str], banned: list[str]) -> bool:
+    if not text or not banned:
+        return False
+    from ..subsystems.alignment import mentions_forbidden  # lazy: avoid import cycle
+    return mentions_forbidden(text, banned) is not None
+
 # ─────────────────────────────────────────────────────────────
 # Archetypal story patterns — the Hero's Journey skeleton
 # ─────────────────────────────────────────────────────────────
@@ -167,6 +194,11 @@ class ExperienceEngine:
         self._recent_shards: deque = deque(maxlen=4)
         self._cycle = 0
         self.rng = random.Random(seed)
+        # Forbidden themes. The engine never voices one: it is the union of this
+        # attribute (the Feedback Loop Engine sets it from the alignment layer's
+        # ``forbidden_themes``) and any ``"never depict: X"`` request constraint.
+        self.forbidden: list[str] = []
+        self._ban: list[str] = []      # effective list for the current request
 
     # -- public API ------------------------------------------------------
     def generate(self, request: GenerationRequest) -> Scene:
@@ -175,11 +207,60 @@ class ExperienceEngine:
         Tries the LLM path when wired and permitted; otherwise, or on any
         failure/malformed response, builds the scene deterministically.
         """
+        self._ban = list(dict.fromkeys(
+            [str(f).lower().strip() for f in (self.forbidden or []) if str(f).strip()]
+            + forbidden_from_constraints(request.constraints)))
         if self.use_llm and self.gateway is not None and self.gateway.available:
             scene = self._generate_llm(request)
             if scene is not None:
-                return scene
-        return self._generate_deterministic(request)
+                return self._scrub(scene, request)
+        return self._scrub(self._generate_deterministic(request), request)
+
+    # -- forbidden-theme hygiene -----------------------------------------
+    def _scrub(self, scene: Scene, request: GenerationRequest) -> Scene:
+        """Last line of the engine's own defence: no field may name a forbidden
+        theme. Offending beats become a neutral pause (the closing event is kept
+        as an event), choices/symbols are dropped, and title/summary fall back
+        to theme-free phrasings. A no-op when nothing is forbidden."""
+        ban = self._ban
+        if not ban:
+            return scene
+        stage = HERO_JOURNEY.get(scene.stage or request.stage or "", None)
+        label = stage["label"] if stage else "the next step"
+        if _hits(scene.theme, ban):
+            scene.theme = self._neutral_theme()
+        beats: list[SceneBeat] = []
+        for b in scene.beats:
+            if _hits(b.text, ban) or _hits(b.speaker, ban) or _hits(b.symbol, ban):
+                b = SceneBeat(kind="event" if b.kind == "event" else "description",
+                              text=_NEUTRAL_BEAT,
+                              symbol=None if _hits(b.symbol, ban) else b.symbol)
+            beats.append(b)
+        scene.beats = beats
+        scene.symbols = [x for x in scene.symbols if not _hits(x, ban)]
+        choices = [c for c in scene.choices if not _hits(c, ban)]
+        scene.choices = choices or ["Pause and breathe", "Move on when ready"]
+        if _hits(scene.title, ban):
+            scene.title = label.title()
+        if _hits(scene.summary, ban):
+            scene.summary = (f"At {request.world.location}, the protagonist meets "
+                             f"{label}.")
+            if _hits(scene.summary, ban):
+                scene.summary = f"The protagonist meets {label}."
+        return scene
+
+    def _neutral_theme(self) -> str:
+        for t in _NEUTRAL_THEMES:
+            if not _hits(t, self._ban):
+                return t
+        return "the next step"
+
+    def _clean(self, options: list[str]) -> list[str]:
+        """Options that name no forbidden theme (or the original list when none
+        is clean — :meth:`_scrub` then neutralises the result)."""
+        if not self._ban:
+            return options
+        return [o for o in options if not _hits(o, self._ban)] or options
 
     # -- LLM path --------------------------------------------------------
     def _generate_llm(self, request: GenerationRequest) -> Optional[Scene]:
@@ -328,12 +409,12 @@ class ExperienceEngine:
 
     # -- selection helpers ----------------------------------------------
     def _pick_theme(self, request: GenerationRequest) -> str:
-        if request.target_theme:
+        if request.target_theme and not _hits(request.target_theme, self._ban):
             return request.target_theme
-        themes = request.identity.active_themes
+        themes = [t for t in request.identity.active_themes if not _hits(t, self._ban)]
         if themes:
             return self.rng.choice(themes)
-        return "exploration"
+        return self._neutral_theme() if self._ban else "exploration"
 
     # The Hero's Journey advances with inner-outer convergence: a divergent self
     # is still being called; a converging self is deep in the ordeal; a converged
@@ -353,8 +434,9 @@ class ExperienceEngine:
         return self._ARC[idx]
 
     def _pick_motif(self, world: WorldState) -> str:
-        if world.motifs:
-            return self.rng.choice(world.motifs)
+        motifs = [m for m in world.motifs if not _hits(m, self._ban)]
+        if motifs:
+            return self.rng.choice(motifs)
         return self.rng.choice(["a single lit window", "an open gate", "a held breath"])
 
     def _is_gentle(self, request: GenerationRequest) -> bool:
@@ -379,8 +461,9 @@ class ExperienceEngine:
             f"Here is {world.location}, {light} under a {world.weather} sky, the hour still {world.time_of_day}.",
         ]
         text = self._fresh(openers)
-        if world.motifs:
-            m = self.rng.choice(world.motifs)
+        motifs = [x for x in world.motifs if not _hits(x, self._ban)]
+        if motifs:
+            m = self.rng.choice(motifs)
             tails = [
                 f" {m[0].upper() + m[1:]} draws the eye, as if it had been waiting.",
                 f" Somewhere in it, {m} — small, insistent, meant for you.",
@@ -388,13 +471,18 @@ class ExperienceEngine:
             ]
             text += self.rng.choice(tails)
         return SceneBeat(kind="description", text=text,
-                         symbol=world.motifs[0] if world.motifs else None)
+                         symbol=motifs[0] if motifs else None)
 
     def _dialogue_beat(self, npc: NPC, theme: str, stage: dict,
                        gentle: bool) -> SceneBeat:
         voice = self._voice_for(npc.archetype)
-        represents = _humanize(npc.represents or theme, theme)
+        rep_tag = npc.represents if not _hits(npc.represents, self._ban) else None
+        represents = _humanize(rep_tag or theme, theme)
         persona = npc.persona or "unreadable"
+        if _hits(persona, self._ban):
+            persona = persona.split(";")[0].strip()
+            if _hits(persona, self._ban):
+                persona = "unreadable"
         # Templates 0 and 2 append a noun phrase to the archetype's voice; template
         # 1 stands alone (it must NOT borrow `voice['open']`, which is a transitive
         # lead-in that only composes with a following noun).
@@ -409,6 +497,9 @@ class ExperienceEngine:
             f"\"Here is what nobody told me about {represents}: {voice['secret']}.\"",
         ]
         line = self._fresh(templates)
+        if _hits(line, self._ban):
+            line = "\"" + self._fresh(["We are here now. That is enough.",
+                                       "Look around you. Then decide."]) + "\""
         if gentle:
             line = line[:-1] + " But there is no hurry.\""
         if npc.name not in self._met_npcs:
@@ -439,6 +530,8 @@ class ExperienceEngine:
         # `hint.suggestion` is a staging note for the generator, never prose: the
         # whole point of a synchronicity is that the narration doesn't explain it.
         sym = hint.symbol
+        if _hits(sym, self._ban):
+            sym = "a small, familiar sign"
         cap = sym[0].upper() + sym[1:]
         leads = [
             f"And then — {sym}, just there, as if it had been waiting for this exact moment.",
@@ -454,7 +547,8 @@ class ExperienceEngine:
         if not shards:
             return None
         self._cycle += 1
-        fresh = [sh for sh in shards if sh not in self._recent_shards]
+        fresh = [sh for sh in shards if sh not in self._recent_shards
+                 and not _hits(sh, self._ban)]
         on_theme = [sh for sh in fresh if theme.lower() in sh.lower()]
         # Echo when the memory is on-theme, otherwise only every third cycle.
         if not on_theme and self._cycle % 3 != 0:
@@ -479,6 +573,7 @@ class ExperienceEngine:
 
     def _fresh(self, options: list[str]) -> str:
         """Pick an option whose exact text hasn't appeared in recent cycles."""
+        options = self._clean(options)
         pool = [o for o in options if o not in self._recent_text] or options
         text = self.rng.choice(pool)
         self._recent_text.append(text)
@@ -515,9 +610,10 @@ class ExperienceEngine:
         return [head] + middle[:4] + [tail]
 
     def _build_choices(self, stage: dict, theme: str, gentle: bool) -> list[str]:
-        pool = list(stage["choices"])
+        pool = self._clean(list(stage["choices"]))
         self.rng.shuffle(pool)
-        n = self.rng.randint(2, min(3, len(pool)))
+        lo = min(2, len(pool))
+        n = self.rng.randint(lo, max(lo, min(3, len(pool))))
         choices = pool[:n]
         # Always offer a reflective / self-aligned option, per the blueprint's
         # emphasis on the Identity Core choosing, not just reacting.
@@ -525,6 +621,8 @@ class ExperienceEngine:
         if gentle:
             reflective = f"Choose the gentlest path toward {theme}"
         choices.append(reflective)
+        if _hits(reflective, self._ban):  # theme is never banned; belt and braces
+            choices[-1] = "Pause and ask what this moment means to you"
         return choices[:4]
 
     def _pick_intensity(self, target: float, gentle: bool) -> float:
@@ -537,7 +635,7 @@ class ExperienceEngine:
     def _collect_symbols(self, world: WorldState, introduced: list[str]) -> list[str]:
         out: list[str] = []
         for s in list(world.motifs) + introduced:
-            if s and s not in out:
+            if s and s not in out and not _hits(s, self._ban):
                 out.append(s)
         return out
 

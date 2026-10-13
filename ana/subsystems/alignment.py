@@ -63,8 +63,9 @@ Pure standard library + pydantic. Deterministic, no LLM, no new deps.
 """
 from __future__ import annotations
 
+import re
 from collections import deque
-from typing import Optional
+from typing import Iterable, Optional
 
 from ..contracts import (
     AlignmentReport,
@@ -157,6 +158,125 @@ def _theme_reflected(theme: str, tags: list[str], texts: list[str]) -> bool:
     return any(token in txt.lower() for txt in texts)
 
 
+# ──────────────────────────────────────────────────────────
+# Forbidden-theme matching (shared by the loop, generator, NPC layer, harmonizer)
+# ──────────────────────────────────────────────────────────
+
+def forbidden_terms(forbidden: Optional[Iterable[str]]) -> list[str]:
+    """Normalise a forbidden-theme list: lower-case, ``_``/``-`` as spaces,
+    blanks dropped, order kept, duplicates removed."""
+    out: list[str] = []
+    for f in forbidden or []:
+        t = " ".join(str(f or "").lower().replace("_", " ").replace("-", " ").split())
+        if t and t not in out:
+            out.append(t)
+    return out
+
+
+def mentions_forbidden(
+    text: Optional[str], forbidden: Optional[Iterable[str]], *, synonyms: bool = False
+) -> Optional[str]:
+    """The first forbidden theme ``text`` mentions, else ``None``.
+
+    Matching is case-insensitive and word-anchored: the forbidden word must
+    start a word (so ``courage`` hits "Courage", "courageous" and
+    "leadership_confidence" hits ``leadership``, but ``courage`` does not hit
+    "encourage" and ``rest`` does not hit "interest"). With ``synonyms`` the
+    identity lexicon (``ana.identity.core.canonical_themes``) is consulted too,
+    so "become someone who can lead" counts as ``leadership``. The prose gate
+    uses the word match; the loop's safe view uses ``synonyms=True`` to be
+    conservative about what it feeds the generator.
+    """
+    terms = forbidden_terms(forbidden)
+    if not text or not terms:
+        return None
+    low = " ".join(str(text).lower().replace("_", " ").replace("-", " ").split())
+    for f in terms:
+        if re.search(rf"(?<![a-z0-9]){re.escape(f)}", low):
+            return f
+    if synonyms:
+        from ..identity.core import canonical_themes  # read-only, lazy (no cycle)
+        canon = canonical_themes(str(text))
+        for f in terms:
+            if f in canon:
+                return f
+    return None
+
+
+def _tag_hits_forbidden(tag: Optional[str], forbidden: Iterable[str]) -> Optional[str]:
+    """Symbolic-tag match (theme / symbols): containment either way, the same
+    rule the eval's safety metric uses — but never on an empty tag (the old
+    ``"" in forbidden`` was always true)."""
+    low = (tag or "").lower().replace("_", " ").strip().lstrip(ENTROPY_MARK).strip()
+    if not low:
+        return None
+    for f in forbidden:
+        if f and (f in low or (len(low) >= 3 and low in f)):
+            return f
+    return None
+
+
+def scene_texts(scene: Scene) -> list[tuple[str, str]]:
+    """Every player-facing string of a scene as (field, text) pairs: title,
+    summary, theme, symbols, choices and each beat's text, speaker, symbol."""
+    out: list[tuple[str, str]] = [
+        ("title", scene.title or ""), ("summary", scene.summary or ""),
+        ("theme", scene.theme or ""),
+    ]
+    out += [("symbol", s or "") for s in scene.symbols]
+    out += [("choice", c or "") for c in scene.choices]
+    for i, b in enumerate(scene.beats):
+        out.append((f"beat[{i}].text", b.text or ""))
+        if b.speaker:
+            out.append((f"beat[{i}].speaker", b.speaker))
+        if b.symbol:
+            out.append((f"beat[{i}].symbol", b.symbol))
+    return out
+
+
+def scene_forbidden_hit(scene: Scene, forbidden: Iterable[str]) -> Optional[tuple[str, str, str]]:
+    """First (forbidden theme, field, text) a scene leaks, else ``None``."""
+    terms = forbidden_terms(forbidden)
+    if not terms:
+        return None
+    for field_name, text in scene_texts(scene):
+        if not text:
+            continue
+        tag = field_name in ("theme", "symbol") or field_name.endswith(".symbol")
+        hit = _tag_hits_forbidden(text, terms) if tag else None
+        hit = hit or mentions_forbidden(text, terms)
+        if hit:
+            return hit, field_name, text
+    return None
+
+
+# Entropy beats from the NPC layer carry this prefix on ``SceneBeat.symbol``
+# (e.g. ``"~storm"``) so an unplanned shock is never confused with the
+# generator's own closing stage event. Mirrors ``ana.npc.layer.ENTROPY_MARK``.
+ENTROPY_MARK = "~"
+
+
+def is_entropy_beat(beat) -> bool:
+    return bool(beat.symbol) and str(beat.symbol).startswith(ENTROPY_MARK)
+
+
+def has_entropy_shock(scene: Scene) -> bool:
+    """Did an unplanned NPC-layer entropy event land in this scene?
+
+    True when any beat carries the entropy mark. For hand-built scenes and
+    third-party NPC layers that do not mark their beats, a closing ``event``
+    beat with *no* symbol still counts (the deterministic generator always
+    tags its own stage event with the stage symbol, and LLM scenes are
+    excluded) — so the generator's own ending is never mistaken for a shock.
+    """
+    if any(is_entropy_beat(b) for b in scene.beats):
+        return True
+    if scene.beats and scene.source != "llm":
+        last = scene.beats[-1]
+        return last.kind == "event" and not last.symbol
+    return False
+
+
 def _clip(x: float, lo: float = 0.0, hi: float = 1.0) -> float:
     return max(lo, min(hi, x))
 
@@ -184,7 +304,7 @@ class SelfAlignment:
     ) -> None:
         self.stress_ceiling = stress_ceiling
         self.stress_floor = stress_floor
-        self.forbidden_themes = [t.lower().strip() for t in (forbidden_themes or [])]
+        self.forbidden_themes = forbidden_terms(forbidden_themes)
         self.always_hope_after_dark = always_hope_after_dark
         self.zpd_low = zpd_low
         self.zpd_high = zpd_high
@@ -239,7 +359,12 @@ class SelfAlignment:
         stress = identity.emotion.stress
 
         # — Inner-outer alignment ————————————————————————————————
-        reflected = self.reflected_themes(identity, world, scene)
+        # A forbidden theme is never a reflection target: it is not measured
+        # and never nudged toward (the loop also strips it from its safe view).
+        reflected = {
+            t: ok for t, ok in self.reflected_themes(identity, world, scene).items()
+            if not mentions_forbidden(t, self.forbidden_themes)
+        }
         reflection_pct = (
             sum(reflected.values()) / len(reflected) if reflected else 0.0
         )
@@ -326,7 +451,8 @@ class SelfAlignment:
                      trait growth (sum of positive deltas / 0.25, capped, x0.5).
                      A lesson recorded while turning away ("the question
                      remains") counts only as faint recognition (0.1).
-        surprise_external  vision (0.5) + an entropy event beat (0.35) + the
+        surprise_external  vision (0.5) + an entropy event beat (0.35; see
+                     :func:`has_entropy_shock`) + the
                      part of scene intensity above 0.6 (up to 0.3).
         """
         # Reflection
@@ -360,8 +486,9 @@ class SelfAlignment:
         else:
             integration = (0.5 if outcome.lesson else 0.0) + trait_part
 
-        # External surprise
-        entropy = any(b.kind == "event" for b in scene.beats[-1:])
+        # External surprise — only a genuine NPC-layer entropy event counts,
+        # never the generator's own closing stage event.
+        entropy = has_entropy_shock(scene)
         surprise = (
             (0.5 if scene.is_vision else 0.0)
             + (0.35 if entropy else 0.0)
@@ -507,13 +634,15 @@ class SelfAlignment:
     # Ethical / emotional safety — hard gates
     # ──────────────────────────────────────────────────────────
     def _safety_check(self, scene: Scene, stress: float) -> tuple[bool, Optional[str]]:
-        # Forbidden theme on the scene's theme or any of its symbols.
-        candidates = [scene.theme] + list(scene.symbols)
-        for cand in candidates:
-            low = cand.lower()
-            for forbidden in self.forbidden_themes:
-                if forbidden and (forbidden in low or low in forbidden):
-                    return True, f"forbidden theme encountered: '{forbidden}' in '{cand}'"
+        # Final gate: a forbidden theme anywhere the protagonist can read it —
+        # title, summary, theme, symbols, choices, and every beat's text,
+        # speaker and symbol (see :func:`scene_forbidden_hit`).
+        hit = scene_forbidden_hit(scene, self.forbidden_themes)
+        if hit is not None:
+            forbidden, field_name, text = hit
+            snippet = text if len(text) <= 60 else text[:57] + "..."
+            return True, (f"forbidden theme encountered: '{forbidden}' in "
+                          f"{field_name} '{snippet}'")
 
         # Dangerously high intensity while already near the stress ceiling.
         if scene.intensity >= 0.8 and stress >= self.stress_ceiling * 0.9:
@@ -523,3 +652,12 @@ class SelfAlignment:
             )
 
         return False, None
+
+    def retract(self) -> None:
+        """Undo the last :meth:`evaluate` (nudge memory, stress history, cycle
+        count). The Feedback Loop Engine calls this before re-evaluating a
+        replacement scene in the same tick, so a replaced scene counts once."""
+        if self._snapshot is not None:
+            self._restore()
+            self._last_eval_tick = None
+            self._last_eval_blocked = False

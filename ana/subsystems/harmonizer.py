@@ -123,6 +123,12 @@ class TruthHarmonizer:
         # a deep-in-a-vision sequence is recognised and tolerated.
         self._symbolic_history: list[float] = []
         self._history_window = 5
+        # Forbidden themes (set by the Feedback Loop Engine from the alignment
+        # layer): grounding notes that would name one are never chosen.
+        self.forbidden: list[str] = []
+        # State before the last review(), so a scene the loop throws away (a
+        # safety block or a veto) leaves no continuity trace: see retract().
+        self._before_last: Optional[tuple] = None
 
     # ────────────────────────────────────────────────────────────
     # Protocol entry point
@@ -140,6 +146,7 @@ class TruthHarmonizer:
         reality anchoring — then decides moderation. Updates internal continuity
         state as a side effect so later scenes are judged against this one.
         """
+        self._before_last = self._save()
         self._register_npcs(world)
 
         continuity_errors: list[str] = []
@@ -367,12 +374,34 @@ class TruthHarmonizer:
     # Reality anchoring + moderation
     # ────────────────────────────────────────────────────────────
 
+    def retract(self) -> None:
+        """Forget the last :meth:`review`: the scene it judged was replaced and
+        never played, so its deaths, facts and symbolism must not count. (The
+        RNG is not rewound; runs stay deterministic.)"""
+        if self._before_last is not None:
+            (seen, dead, facts, hist, used) = self._before_last
+            self._seen_npcs, self._dead_npcs = set(seen), set(dead)
+            self._world_facts = set(facts)
+            self._symbolic_history = list(hist)
+            self._used_notes = list(used)
+            self._before_last = None
+
+    def _save(self) -> tuple:
+        return (set(self._seen_npcs), set(self._dead_npcs), set(self._world_facts),
+                list(self._symbolic_history), list(getattr(self, "_used_notes", [])))
+
     def _pick_grounding_note(self) -> str:
         # Don't repeat a grounding note until most of the others have been used.
         used = getattr(self, "_used_notes", [])
-        pool = [n for n in _GROUNDING_NOTES if n not in used] or list(_GROUNDING_NOTES)
+        notes = list(_GROUNDING_NOTES)
+        forbidden = getattr(self, "forbidden", None)
+        if forbidden:
+            from .alignment import mentions_forbidden
+            notes = [n for n in notes if not mentions_forbidden(n, forbidden)] or [
+                "Even here, breath is real and the ground still holds you."]
+        pool = [n for n in notes if n not in used] or notes
         note = self.rng.choice(pool)
-        self._used_notes = (used + [note])[-(len(_GROUNDING_NOTES) - 2):]
+        self._used_notes = (used + [note])[-max(1, len(notes) - 2):]
         return note
 
     def _decide_approval(self, scene: Scene, continuity_errors: list[str]) -> bool:

@@ -59,6 +59,23 @@ from ..contracts import (
 )
 from ..llm.gateway import ModelGateway
 
+# Entropy beats are marked on ``SceneBeat.symbol`` with this prefix (``"~storm"``)
+# so the loop and the alignment layer can tell an unplanned NPC-layer shock from
+# the generator's own closing stage event. The plain symbol ("storm") is still
+# added to ``scene.symbols``. Mirrors ``ana.subsystems.alignment.ENTROPY_MARK``.
+ENTROPY_MARK = "~"
+
+
+def is_entropy_beat(beat: SceneBeat) -> bool:
+    return bool(beat.symbol) and str(beat.symbol).startswith(ENTROPY_MARK)
+
+
+def _mentions(text: Optional[str], forbidden: Iterable[str], synonyms: bool = False) -> bool:
+    if not text or not forbidden:
+        return False
+    from ..subsystems.alignment import mentions_forbidden  # lazy: avoid import cycle
+    return mentions_forbidden(text, forbidden, synonyms=synonyms) is not None
+
 
 # ─────────────────────────────────────────────────────────────
 # Archetype library — behaviour, voice and reaction tendencies
@@ -405,6 +422,14 @@ class NPCDirector:
         self._stage: Optional[str] = None     # stage given to the last populate()
         self._pending: list[tuple[str, str, str]] = []   # (name, kind, stage)
         self._callback_scenes: set[str] = set()
+        # Callbacks flushed into each scene (scene id -> entries), so a scene the
+        # safety gate throws away can hand its callbacks back (:meth:`withdraw`).
+        self._injected: dict[str, list[tuple[str, str, str]]] = {}
+        # Forbidden themes (set by the Feedback Loop Engine from the alignment
+        # layer's ``forbidden_themes``). The director never voices them: NPCs do
+        # not ``represent`` them, personas / reactions / callback and entropy
+        # beats that would name them are swapped for neutral variants.
+        self.forbidden: list[str] = []
 
     # -- registry API ----------------------------------------------------
     @property
@@ -425,6 +450,19 @@ class NPCDirector:
         return [m.to_dict() for m in members]
 
     # -- helpers ---------------------------------------------------------
+    def _safe_represents(self, value: Optional[str]) -> Optional[str]:
+        """``value`` unless it names a forbidden theme (lexicon-aware)."""
+        if value and _mentions(value, self.forbidden, synonyms=True):
+            return None
+        return value
+
+    def _clean(self, options: list, key=lambda o: o) -> list:
+        """Options whose text names no forbidden theme (all of them if none
+        are clean, so callers can apply their own neutral fallback)."""
+        if not self.forbidden:
+            return options
+        return [o for o in options if not _mentions(key(o), self.forbidden)]
+
     def _llm_ready(self) -> bool:
         return bool(self.use_llm and self.gateway and self.gateway.available)
 
@@ -448,7 +486,7 @@ class NPCDirector:
     def _make_persona(self, arch: Archetype, represents: Optional[str]) -> str:
         """Deterministic persona, optionally enriched by the gateway."""
         base = self._lib(arch)["persona"]
-        if represents:
+        if represents and not _mentions(represents, self.forbidden, synonyms=True):
             base = f"{base}; an embodiment of '{represents}'"
         if self._llm_ready():
             try:
@@ -459,7 +497,7 @@ class NPCDirector:
                     ),
                     user=f"Archetype: {arch.value}. Core idea: {base}.",
                 )
-                if text:
+                if text and not _mentions(text, self.forbidden):
                     return text.strip().split("\n")[0][:160]
             except Exception:
                 pass
@@ -546,8 +584,10 @@ class NPCDirector:
         added: list[NPC] = []
 
         # 1. SHADOW mirror for the weakest / most conflicted trait, if any.
-        if identity.traits:
-            weak = min(identity.traits, key=lambda t: t.value)
+        traits = [t for t in identity.traits
+                  if self._safe_represents(t.name) is not None]
+        if traits:
+            weak = min(traits, key=lambda t: t.value)
             if weak.value <= 0.45:
                 m = self._find("shadow", represents=weak.name)
                 if m is not None and m.npc.represents in (weak.name, None):
@@ -559,10 +599,14 @@ class NPCDirector:
 
         # 2. MENTOR mirror for a goal or an active theme, if any.
         focus: Optional[str] = None
-        if identity.goals:
-            focus = identity.goals[0].description
-        elif identity.active_themes:
-            focus = identity.active_themes[0]
+        goals = [g.description for g in identity.goals
+                 if self._safe_represents(g.description) is not None]
+        themes = [t for t in identity.active_themes
+                  if self._safe_represents(t) is not None]
+        if goals:
+            focus = goals[0]
+        elif themes:
+            focus = themes[0]
         if focus is not None:
             m = self._find("mentor")
             if m is not None:
@@ -697,13 +741,62 @@ class NPCDirector:
             if m is None:
                 continue
             new_beats.append(self._callback_beat(m, kind))
+        self._injected[scene.id] = list(self._pending)
         self._pending = []
         self._callback_scenes.add(scene.id)
         if new_beats:
             scene.beats = list(scene.beats) + new_beats
         return scene
 
+    def withdraw(self, scene: Scene, *, requeue: bool = True) -> None:
+        """Take back what this director put into a scene that will not be played
+        (the safety gate or the harmonizer replaced it).
+
+        Its callbacks are re-queued so the replacement scene receives them
+        (``requeue=True``), or — when nothing will carry them this cycle (e.g. a
+        safe interlude) — un-marked, so a later cycle of the stage can plan
+        them again instead of losing them for good.
+        """
+        entries = self._injected.pop(scene.id, [])
+        self._callback_scenes.discard(scene.id)
+        if not entries:
+            return
+        if requeue:
+            seen = set(self._pending)
+            self._pending = [e for e in entries if e not in seen] + self._pending
+            return
+        for name, kind, cb_stage in entries:
+            m = self._cast.get(name)
+            if m is None:
+                continue
+            if kind in m.callback_kinds:
+                m.callback_kinds.remove(kind)
+            if cb_stage in m.callbacks and not any(
+                    st == cb_stage for _n, _k, st in self._pending if _n == name):
+                m.callbacks.remove(cb_stage)
+
+    def drop_pending(self) -> None:
+        """Forget queued callbacks without delivering them (un-marks them, so
+        they can be planned again later)."""
+        if not self._pending:
+            return
+        fake = Scene(title="(withdrawn)")
+        self._injected[fake.id] = list(self._pending)
+        self._pending = []
+        self.withdraw(fake, requeue=False)
+
     def _callback_beat(self, m: "CastMember", kind: str) -> SceneBeat:
+        beat = self._callback_beat_raw(m, kind)
+        if self.forbidden and (_mentions(beat.text, self.forbidden)
+                               or _mentions(beat.symbol, self.forbidden)):
+            beat = SceneBeat(
+                kind="dialogue", speaker=m.name, archetype=m.npc.archetype,
+                text=(f"{m.name}, whom you have met before, is here again, "
+                      f"and stays close."),
+                symbol="the one who returned")
+        return beat
+
+    def _callback_beat_raw(self, m: "CastMember", kind: str) -> SceneBeat:
         when = _STAGE_PHRASE.get(m.first_stage or "", "earlier on the road")
         helped_before = m.treatment.get("helped", 0) + m.treatment.get("followed", 0)
         if kind == "mentor_returns":
@@ -744,6 +837,7 @@ class NPCDirector:
     ) -> NPC:
         name = self._unique_name(arch, taken)
         taken.add(name)
+        represents = self._safe_represents(represents)
         return NPC(
             name=name,
             archetype=arch,
@@ -759,7 +853,9 @@ class NPCDirector:
         With probability ``entropy_prob`` the director samples a single event
         from the bucket best matching the world's location and the scene's theme,
         so the surprise *belongs* to the place (controlled entropy, not noise).
-        Otherwise the scene is returned untouched.
+        Otherwise the scene is returned untouched. The injected beat's
+        ``symbol`` is marked with :data:`ENTROPY_MARK` (``"~storm"``) so the
+        shock is identifiable regardless of where it sits in the scene.
 
         Any callbacks planned by a staged :meth:`populate` are flushed into the
         scene first (see :meth:`inject_callback`), so a loop that passes
@@ -770,10 +866,17 @@ class NPCDirector:
         if self.rng.random() >= self.entropy_prob:
             return scene
 
-        bucket = self._entropy_bucket(world, scene)
+        bucket = self._clean(self._entropy_bucket(world, scene),
+                             key=lambda o: f"{o[0]} {o[1] or ''}")
         text, symbol = self.rng.choice(bucket)
+        if self.forbidden and (_mentions(text, self.forbidden)
+                               or _mentions(symbol, self.forbidden)):
+            return scene  # nothing clean to inject — skip the shock
 
-        beat = SceneBeat(kind="event", text=text, symbol=symbol)
+        # The beat's symbol carries the entropy mark (see ENTROPY_MARK); the
+        # plain symbol goes on the scene.
+        beat = SceneBeat(kind="event", text=text,
+                         symbol=f"{ENTROPY_MARK}{symbol or 'entropy'}")
         scene.beats = list(scene.beats) + [beat]
         if symbol and symbol not in scene.symbols:
             scene.symbols = list(scene.symbols) + [symbol]
@@ -866,8 +969,9 @@ class NPCDirector:
         help_score += swing
 
         kind = "neutral"
+        reactions = self._clean(list(lib["reactions"])) or ["{name} reacts in their own way"]
         if help_score >= 0.55:
-            template = self.rng.choice(lib["reactions"])
+            template = self.rng.choice(reactions)
             line = template.format(name=npc.name)
             if lib.get("help_bias", 0.0) > 0.0:
                 kind = "help"
@@ -880,7 +984,7 @@ class NPCDirector:
                 line = f"{npc.name} hesitates and holds back, unwilling to commit"
                 kind = "hold"
         else:
-            template = self.rng.choice(lib["reactions"])
+            template = self.rng.choice(reactions)
             line = template.format(name=npc.name)
 
         if self._llm_ready():
@@ -895,7 +999,7 @@ class NPCDirector:
                         f"User action: {action.raw}. Reaction: {line}."
                     ),
                 )
-                if text:
+                if text and not _mentions(text, self.forbidden):
                     return text.strip().split("\n")[0][:160], kind
             except Exception:
                 pass
