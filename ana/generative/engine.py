@@ -154,6 +154,12 @@ class ExperienceEngine:
                  use_llm: bool = True) -> None:
         self.gateway = gateway
         self.use_llm = use_llm
+        # Anti-repetition memory for the deterministic path.
+        from collections import deque
+        self._met_npcs: set[str] = set()
+        self._recent_text: deque = deque(maxlen=24)
+        self._recent_shards: deque = deque(maxlen=4)
+        self._cycle = 0
         self.rng = random.Random(seed)
 
     # -- public API ------------------------------------------------------
@@ -361,7 +367,7 @@ class ExperienceEngine:
             f"You arrive at {world.location}. The air is {world.ambience}, the {world.time_of_day} {light}, the weather {world.weather}.",
             f"Here is {world.location}, {light} under a {world.weather} sky, the hour still {world.time_of_day}.",
         ]
-        text = self.rng.choice(openers)
+        text = self._fresh(openers)
         if world.motifs:
             m = self.rng.choice(world.motifs)
             tails = [
@@ -386,10 +392,15 @@ class ExperienceEngine:
             f"\"You stand at {stage['label']}, whether you name it or not.\"",
             f"\"They never tell you {voice['secret']} about {represents}.\"",
         ]
-        line = self.rng.choice(templates)
+        line = self._fresh(templates)
         if gentle:
             line = line[:-1] + " But there is no hurry.\""
-        text = f"{npc.name}, {persona}, speaks. {line}"
+        if npc.name not in self._met_npcs:
+            self._met_npcs.add(npc.name)
+            text = f"{npc.name}, {persona}, speaks. {line}"
+        else:
+            verbs = ["says", "says quietly", "tells you", "murmurs", "says, not looking at you"]
+            text = f"{npc.name} {self.rng.choice(verbs)}: {line}"
         return SceneBeat(kind="dialogue", text=text, speaker=npc.name,
                          archetype=npc.archetype)
 
@@ -409,25 +420,53 @@ class ExperienceEngine:
         return voices.get(archetype, voices[Archetype.ALLY])
 
     def _synchronicity_beat(self, hint: SynchronicityHint) -> SceneBeat:
+        # `hint.suggestion` is a staging note for the generator, never prose: the
+        # whole point of a synchronicity is that the narration doesn't explain it.
+        sym = hint.symbol
+        cap = sym[0].upper() + sym[1:]
         leads = [
-            f"And then — {hint.symbol}, again. {hint.suggestion}",
-            f"You have seen {hint.symbol} before. It returns now, and {hint.suggestion[0].lower() + hint.suggestion[1:]}",
-            f"{hint.symbol[0].upper() + hint.symbol[1:]} surfaces where it should not: {hint.suggestion}",
+            f"And then — {sym}, just there, as if it had been waiting for this exact moment.",
+            f"{cap} surfaces where it should not be. No one else seems to notice.",
+            f"For a breath, everything else goes quiet around {sym}.",
+            f"You almost miss it: {sym}. When you look again, it is still there.",
         ]
-        return SceneBeat(kind="synchronicity", text=self.rng.choice(leads),
-                         symbol=hint.symbol)
+        return SceneBeat(kind="synchronicity", text=self._fresh(leads), symbol=sym)
 
     def _shard_beat(self, shards: list[str], theme: str) -> Optional[SceneBeat]:
+        """Weave one recalled memory as an echo — rationed, and rotating through
+        shards so the same memory doesn't surface every cycle."""
         if not shards:
             return None
-        shard = self.rng.choice(shards)
+        self._cycle += 1
+        fresh = [sh for sh in shards if sh not in self._recent_shards]
+        on_theme = [sh for sh in fresh if theme.lower() in sh.lower()]
+        # Echo when the memory is on-theme, otherwise only every third cycle.
+        if not on_theme and self._cycle % 3 != 0:
+            return None
+        pool = on_theme or fresh
+        if not pool:
+            return None
+        shard = self.rng.choice(pool)
+        self._recent_shards.append(shard)
+        clean = shard.rstrip(".")
+        for prefix in ("Belief: ", "I believe "):
+            if clean.startswith(prefix):
+                clean = "the old belief that " + clean[len(prefix):][0].lower() + clean[len(prefix)+1:]
         frames = [
-            f"A memory rises, unbidden: {shard}. It rhymes with where you stand now.",
-            f"You remember — {shard} — and the echo of it changes the shape of this moment.",
-            f"This has the texture of something before: {shard}.",
+            f"A memory rises, unbidden: {clean}. It rhymes with where you stand now.",
+            f"You remember — {clean} — and the echo of it changes the shape of this moment.",
+            f"This has the texture of something before: {clean}.",
+            f"Somewhere under the noise, {clean}.",
+            f"It comes back without asking: {clean}.",
         ]
-        return SceneBeat(kind="description", text=self.rng.choice(frames),
-                         symbol="echo")
+        return SceneBeat(kind="description", text=self._fresh(frames), symbol="echo")
+
+    def _fresh(self, options: list[str]) -> str:
+        """Pick an option whose exact text hasn't appeared in recent cycles."""
+        pool = [o for o in options if o not in self._recent_text] or options
+        text = self.rng.choice(pool)
+        self._recent_text.append(text)
+        return text
 
     # -- event / directive shaping --------------------------------------
     def _apply_directive(self, text: str, directive: str, theme: str,

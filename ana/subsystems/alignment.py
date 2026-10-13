@@ -32,6 +32,33 @@ The blueprint names five jobs for this layer, and each is realised below:
    into register — we nudge the Environment Mirror to raise its reflectiveness
    dial, so the person meets themselves more and more directly.
 
+Escalating guidance
+-------------------
+Guidance is not a fixed string. Each active theme the world fails to reflect
+climbs a *nudge ladder* of increasingly direct strategies, one rung per cycle
+it is addressed (wrapping round at the top), so the same nudge is never issued
+on two consecutive cycles:
+
+    0 motif         weave the theme into a recurring motif / symbol of the setting
+    1 npc           deliver the theme through an NPC who embodies it
+    2 confrontation stage a direct confrontation the identity must face
+    3 pause         offer a reflective pause: a quiet choice to name the theme
+    4 dial          raise the reflectiveness dial — mirror the theme openly
+
+A theme stops being nudged (and its ladder resets) once a scene reflects it.
+When several themes are under-reflected, the one addressed least recently is
+chosen, so attention rotates across them.
+
+A theme counts as *reflected* when it appears (case-insensitive substring) in
+the world's motifs, the scene theme, the scene symbols, or any beat's text.
+
+Earned signal
+-------------
+:meth:`SelfAlignment.signal_for` turns a cycle (identity, world, scene,
+outcome) into an :class:`~ana.engine.convergence.AlignmentSignal` that the
+Feedback Loop Engine feeds to ``ConvergenceEngine.step_with`` so convergence is
+earned by reflection, engagement and integration rather than elapsed time.
+
 Pure standard library + pydantic. Deterministic, no LLM, no new deps.
 """
 from __future__ import annotations
@@ -42,13 +69,56 @@ from typing import Optional
 from ..contracts import (
     AlignmentReport,
     IdentitySnapshot,
+    Outcome,
     Scene,
     WorldState,
 )
+from ..engine.convergence import AlignmentSignal
 
 # A scene at or above this intensity is considered "very dark" for the purpose
 # of the always-hope-after-dark guarantee and the rolling reality-testing trend.
 _DARK_INTENSITY = 0.75
+
+# The nudge ladder: increasingly direct strategies for an under-reflected theme.
+# Each entry is (strategy name, template). Rung 4 deliberately begins with the
+# phrase the Feedback Loop Engine listens for to raise the reflectiveness dial.
+NUDGE_LADDER: tuple[tuple[str, str], ...] = (
+    ("motif",
+     "reflect '{theme}' through a recurring motif — let a symbol of {theme} "
+     "appear in the setting without naming it"),
+    ("npc",
+     "deliver the '{theme}' lesson via an NPC who embodies it — someone whose "
+     "need or example puts {theme} in front of the identity"),
+    ("confrontation",
+     "stage a direct confrontation over '{theme}' — the identity must face it "
+     "and cannot drift past"),
+    ("pause",
+     "offer a reflective pause on '{theme}' — a quiet moment and a choice in "
+     "which the identity can name what {theme} means to them"),
+    ("dial",
+     "raise the reflectiveness dial for '{theme}' — let the world mirror it "
+     "openly, inner and outer in plain view"),
+)
+
+# Rotating phrasings for the generic disengagement nudge so it, too, varies.
+_ENGAGE_VARIANTS: tuple[str, ...] = (
+    "introduce a more direct confrontation so the identity must engage rather "
+    "than drift past the theme",
+    "put something the identity cares about at stake so drifting has a cost",
+    "have an ally ask the identity, plainly, what they intend to do",
+)
+
+# Rotating phrasings for the boredom nudge.
+_STAKES_VARIANTS: tuple[str, ...] = (
+    "raise the stakes with a fresh challenge or an unexpected arrival",
+    "let the world move on its own — a rival acts, a deadline lands",
+    "reveal a hidden cost of standing still",
+)
+
+_AVOIDANT_WORDS = (
+    "run", "flee", "hide", "ignore", "refuse", "leave", "avoid", "give up",
+    "abandon", "turn away", "walk away", "back away", "skip",
+)
 
 
 def _overlap(a: list[str], b: list[str]) -> float:
@@ -71,14 +141,35 @@ def _overlap(a: list[str], b: list[str]) -> float:
     return hits / len(a)
 
 
+def _theme_reflected(theme: str, tags: list[str], texts: list[str]) -> bool:
+    """Is ``theme`` present in the symbolic tags or the prose of the scene?
+
+    Short tags (motifs, scene theme, symbols) match by containment in either
+    direction; long texts (beat prose) match when the theme is a substring.
+    """
+    token = theme.lower().strip()
+    if not token:
+        return False
+    for tag in tags:
+        t = tag.lower().strip()
+        if t and (token in t or t in token):
+            return True
+    return any(token in txt.lower() for txt in texts)
+
+
+def _clip(x: float, lo: float = 0.0, hi: float = 1.0) -> float:
+    return max(lo, min(hi, x))
+
+
 class SelfAlignment:
     """Homeostatic guidance implementing :class:`AlignmentProtocols`.
 
     The protocol keeps a little state across cycles so it can reason about
     *trends* rather than just the current frame: the previous scene's intensity
-    (for the always-hope-after-dark guarantee) and a short rolling window of
+    (for the always-hope-after-dark guarantee), a short rolling window of
     stress readings (for reality testing / detecting a slide toward trauma or
-    boredom).
+    boredom), and a per-theme memory of the nudges already issued (so guidance
+    escalates instead of repeating).
     """
 
     def __init__(
@@ -89,6 +180,7 @@ class SelfAlignment:
         always_hope_after_dark: bool = True,
         zpd_low: float = 0.3,
         zpd_high: float = 0.6,
+        reflection_target: float = 0.75,
     ) -> None:
         self.stress_ceiling = stress_ceiling
         self.stress_floor = stress_floor
@@ -96,10 +188,37 @@ class SelfAlignment:
         self.always_hope_after_dark = always_hope_after_dark
         self.zpd_low = zpd_low
         self.zpd_high = zpd_high
+        # Below this reflection fraction, under-reflected themes get nudged.
+        self.reflection_target = reflection_target
 
         # Minimal cross-cycle state.
         self._prev_intensity: Optional[float] = None
         self._stress_history: deque[float] = deque(maxlen=5)
+
+        # Nudge memory.
+        self._cycle = 0                              # evaluate() calls committed
+        self._ladder: dict[str, int] = {}            # theme -> next rung index
+        self._last_addressed: dict[str, int] = {}    # theme -> cycle last nudged
+        self._last_nudges: list[str] = []            # nudges issued last cycle
+        self.nudge_log: list[tuple[int, str, str]] = []  # (cycle, theme, strategy)
+        self._rot: dict[str, int] = {}               # rotating-phrasing cursors
+        # Snapshot for re-evaluating the same tick after a safety block.
+        self._last_eval_tick: Optional[int] = None
+        self._last_eval_blocked = False
+        self._snapshot: Optional[tuple] = None
+
+    # ──────────────────────────────────────────────────────────
+    # Reflection
+    # ──────────────────────────────────────────────────────────
+    @staticmethod
+    def reflected_themes(
+        identity: IdentitySnapshot, world: WorldState, scene: Scene
+    ) -> dict[str, bool]:
+        """Map each active theme to whether this world + scene reflect it."""
+        tags = list(world.motifs) + [scene.theme] + list(scene.symbols)
+        tags += [b.symbol for b in scene.beats if b.symbol]
+        texts = [b.text for b in scene.beats] + [scene.title, scene.summary]
+        return {t: _theme_reflected(t, tags, texts) for t in identity.active_themes}
 
     # ──────────────────────────────────────────────────────────
     # The protocol entry point
@@ -107,13 +226,23 @@ class SelfAlignment:
     def evaluate(
         self, identity: IdentitySnapshot, world: WorldState, scene: Scene
     ) -> AlignmentReport:
+        # The loop re-evaluates a regenerated scene in the same tick after a
+        # safety block; roll the nudge memory back so that cycle counts once.
+        if (
+            self._last_eval_blocked
+            and self._last_eval_tick == identity.tick
+            and self._snapshot is not None
+        ):
+            self._restore()
+        self._snapshot = self._save()
+
         stress = identity.emotion.stress
 
         # — Inner-outer alignment ————————————————————————————————
-        # What the world + scene put in front of the person, as one bag of
-        # symbolic content to test the identity's active themes against.
-        world_and_scene = list(world.motifs) + [scene.theme] + list(scene.symbols)
-        reflection_pct = _overlap(identity.active_themes, world_and_scene)
+        reflected = self.reflected_themes(identity, world, scene)
+        reflection_pct = (
+            sum(reflected.values()) / len(reflected) if reflected else 0.0
+        )
 
         # adaptation_level: how much the identity is engaging/adapting.
         # The snapshot is read-only and carries no first-class "engagement"
@@ -135,7 +264,7 @@ class SelfAlignment:
 
         # — Nudges (directives for the NEXT cycle) ————————————————
         nudges = self._build_nudges(
-            identity, reflection_pct, adaptation_level, overwhelmed, bored
+            identity, reflected, reflection_pct, adaptation_level, overwhelmed, bored
         )
 
         # — Hard safety gates ————————————————————————————————————
@@ -168,8 +297,83 @@ class SelfAlignment:
         # — Update cross-cycle state for next time ————————————————
         self._prev_intensity = scene.intensity
         self._stress_history.append(stress)
+        self._last_nudges = list(nudges)
+        self._cycle += 1
+        self._last_eval_tick = identity.tick
+        self._last_eval_blocked = blocked
 
         return report
+
+    # ──────────────────────────────────────────────────────────
+    # The earned signal for the convergence engine
+    # ──────────────────────────────────────────────────────────
+    def signal_for(
+        self,
+        identity: IdentitySnapshot,
+        world: WorldState,
+        scene: Scene,
+        outcome: Outcome,
+    ) -> AlignmentSignal:
+        """Read what this cycle *earned* for inner/outer convergence.
+
+        reflection   fraction of active themes the world/scene reflected, also
+                     counting themes the outcome actually touched. With no
+                     active themes, 0.5 (nothing to mirror, nothing missed).
+        engagement   +1 met the challenge (success True), -1 avoided it
+                     (success False, or avoidant language with no verdict),
+                     0 neutral.
+        integration  a lesson learned while engaging (+0.5), plus positive
+                     trait growth (sum of positive deltas / 0.25, capped, x0.5).
+                     A lesson recorded while turning away ("the question
+                     remains") counts only as faint recognition (0.1).
+        surprise_external  vision (0.5) + an entropy event beat (0.35) + the
+                     part of scene intensity above 0.6 (up to 0.3).
+        """
+        # Reflection
+        if identity.active_themes:
+            reflected = self.reflected_themes(identity, world, scene)
+            touched = " | ".join(t.lower() for t in outcome.themes_touched)
+            for theme in reflected:
+                if not reflected[theme] and theme.lower().strip() and theme.lower().strip() in touched:
+                    reflected[theme] = True
+            reflection = sum(reflected.values()) / len(reflected)
+        else:
+            reflection = 0.5
+
+        # Engagement
+        raw = (outcome.user_action.raw if outcome.user_action else "") or ""
+        avoidant_words = any(w in raw.lower() for w in _AVOIDANT_WORDS)
+        if outcome.success is True:
+            engagement = 1.0
+        elif outcome.success is False:
+            engagement = -1.0
+        elif avoidant_words:
+            engagement = -0.5
+        else:
+            engagement = 0.0
+
+        # Integration
+        growth = sum(max(0.0, d) for d in outcome.trait_updates.values())
+        trait_part = 0.5 * _clip(growth / 0.25)
+        if outcome.success is False:
+            integration = 0.1 if outcome.lesson else 0.0
+        else:
+            integration = (0.5 if outcome.lesson else 0.0) + trait_part
+
+        # External surprise
+        entropy = any(b.kind == "event" for b in scene.beats[-1:])
+        surprise = (
+            (0.5 if scene.is_vision else 0.0)
+            + (0.35 if entropy else 0.0)
+            + 0.3 * _clip((scene.intensity - 0.6) / 0.4)
+        )
+
+        return AlignmentSignal(
+            reflection=_clip(reflection),
+            engagement=_clip(engagement, -1.0, 1.0),
+            integration=_clip(integration),
+            surprise_external=_clip(surprise),
+        )
 
     # ──────────────────────────────────────────────────────────
     # Difficulty / stress management — the ZPD dial
@@ -206,9 +410,30 @@ class SelfAlignment:
     # ──────────────────────────────────────────────────────────
     # Nudges — concrete directives born of misalignment
     # ──────────────────────────────────────────────────────────
+    def _pick_theme(self, unreflected: list[str], order: list[str]) -> str:
+        """The under-reflected theme addressed least recently (ties: list order)."""
+        return min(
+            unreflected,
+            key=lambda t: (self._last_addressed.get(t, -1), order.index(t)),
+        )
+
+    def _theme_nudge(self, theme: str) -> tuple[str, str]:
+        rung = self._ladder.get(theme, 0) % len(NUDGE_LADDER)
+        strategy, template = NUDGE_LADDER[rung]
+        text = template.format(theme=theme)
+        if text in self._last_nudges:          # never verbatim twice in a row
+            rung = (rung + 1) % len(NUDGE_LADDER)
+            strategy, template = NUDGE_LADDER[rung]
+            text = template.format(theme=theme)
+        self._ladder[theme] = rung + 1
+        self._last_addressed[theme] = self._cycle
+        self.nudge_log.append((self._cycle, theme, strategy))
+        return strategy, text
+
     def _build_nudges(
         self,
         identity: IdentitySnapshot,
+        reflected: dict[str, bool],
         reflection_pct: float,
         adaptation_level: float,
         overwhelmed: bool,
@@ -216,23 +441,26 @@ class SelfAlignment:
     ) -> list[str]:
         nudges: list[str] = []
 
-        # Inner-outer: an active theme the world is failing to reflect.
-        if identity.active_themes and reflection_pct < 0.5:
-            theme = identity.active_themes[0]
-            nudges.append(
-                f"deliver the '{theme}' lesson more directly via an NPC or motif — "
-                f"the world is under-reflecting an active theme"
-            )
+        # A reflected theme has been met: stop nudging it and reset its ladder.
+        for theme, ok in reflected.items():
+            if ok:
+                self._ladder.pop(theme, None)
 
-        # Adaptation: the person is not engaging the material.
-        if adaptation_level < 0.35:
-            nudges.append(
-                "introduce a more direct confrontation so the identity must "
-                "engage rather than drift past the theme"
-            )
+        # Inner-outer: an active theme the world is failing to reflect.
+        strategy = None
+        unreflected = [t for t, ok in reflected.items() if not ok]
+        if unreflected and reflection_pct < self.reflection_target:
+            theme = self._pick_theme(unreflected, list(reflected))
+            strategy, text = self._theme_nudge(theme)
+            nudges.append(text)
+
+        # Adaptation: the person is not engaging the material. Skip if the
+        # theme nudge is already a confrontation; otherwise rotate phrasing.
+        if adaptation_level < 0.35 and strategy != "confrontation":
+            nudges.append(self._rotate("engage", _ENGAGE_VARIANTS))
 
         # Goal alignment: as convergence rises, mirror more directly.
-        if identity.convergence >= 0.5:
+        if identity.convergence >= 0.5 and strategy != "dial":
             nudges.append("raise the reflectiveness dial — inner and outer are converging")
 
         # Difficulty-driven beats.
@@ -240,9 +468,40 @@ class SelfAlignment:
             nudges.append("insert a calming interlude — lower stakes and give room to breathe")
             nudges.append("introduce a rest beat before the next challenge")
         elif bored:
-            nudges.append("raise the stakes with a fresh challenge or an unexpected arrival")
+            nudges.append(self._rotate("stakes", _STAKES_VARIANTS))
 
         return nudges
+
+    def _rotate(self, key: str, variants: tuple[str, ...]) -> str:
+        """Next phrasing of a recurring nudge, never the one issued last cycle."""
+        idx = self._rot.get(key, 0)
+        for k in range(len(variants)):
+            text = variants[(idx + k) % len(variants)]
+            if text not in self._last_nudges:
+                self._rot[key] = (idx + k + 1) % len(variants)
+                return text
+        return variants[idx % len(variants)]
+
+    # ──────────────────────────────────────────────────────────
+    # Nudge-memory snapshot (for same-tick re-evaluation)
+    # ──────────────────────────────────────────────────────────
+    def _save(self) -> tuple:
+        return (
+            self._cycle, dict(self._ladder), dict(self._last_addressed),
+            list(self._last_nudges), len(self.nudge_log), dict(self._rot),
+            self._prev_intensity, len(self._stress_history),
+            list(self._stress_history),
+        )
+
+    def _restore(self) -> None:
+        (self._cycle, ladder, addressed, last, log_len, rot,
+         self._prev_intensity, _n, hist) = self._snapshot  # type: ignore[misc]
+        self._ladder = dict(ladder)
+        self._last_addressed = dict(addressed)
+        self._last_nudges = list(last)
+        self._rot = dict(rot)
+        del self.nudge_log[log_len:]
+        self._stress_history = deque(hist, maxlen=self._stress_history.maxlen)
 
     # ──────────────────────────────────────────────────────────
     # Ethical / emotional safety — hard gates

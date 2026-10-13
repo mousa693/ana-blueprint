@@ -26,21 +26,52 @@ from ..contracts import (
 )
 from ..llm.gateway import ModelGateway
 
-_ENGAGED = re.compile(
-    r"\b(i|we)\b.*\b(help|lead|face|try|climb|organi[sz]e|save|stay|fight|speak|"
-    r"choose|accept|forgive|trust|confront|protect|build|decide|act)\b",
+# Stance lexicon. An action is read as ENGAGING (meets the challenge), AVOIDING
+# (turns from it), or REFLECTING (neither — a pause, a question, a gesture). Picking
+# an offered choice says nothing by itself; its words carry the stance.
+_ENGAGE = re.compile(
+    r"\b(help|lead|face|facing|try|climb|organi[sz]e|save|stay|fight|speak|choose|"
+    r"accept|forgive|trust|confront|protect|build|decide|act|answer|step(?:s)? across|"
+    r"cross|take (?:it|charge|the)|light|signal|share|carry|offer|call for help|"
+    r"go (?:in|on|forward)|press on|admit|tell (?:them|the truth)|stand)\b",
     re.IGNORECASE,
 )
-_AVOIDANT = re.compile(
-    r"\b(run|flee|hide|ignore|refuse|leave|avoid|give up|abandon|turn away|back)\b",
+_AVOID = re.compile(
+    r"\b(run|flee|hide|ignore|refuse|avoid|give up|abandon|turn(?:s|ed)? (?:away|back)|"
+    r"back (?:away|off)|retreat|hesitate|walk away|look away|stay silent|"
+    r"wait (?:for|it out)|let someone else|pretend|deflect|freeze)\b",
     re.IGNORECASE,
 )
+_REFLECT = re.compile(
+    r"\b(pause|ask (?:what|why|myself)|question|reflect|wonder|consider|rest|breathe|"
+    r"look back|observe|watch|listen|leave a token|remember|notice)\b",
+    re.IGNORECASE,
+)
+
+
+def classify_stance(text: str) -> str:
+    """Return 'engage', 'avoid', or 'reflect' for an action's text."""
+    e = len(_ENGAGE.findall(text))
+    a = len(_AVOID.findall(text))
+    r = len(_REFLECT.findall(text))
+    if a > e and a >= r:
+        return "avoid"
+    if e > a and e >= r:
+        return "engage"
+    if r and r >= max(e, a):
+        return "reflect"
+    if e and e == a:
+        return "reflect"  # torn — read it as neither
+    return "reflect" if not (e or a) else ("engage" if e else "avoid")
 
 
 class Interpreter:
     def __init__(self, gateway: Optional[ModelGateway] = None, use_llm: bool = True):
         self.gateway = gateway
         self.use_llm = use_llm
+        # How many lessons of each kind have been minted per theme, so a theme
+        # met repeatedly yields deepening lessons instead of the same sentence.
+        self._lesson_counts: dict[str, int] = {}
 
     def interpret(self, scene: Scene, action: UserAction, world: WorldState,
                   identity: IdentitySnapshot) -> Outcome:
@@ -54,27 +85,28 @@ class Interpreter:
     def _interpret_det(self, scene: Scene, action: UserAction, world: WorldState,
                        identity: IdentitySnapshot) -> Outcome:
         raw = action.raw or ""
-        engaged = bool(_ENGAGED.search(raw))
-        avoidant = bool(_AVOIDANT.search(raw))
-        # If a choice index was given and no verbal cue, treat it as engagement.
-        if action.choice_index is not None and not (engaged or avoidant):
-            engaged = True
+        stance = classify_stance(raw)
 
         theme = scene.theme or (identity.active_themes[0] if identity.active_themes else "self")
 
         # Emotional delta: intensity raises arousal; meeting a challenge lifts
-        # valence and sheds stress; avoiding it does the reverse.
-        if engaged and not avoidant:
+        # valence and sheds stress; avoiding it does the reverse; reflecting
+        # settles the self slightly without resolving anything.
+        if stance == "engage":
             valence = 0.15 + 0.25 * scene.intensity
             stress = -0.1 - 0.1 * scene.intensity
             success: Optional[bool] = True
-        elif avoidant:
-            valence = -0.1 - 0.2 * scene.intensity
-            stress = 0.1 + 0.15 * scene.intensity
+        elif stance == "avoid":
+            # Turning from a hard moment hurts; turning from a gentle one is
+            # mostly a missed chance.
+            valence = -0.05 - 0.2 * scene.intensity
+            stress = 0.02 + 0.2 * scene.intensity
             success = False
         else:
-            valence = 0.05
-            stress = 0.02
+            # Reflection is restorative, and more so in a gentle scene: rest is how
+            # an overwhelmed self recovers enough to try again.
+            valence = 0.05 + 0.05 * (1.0 - scene.intensity)
+            stress = -0.04 - 0.12 * (1.0 - scene.intensity)
             success = None
         arousal = 0.1 + 0.3 * scene.intensity
 
@@ -91,9 +123,14 @@ class Interpreter:
         # Lesson: mint one when a themed challenge of real intensity was met.
         lesson = None
         if success is True and scene.intensity >= 0.45:
-            lesson = _lesson_for(theme)
+            n = self._lesson_counts.get(("met", theme), 0)
+            lesson = _lesson_for(theme, n)
+            self._lesson_counts[("met", theme)] = n + 1
         elif success is False and scene.intensity >= 0.45:
-            lesson = f"I turned away from {theme} this time; the question remains."
+            n = self._lesson_counts.get(("avoid", theme), 0)
+            lesson = _AVOID_LESSONS[min(n, len(_AVOID_LESSONS) - 1)].format(
+                t=theme, T=theme.capitalize())
+            self._lesson_counts[("avoid", theme)] = n + 1
 
         symbols = list(dict.fromkeys(scene.symbols + world.motifs))[:5]
         summary = _summarise(scene, raw, success)
@@ -173,18 +210,58 @@ class Interpreter:
             return None
 
 
-def _lesson_for(theme: str) -> str:
-    table = {
-        "leadership": "I can take charge when no one else will.",
-        "trust": "Trust can be extended and survive the risk.",
-        "courage": "Fear is not a reason to stop.",
-        "purpose": "Being useful to others points toward my purpose.",
-        "grief": "Grief can be carried without being hidden.",
-        "freedom": "I can let go of what held me.",
-        "wisdom": "Listening longer teaches more than speaking.",
-        "shame": "What I hid loses power when I look at it.",
-    }
-    return table.get(theme, f"I met the test of {theme} and was changed by it.")
+_LESSONS: dict[str, list[str]] = {
+    "leadership": [
+        "I can take charge when no one else will.",
+        "Leading is mostly deciding before I feel certain.",
+        "People follow steadiness more than they follow brilliance.",
+        "I can carry the weight of a choice and still ask for help.",
+    ],
+    "trust": [
+        "Trust can be extended and survive the risk.",
+        "Trusting someone is a choice I make, not a feeling I wait for.",
+        "Being trusted asks as much of me as trusting does.",
+    ],
+    "courage": [
+        "Fear is not a reason to stop.",
+        "Courage is fear that has decided to keep walking.",
+        "The thing I dreaded was smaller once I faced it.",
+        "I can be afraid and still be the one who moves.",
+    ],
+    "purpose": [
+        "Being useful to others points toward my purpose.",
+        "Purpose shows up in what I keep returning to.",
+        "I don't find meaning first and act later; acting is how I find it.",
+    ],
+    "grief": [
+        "Grief can be carried without being hidden.",
+        "What I lost still shapes what I love.",
+    ],
+    "freedom": [
+        "I can let go of what held me.",
+        "Freedom is choosing my constraints, not escaping all of them.",
+    ],
+    "wisdom": [
+        "Listening longer teaches more than speaking.",
+        "Not knowing, said aloud, is a kind of strength.",
+    ],
+    "shame": [
+        "What I hid loses power when I look at it.",
+        "I am more than the moment I'm ashamed of.",
+    ],
+}
+_AVOID_LESSONS = [
+    "I turned away from {t} this time; the question remains.",
+    "Turning from {t} again — I notice the pattern now.",
+    "{T} keeps finding me. Maybe it isn't going to stop asking.",
+]
+
+
+def _lesson_for(theme: str, nth: int = 0) -> str:
+    bank = _LESSONS.get(theme)
+    if not bank:
+        return f"I met the test of {theme} and was changed by it."
+    return bank[min(nth, len(bank) - 1)] if nth < len(bank) else bank[nth % len(bank)]
 
 
 def _summarise(scene: Scene, raw: str, success: Optional[bool]) -> str:

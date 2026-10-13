@@ -93,6 +93,11 @@ class Goal(BaseModel):
     horizon: Literal["near", "mid", "life"] = "mid"
     progress: float = 0.0        # 0..1
     is_future_memory: bool = False  # a "memory of the future" attractor
+    # Meaning-aware progress (added; all optional with defaults).
+    themes: list[str] = Field(default_factory=list)       # canonical themes + content words
+    advanced_at: list[int] = Field(default_factory=list)  # ticks at which progress rose
+    realised: bool = False                                 # vision lived into (fulfilled)
+    realised_at: Optional[int] = None                      # tick it was realised
 
 
 class IdentitySnapshot(BaseModel):
@@ -113,6 +118,11 @@ class IdentitySnapshot(BaseModel):
     # The convergence level from the pi-phi engine: 0 (inner/outer divergent)
     # .. 1 (fully mirrored). Drives the Environment Mirror's reflectiveness dial.
     convergence: float = 0.0
+    # Self-remembering (added; all optional with defaults).
+    insights: list[str] = Field(default_factory=list)            # top meta-analysis trends
+    recurring_symbols: list[str] = Field(default_factory=list)   # motifs that keep returning
+    callback_symbols: list[str] = Field(default_factory=list)    # meaningful motifs absent lately
+    fulfilled_visions: list[str] = Field(default_factory=list)   # future memories realised
 
     def trait(self, name: str) -> float:
         for t in self.traits:

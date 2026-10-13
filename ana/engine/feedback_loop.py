@@ -92,7 +92,7 @@ class FeedbackLoopEngine:
         # The reflectiveness dial rises with convergence (inner-outer polarity
         # closing); alignment can nudge it further.
         reflectiveness = ident.convergence
-        if "raise the reflectiveness dial" in self._next_constraints:
+        if any(c.startswith("raise the reflectiveness dial") for c in self._next_constraints):
             reflectiveness = min(1.0, reflectiveness + 0.15)
         # The outer journey advances with convergence, then the world is shaped
         # to mirror the self, scaled by the reflectiveness dial.
@@ -108,16 +108,32 @@ class FeedbackLoopEngine:
             " ".join(ident.active_themes) or "journey", top_k=3
         )
         recalled += self.identity.memory.recall_future(top_k=2)
+        recalled = list(dict.fromkeys(recalled))
+
+        # Self-remembering: the journal's meta-analysis steers the story — a
+        # meaningful symbol that has gone quiet is brought back (the blueprint's
+        # fox callback), and the most-avoided theme becomes the grand test.
+        constraints = list(self._next_constraints)
+        for sym in getattr(ident, "callback_symbols", [])[:1]:
+            constraints.append(f"bring back {sym} as a callback")
+        target_theme = self._next_theme
+        journal = getattr(self.identity, "journal", None)
+        focus = journal.suggested_focus() if journal is not None else None
+        if target_theme is None and focus and focus in ident.active_themes \
+                and ident.tick % 3 == 2:
+            target_theme = focus
 
         request = GenerationRequest(
             identity=ident,
-            world=world,
+            # Snapshot the world: the live WorldState keeps mutating, and a record
+            # must show the world as it was when this scene was dreamed.
+            world=world.model_copy(deep=True),
             directive=self._next_directive,
-            target_theme=self._next_theme,
+            target_theme=target_theme,
             target_intensity=self._next_intensity,
             synchronicity=hint,
             recalled_shards=recalled,
-            constraints=list(self._next_constraints),
+            constraints=constraints,
         )
 
         scene = self.generative.generate(request)
@@ -141,10 +157,20 @@ class FeedbackLoopEngine:
         outcome.npc_events = npc_events
         novelty = min(1.0, scene.intensity + (0.3 if len(scene.beats) and
                       scene.beats[-1].kind == "event" else 0.0))
-        conv = self.convergence.step(novelty)
+        # Convergence is EARNED: the alignment layer turns this cycle's reflection,
+        # engagement, integration and shocks into a signal that couples into the
+        # pi-phi dynamics (falls back to the time-only step for plain modules).
+        signal_for = getattr(self.alignment, "signal_for", None)
+        if signal_for is not None and hasattr(self.convergence, "step_with"):
+            conv = self.convergence.step_with(signal_for(ident, world, scene, outcome), novelty)
+        else:
+            conv = self.convergence.step(novelty)
 
         # Feed back into the self and advance the world.
-        self.identity.apply_outcome(outcome)
+        try:
+            self.identity.apply_outcome(outcome, scene_intensity=scene.intensity)
+        except TypeError:  # an Identity Core without the intensity kwarg
+            self.identity.apply_outcome(outcome)
         self.identity.advance(conv.convergence)
         self.environment.advance()
 

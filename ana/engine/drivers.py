@@ -82,28 +82,40 @@ class AutonomousDriver:
 
     def _agency(self, identity: IdentitySnapshot) -> float:
         """0..1 disposition toward engaging rather than avoiding."""
+        confid = [t.value for t in identity.traits if t.name.endswith("_confidence")]
         courage = identity.trait("courage_confidence") or identity.trait("courage")
-        lead = identity.trait("leadership_confidence")
-        base = 0.5 + 0.3 * (identity.emotion.valence)  # positive mood -> more agency
-        base -= 0.4 * identity.emotion.stress           # stress -> withdrawal
-        base += 0.2 * ((courage + lead) / 2.0)
+        conf = (sum(confid) / len(confid)) if confid else courage
+        base = 0.45 + 0.3 * identity.emotion.valence    # positive mood -> more agency
+        base -= 0.4 * identity.emotion.stress            # stress -> withdrawal
+        base += 0.3 * conf                               # growing confidence -> boldness
         return max(0.0, min(1.0, base))
 
     def _act_policy(self, scene: Scene, identity: IdentitySnapshot) -> UserAction:
+        from .interpret import classify_stance
+
         agency = self._agency(identity)
         if not scene.choices:
             raw = "I lean in and act." if agency >= 0.5 else "I hold back and watch."
             return UserAction(raw=raw)
 
+        # A self under strain reaches for a pause; a settled, confident self leans
+        # into the challenge; a frightened one turns away. Exploration noise keeps
+        # the same self from making identical choices forever.
+        stress = identity.emotion.stress
+
         def score(choice: str) -> float:
-            c = choice.lower()
-            s = 0.0
-            if any(w in c for w in self._ENGAGE_WORDS):
-                s += agency
-            if any(w in c for w in self._AVOID_WORDS):
-                s += (1.0 - agency)
-            s += self.rng.uniform(0.0, 0.25)  # exploration
-            return s
+            stance = classify_stance(choice)
+            if stance == "engage":
+                # A gentler ask is easier to say yes to: low-intensity scenes
+                # lower the threshold for engaging (small first steps).
+                s = agency + 0.6 * (0.5 - scene.intensity)
+            elif stance == "avoid":
+                # The pull to flee scales with how threatening the scene is: no one
+                # runs from a calm meadow, they rest in it.
+                s = (1.0 - agency) * 0.9 * min(1.0, 2.0 * scene.intensity)
+            else:
+                s = 0.35 + 0.4 * stress
+            return s + self.rng.uniform(0.0, 0.3)
 
         idx = max(range(len(scene.choices)), key=lambda i: score(scene.choices[i]))
         return UserAction(raw=scene.choices[idx], choice_index=idx)
