@@ -710,7 +710,7 @@ def test_public_origin_is_accepted(tmp_path):
                    headers={"origin": "https://ana.example.com"})
         assert r.status_code == 201
         assert "strict-transport-security" in r.headers
-        assert c.get("/healthz", headers={"host": "testserver"}).status_code == 400
+        assert c.get("/api/onboarding", headers={"host": "testserver"}).status_code == 400
 
 
 def test_security_headers(c):
@@ -821,3 +821,11 @@ def test_model_second_opinion_pauses_what_keywords_miss(tmp_path):
         assert r["safety"]["level"] == "crisis" and r["record"] is None
         assert r["journey"]["status"] == "paused_safety"
     assert gw.safety_calls >= 2          # onboarding answers + both actions were screened
+
+
+def test_healthz_accepts_any_host_but_api_does_not(tmp_path):
+    app = create_app(make_settings(tmp_path))
+    with TestClient(app, base_url="http://10.0.0.7:8000") as c:
+        assert c.get("/healthz").status_code == 200          # platform probe by IP
+        assert c.get("/api/me").status_code == 400            # everything else still guarded
+        assert c.post("/healthz", json={}).status_code in (400, 405)

@@ -8,3 +8,11 @@ dist/
 ana_run/
 *.db
 *.jsonl
+
+# keep the golden journeys (test fixtures) despite *.jsonl above
+!tests/golden/*.jsonl
+
+# local secrets
+.env
+.env.*
+!.env.example

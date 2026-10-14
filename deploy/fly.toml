@@ -1,0 +1,63 @@
+# Fly.io — one Machine, one volume at /data (docs/DEPLOY.md#flyio).
+#
+#   fly launch --no-deploy --copy-config --config deploy/fly.toml --name <your-app>
+#   fly volumes create ana_data --size 3 --region <region> --config deploy/fly.toml
+#   fly secrets set --config deploy/fly.toml \
+#       ANA_SECRET_KEY="$(python3 -c 'import secrets;print(secrets.token_urlsafe(48))')"
+#   fly deploy . --config deploy/fly.toml --dockerfile Dockerfile
+#
+# v1 runs ONE machine: the journey runtimes and their locks live in process
+# memory and the data lives on one volume. Do not `fly scale count 2`.
+
+app = "ana-example"            # <- your app name
+primary_region = "ams"         # <- your region (must match the volume's)
+kill_signal = "SIGTERM"
+kill_timeout = "30s"           # time to flush cached journeys on shutdown
+
+[build]
+  dockerfile = "../Dockerfile" # relative to this file; or pass --dockerfile
+
+[env]
+  ANA_DATABASE_URL = "sqlite:////data/ana.db"
+  ANA_SHARD_DB = "/data/shards.db"
+  # Must be the URL people use (custom domain if you add one with `fly certs add`).
+  ANA_PUBLIC_ORIGIN = "https://ana-example.fly.dev"
+  # localhost stays allowed for the image HEALTHCHECK and the Fly check below.
+  ANA_ALLOWED_HOSTS = "localhost"
+  # Only Fly's proxy can reach the machine on this port: trust its X-Forwarded-For.
+  FORWARDED_ALLOW_IPS = "*"
+  ANA_USE_LLM = "auto"
+  ANA_DAILY_CYCLES_PER_USER = "60"
+  ANA_DAILY_LLM_CYCLES_TOTAL = "2000"
+  # ANA_INVITE_CODES and ANTHROPIC_API_KEY are secrets: `fly secrets set ...`
+
+[[mounts]]
+  source = "ana_data"
+  destination = "/data"
+  initial_size = "3gb"
+
+[http_service]
+  internal_port = 8000
+  force_https = true
+  auto_stop_machines = "off"   # keep the in-process journey cache warm
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [http_service.concurrency]
+    type = "requests"
+    soft_limit = 40
+    hard_limit = 80
+
+  [[http_service.checks]]
+    grace_period = "30s"
+    interval = "30s"
+    timeout = "5s"
+    method = "GET"
+    path = "/healthz"
+    # The app's Host allowlist rejects the machine's private IP.
+    [http_service.checks.headers]
+      Host = "localhost"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"

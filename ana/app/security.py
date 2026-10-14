@@ -102,7 +102,12 @@ class GuardMiddleware:
         headers = {k.decode("latin-1").lower(): v.decode("latin-1")
                    for k, v in scope.get("headers", [])}
         host = headers.get("host", "").strip().lower()
-        if host_only(host) not in self.allowed:
+        # Platform health probes (Render, k8s, load balancers) often send the
+        # container IP as Host. /healthz is read-only and reveals only up/down,
+        # so it is exempt from the Host allowlist; nothing else is.
+        is_health = (scope.get("path", "") == "/healthz"
+                     and scope.get("method", "GET").upper() in ("GET", "HEAD"))
+        if not is_health and host_only(host) not in self.allowed:
             await self._reject(send, 400, "bad_host", "Invalid Host header.")
             return
         method = scope.get("method", "GET").upper()

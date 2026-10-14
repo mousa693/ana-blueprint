@@ -1,0 +1,19 @@
+# Allow-list: the build context is only what the wheel needs.
+# Everything else (.git, tests, docs + screenshots, tools, examples, local data,
+# .env files, caches, virtualenvs) never reaches the Docker daemon.
+*
+!pyproject.toml
+!README.md
+!ana/
+
+# ...and nothing generated inside the package tree.
+**/__pycache__
+**/*.py[cod]
+**/*.egg-info
+**/.pytest_cache
+**/*.db
+**/*.db-wal
+**/*.db-shm
+**/*.jsonl
+**/.env
+**/.env.*
