@@ -60,7 +60,7 @@ Defaults baked into the image:
 | `ANA_DATABASE_URL` | `sqlite:////data/ana.db` |
 | `ANA_SHARD_DB` | `/data/shards.db` |
 | `PORT` | `8000` (the port uvicorn listens on) |
-| `FORWARDED_ALLOW_IPS` | `127.0.0.1` (see [proxies](#behind-a-reverse-proxy)) |
+| `FORWARDED_ALLOW_IPS` | `127.0.0.1` — leave it; the app derives the client IP itself (see [Client IP](#client-ip)) |
 
 The HEALTHCHECK calls `GET /healthz` with Python's `urllib` (no curl in the
 image), sending `Host: localhost` — or the first entry of `ANA_ALLOWED_HOSTS`
@@ -80,9 +80,9 @@ comments. The ones that matter in production:
 | `ANA_DEV` | `0` (never `1` in production: random secret, non-Secure cookies) |
 | `ANA_PUBLIC_ORIGIN` | the exact URL people type, e.g. `https://ana.example.com` (no trailing slash) |
 | `ANA_ALLOWED_HOSTS` | `localhost` (plus any other names you serve; the public origin's host is added automatically) |
-| `FORWARDED_ALLOW_IPS` | your proxy's address(es), or `*` when only the proxy can reach the port |
+| `ANA_CLIENT_IP_HEADER` / `ANA_TRUSTED_PROXY_HOPS` | how the app finds the client IP behind your proxy — see [Client IP](#client-ip) (Fly: `fly-client-ip`; Render / Caddy: hops `1`) |
 | `ANTHROPIC_API_KEY` | optional; without it every journey is deterministic (offline) |
-| `ANA_DAILY_LLM_CYCLES_TOTAL` | global daily cap on model-dreamed turns — your spend ceiling |
+| `ANA_DAILY_LLM_CYCLES_TOTAL` | global daily cap on **model calls** (every request to the API: scenes, interpretation, NPC lines, onboarding, safety screens, debriefs) — your spend ceiling. A model-dreamed turn is typically 2–3 calls, onboarding ~4 |
 | `ANA_DAILY_CYCLES_PER_USER` | per-person daily turn cap |
 | `ANA_INVITE_CODES` / `ANA_ALLOW_SIGNUPS` | who may sign up |
 
@@ -112,20 +112,54 @@ whenever `ANA_DEV=0`; browsers accept Secure cookies on plain-http
 `localhost`/`127.0.0.1`, so the local quickstart works without TLS, but any
 other plain-http hostname will not keep you logged in — use TLS.
 
-### Behind a reverse proxy
+### Client IP
 
-uvicorn runs with `--proxy-headers --forwarded-allow-ips "$FORWARDED_ALLOW_IPS"`.
-Only connections *from* those addresses may set the client IP via
-`X-Forwarded-For`. The client IP is what the login/sign-up rate limits key on
-(20/min per IP, 8/min per email): if the proxy is not trusted, every visitor
-appears as the proxy's IP and shares one bucket; if `*` is used while the port
-is publicly reachable, anyone can spoof their IP past the limits.
+The per-IP limits (log-in/sign-up 20/min per IP; failed log-ins 8/min per
+email *and* IP) key on the client IP, which the app derives itself — it does
+**not** rely on uvicorn's `--proxy-headers`:
 
-* Caddy profile / Fly.io / Render: `FORWARDED_ALLOW_IPS=*` — only the proxy can
-  reach the app port.
-* Proxy on the same host talking to `127.0.0.1:8000` (published port): the
-  connection arrives from the Docker bridge gateway, e.g.
-  `FORWARDED_ALLOW_IPS=172.17.0.1` (see `docker network inspect`), or a CIDR.
+1. `ANA_CLIENT_IP_HEADER` — a header your edge proxy **sets** (overwriting
+   whatever the client sent), e.g. `fly-client-ip`;
+2. else, with `ANA_TRUSTED_PROXY_HOPS=N` (N ≥ 1), the N-th entry from the
+   **right** of `X-Forwarded-For` — the address your own proxy appended. The
+   entries to its left are written by the client and are never used;
+3. else the TCP peer (direct exposure, or a proxy whose address is fine to
+   share a bucket).
+
+| where | setting |
+|---|---|
+| Fly.io (`deploy/fly.toml`) | `ANA_CLIENT_IP_HEADER=fly-client-ip` |
+| Render (`deploy/render.yaml`) | `ANA_TRUSTED_PROXY_HOPS=1` (rightmost `X-Forwarded-For`). Only switch to a header such as `true-client-ip` after checking in your own logs that Render sets it on every request — a header the edge does not overwrite is forgeable. |
+| Caddy profile / your own Caddy or nginx | `ANA_TRUSTED_PROXY_HOPS=1` (Caddy replaces an untrusted client's `X-Forwarded-For` with the real peer; nginx: `proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;`) |
+| a CDN in front of that proxy | one more hop per proxy that appends, e.g. `2`, or the CDN's client-IP header if the proxy behind it cannot be bypassed |
+| nothing in front | leave both unset |
+
+Keep `FORWARDED_ALLOW_IPS` at the image default `127.0.0.1`. **Never** set it
+to `*`: uvicorn then takes the *leftmost* `X-Forwarded-For` entry as the
+client, which anyone can forge (`X-Forwarded-For: 1.2.3.4, …`) to get a fresh
+rate-limit bucket per request. The app logs a warning at startup when it sees
+`FORWARDED_ALLOW_IPS=*` without either setting above. The app port must still
+be reachable only through the proxy (otherwise a client can skip the proxy
+and write the header itself).
+
+### Abuse limits and budgets
+
+* **Per person, per minute**: 30 turns, 10 new journeys, 10 identity edits,
+  5 onboarding submissions (429 + `Retry-After`).
+* **Per person, per UTC day** (`ANA_DAILY_CYCLES_PER_USER`): every turn, every
+  journey's first scene and every onboarding submission takes one unit,
+  reserved atomically (concurrent requests cannot overshoot it).
+* **Active journeys** (`ANA_MAX_ACTIVE_JOURNEYS`): checked and inserted under
+  the person's lock, so parallel creates cannot exceed it.
+* **Global model budget** (`ANA_DAILY_LLM_CYCLES_TOTAL`): counts every model
+  call the shared gateway makes. A request reserves a unit atomically before
+  the model may be used and is then settled to its actual call count, so the
+  counter equals real model requests; past the cap everything runs
+  deterministically. Requests already in flight when it runs out may finish
+  their few calls, so the counter can end a handful above the cap.
+* **Safety screen**: always runs (deterministic floor). The model second
+  opinion is limited per person (`ANA_SAFETY_MODEL_PER_HOUR`, default 60) and
+  by the global budget; beyond that the deterministic floor alone decides.
 
 ---
 
@@ -135,8 +169,10 @@ is publicly reachable, anyone can spoof their IP past the limits.
       secret (not in git, not baked in the image). `ANA_DEV=0`.
 - [ ] **Public origin**: `ANA_PUBLIC_ORIGIN=https://<your domain>`.
 - [ ] **Allowed hosts**: `ANA_ALLOWED_HOSTS=localhost` (plus extra names you serve).
-- [ ] **TLS** in front (Caddy profile, Fly, Render, or your own proxy) and
-      `FORWARDED_ALLOW_IPS` set for it. The app port is never public.
+- [ ] **TLS** in front (Caddy profile, Fly, Render, or your own proxy) and the
+      [client IP](#client-ip) setting for it (`ANA_CLIENT_IP_HEADER` or
+      `ANA_TRUSTED_PROXY_HOPS`); `FORWARDED_ALLOW_IPS` stays `127.0.0.1`.
+      The app port is never public.
 - [ ] **Backups** of `/data` (both SQLite files) or of Postgres **and**
       `/data/shards.db` — scheduled, copied off the host, restore tested.
 - [ ] **Model**: `ANTHROPIC_API_KEY` set as a secret if you want model-dreamed
@@ -208,7 +244,10 @@ migrate data (v1 has no migration tool); start fresh or move rows yourself.
 ## Fly.io
 
 `deploy/fly.toml`: one Machine, a volume `ana_data` mounted at `/data`, HTTPS
-by Fly's proxy, `/healthz` check with `Host: localhost`.
+by Fly's proxy, `/healthz` check with `Host: localhost`, client IP from
+`Fly-Client-IP` (`ANA_CLIENT_IP_HEADER=fly-client-ip`). A 512 MB VM is enough:
+password hashing is capped at 2 concurrent argon2 operations of 19 MiB each
+(see [Security notes](#security-notes)).
 
 ```bash
 # edit deploy/fly.toml: app name, primary_region, ANA_PUBLIC_ORIGIN
@@ -235,7 +274,8 @@ at `/data`. Render reads `render.yaml` at the repository root — copy it there
 `ANA_PUBLIC_ORIGIN` to your `https://<name>.onrender.com` URL (or custom
 domain), then **New → Blueprint** in the dashboard. `ANA_SECRET_KEY` is
 generated by Render and stays stable; set `ANTHROPIC_API_KEY` /
-`ANA_INVITE_CODES` in the dashboard.
+`ANA_INVITE_CODES` in the dashboard. The client IP is the rightmost
+`X-Forwarded-For` entry (`ANA_TRUSTED_PROXY_HOPS=1`, see [Client IP](#client-ip)).
 
 A disk requires a paid instance type and limits the service to one instance
 with no zero-downtime deploys (each deploy stops the old container first) — the
@@ -255,7 +295,7 @@ cp .env.example .env
 #   ANA_PUBLIC_ORIGIN=https://ana.example.com
 #   ANA_ALLOWED_HOSTS=localhost
 #   ANA_DOMAIN=ana.example.com
-#   FORWARDED_ALLOW_IPS=*
+#   ANA_TRUSTED_PROXY_HOPS=1
 docker compose --profile caddy up -d --build              # + --profile postgres if wanted
 scripts/smoke.sh https://ana.example.com
 ```
@@ -264,14 +304,14 @@ Caddy (`deploy/Caddyfile`) obtains and renews certificates automatically
 (ports 80 and 443 must be open), forwards the original `Host`, adds
 `X-Forwarded-For`/`-Proto`, and proxies to `app:8000` on the compose network.
 The app's own port stays on `127.0.0.1:8000` for local checks; set
-`ANA_BIND=127.0.0.1` (default) and never publish it on `0.0.0.0` — with
-`FORWARDED_ALLOW_IPS=*` that would let clients spoof their IP.
+`ANA_BIND=127.0.0.1` (default) and never publish it on `0.0.0.0` — a client
+reaching the app directly could write its own `X-Forwarded-For`.
 Try it locally with `ANA_DOMAIN=localhost` and `ANA_PUBLIC_ORIGIN=https://localhost`
 (Caddy then uses its own local CA).
 
 Using a Caddy you already run on the host instead: replace `app:8000` with
-`127.0.0.1:8000` in the Caddyfile and set `FORWARDED_ALLOW_IPS` to the Docker
-bridge gateway (see [Behind a reverse proxy](#behind-a-reverse-proxy)).
+`127.0.0.1:8000` in the Caddyfile and keep `ANA_TRUSTED_PROXY_HOPS=1`
+(see [Client IP](#client-ip)).
 
 ---
 
@@ -315,6 +355,10 @@ instance:
 * **Per-journey locks** ("one active request per journey") are
   `threading.Lock`s in that same process; they do not exclude another worker
   or machine.
+* **Per-person locks** (`ana/app/userlocks.py`: create/onboarding/identity
+  edits/deletion exclusive, turns shared) are in-process too. The daily-turn
+  and global model-budget counters are atomic in the database and would stay
+  correct across processes; the active-journey cap relies on the lock.
 * **Rate limiters** (sign-up/log-in, turns per minute) are in-process token
   buckets; N processes would allow N× the limits.
 * **Shards** live in one SQLite file on the local `/data` volume, which cannot
@@ -333,3 +377,47 @@ API in FastAPI's thread pool.
 Other v1 limits: no email (no password reset or verification — an operator
 can delete an account; the user can export and delete their own), no admin UI,
 no schema migration tool, daily budgets reset at 00:00 UTC.
+
+---
+
+## Security notes
+
+* **Passwords**: argon2id with m=19 MiB, t=2, p=1 — the OWASP Password
+  Storage Cheat Sheet minimum — rather than the library default (64 MiB,
+  t=3, p=4), because memory is the scarce resource on a small VM. At most
+  `ANA_PASSWORD_HASH_CONCURRENCY` (default 2) hashes/verifies run at once
+  process-wide; a request that waits more than ~2 s for a slot gets
+  `503 busy` with `Retry-After: 2` instead of queueing (a burst of logins
+  cannot exhaust memory: peak ≈ 2 × 19 MiB above baseline). Hashes made with
+  other parameters keep working and are re-hashed on the next successful
+  log-in.
+* **Log-in throttling** counts only *failed* attempts: strictly per
+  (email, client IP) (8/min) and loosely per email across all IPs (burst 50,
+  then 5/min). Someone guessing at your email from their own address cannot
+  lock you out; only a distributed attack above the global ceiling can.
+* **Account existence**: sign-up answers `409 email_taken` for an existing
+  address (kept for usability; there is no email verification in v1), so
+  sign-up does reveal whether an address has an account. The timing of the
+  409 is equalised with a real sign-up (a dummy argon2 hash), and log-in
+  answers the same `401` in the same time for unknown and known addresses.
+  Sign-up is rate-limited per IP.
+* **Account deletion** holds the person's lock: in-flight requests finish
+  first, new ones wait and then see the account gone; shards are purged and
+  cached journey runtimes closed (without flushing) once more after the
+  commit.
+* **Never-show words** are redacted at read time from journey titles and
+  debriefs (`ana/app/redact.py`), so adding a word in Settings applies to past
+  journeys immediately. The export (`GET /api/me/export`) is the raw data.
+
+## API notes for clients
+
+* `POST /api/journeys/{id}/act` takes `expected_tick` — the
+  `pending.journey_tick` of the scene being answered. If the story has moved
+  on (another tab), the answer is `409` with
+  `{"error": {"code": "scene_changed", …}, "pending": {…}, "journey": {…}}` and
+  nothing is played. If the request repeats the last turn exactly (same tick,
+  same `choice_index` / `text` — a lost response being retried) the stored
+  result is returned with `"replayed": true` (header `X-ANA-Replayed: 1`),
+  without playing or charging another turn. `expected_tick` is optional for
+  backward compatibility; requests without it get neither protection, so all
+  clients should send it.

@@ -98,6 +98,19 @@ class RuntimeCache:
         if rt is not None:
             self._close(jid, rt, flush=flush)
 
+    def drop_identity(self, identity_scope: str, *, flush: bool = False) -> int:
+        """Close (by default WITHOUT flushing shards) every cached runtime of
+        one identity (``JourneyRuntime.identity_id``, the scoped id). Used
+        after an account deletion as a final sweep."""
+        with self._mu:
+            hits = [(jid, rt) for jid, rt in self._runtimes.items()
+                    if getattr(rt, "identity_id", None) == identity_scope]
+            for jid, _ in hits:
+                self._runtimes.pop(jid, None)
+        for jid, rt in hits:
+            self._close(jid, rt, flush=flush)
+        return len(hits)
+
     def forget_lock(self, jid: str) -> None:
         with self._mu:
             self._locks.pop(jid, None)

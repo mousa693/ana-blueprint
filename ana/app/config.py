@@ -86,7 +86,19 @@ class Settings:
     max_body_bytes: int = 32 * 1024
     act_per_minute: int = 30
     auth_per_ip_per_minute: int = 20
-    auth_per_email_per_minute: int = 8
+    auth_per_email_per_minute: int = 8        # FAILED logins per (email, client IP)
+    auth_email_global_per_minute: int = 5     # FAILED logins per email, all IPs (refill)
+    auth_email_global_burst: int = 50         # ... and its burst
+    create_per_minute: int = 10               # journey creations per user
+    identity_per_minute: int = 10             # PATCH /api/identity per user
+    onboarding_per_minute: int = 5            # onboarding submissions per user
+    safety_model_per_hour: int = 60           # model safety screens per user
+    password_hash_concurrency: int = 2        # argon2 hash/verify at once (process-wide)
+    password_hash_wait_seconds: float = 2.0   # queue wait before 503 + Retry-After
+    # client IP (rate limits): a header set by the trusted edge proxy, else the
+    # Nth-from-right X-Forwarded-For entry, else the socket peer.
+    client_ip_header: Optional[str] = None
+    trusted_proxy_hops: int = 0
     session_days: int = 30
 
     @classmethod
@@ -109,6 +121,9 @@ class Settings:
         if origin and not origin.startswith(("http://", "https://")):
             raise ConfigError("ANA_PUBLIC_ORIGIN must start with http:// or https://")
         hosts = _csv(env.get("ANA_ALLOWED_HOSTS")) or ["localhost", "127.0.0.1"]
+        ip_header = (env.get("ANA_CLIENT_IP_HEADER") or "").strip().lower() or None
+        if ip_header and not all(ch.isalnum() or ch == "-" for ch in ip_header):
+            raise ConfigError("ANA_CLIENT_IP_HEADER must be a header name like fly-client-ip")
         return cls(
             database_url=normalise_db_url(env.get("ANA_DATABASE_URL") or cls.database_url),
             shard_db=env.get("ANA_SHARD_DB") or cls.shard_db,
@@ -126,6 +141,10 @@ class Settings:
             max_cycles=_int(env, "ANA_MAX_CYCLES", 30, lo=1),
             runtime_cache_size=_int(env, "ANA_RUNTIME_CACHE_SIZE", 64, lo=1),
             act_per_minute=_int(env, "ANA_ACT_PER_MINUTE", 30, lo=1),
+            safety_model_per_hour=_int(env, "ANA_SAFETY_MODEL_PER_HOUR", 60),
+            password_hash_concurrency=_int(env, "ANA_PASSWORD_HASH_CONCURRENCY", 2, lo=1),
+            client_ip_header=ip_header,
+            trusted_proxy_hops=_int(env, "ANA_TRUSTED_PROXY_HOPS", 0),
         )
 
     def with_(self, **kw) -> "Settings":

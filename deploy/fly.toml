@@ -24,8 +24,10 @@ kill_timeout = "30s"           # time to flush cached journeys on shutdown
   ANA_PUBLIC_ORIGIN = "https://ana-example.fly.dev"
   # localhost stays allowed for the image HEALTHCHECK and the Fly check below.
   ANA_ALLOWED_HOSTS = "localhost"
-  # Only Fly's proxy can reach the machine on this port: trust its X-Forwarded-For.
-  FORWARDED_ALLOW_IPS = "*"
+  # Client IP for the per-IP rate limits: Fly's edge proxy SETS Fly-Client-IP
+  # (a client cannot forge it). Do NOT set FORWARDED_ALLOW_IPS="*": uvicorn
+  # would then believe the leftmost, client-written X-Forwarded-For entry.
+  ANA_CLIENT_IP_HEADER = "fly-client-ip"
   ANA_USE_LLM = "auto"
   ANA_DAILY_CYCLES_PER_USER = "60"
   ANA_DAILY_LLM_CYCLES_TOTAL = "2000"

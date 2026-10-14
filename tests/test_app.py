@@ -158,7 +158,8 @@ def test_full_happy_path(app, c, settings):
     assert d["debrief"]["title"] and d["markdown"].startswith("# ")
     lst = c.get("/api/journeys").json()["journeys"]
     assert [x["id"] for x in lst] == [jid] and lst[0]["title"] == d["debrief"]["title"]
-    assert c.get("/api/me").json()["usage"]["today"] == len(records)
+    # onboarding and the journey's first scene each count as a turn too
+    assert c.get("/api/me").json()["usage"]["today"] == len(records) + 2
 
     # never leak internals
     blob = json.dumps(j)
@@ -234,12 +235,13 @@ def test_turn_rules(app, c):
     finally:
         lk.release()
     assert act(c, jid, text="x" * 400).status_code == 200
-    # nothing was consumed by the rejected attempts
-    assert c.get("/api/me").json()["usage"]["today"] == 1
+    # nothing was consumed by the rejected attempts (onboarding + first scene + 1 turn)
+    assert c.get("/api/me").json()["usage"]["today"] == 3
 
 
 def test_daily_quota(tmp_path):
-    app = create_app(make_settings(tmp_path, daily_cycles_per_user=2))
+    # onboarding (1) + the first scene (1) + two turns = 4
+    app = create_app(make_settings(tmp_path, daily_cycles_per_user=4))
     with client(app) as c:
         signup(c)
         jid, _ = new_journey(c)
@@ -271,8 +273,9 @@ def test_active_journey_cap_and_no_identity(tmp_path):
 def test_act_rate_limit(tmp_path):
     app = create_app(make_settings(tmp_path, act_per_minute=3, max_cycles=30))
     with client(app) as c:
-        signup(c)            # onboarding takes one token
+        signup(c)            # onboarding has its own bucket now
         jid, _ = new_journey(c)
+        assert act(c, jid, choice_index=0).status_code == 200
         assert act(c, jid, choice_index=0).status_code == 200
         assert act(c, jid, choice_index=0).status_code == 200
         r = act(c, jid, choice_index=0)
@@ -382,8 +385,8 @@ def test_crisis_pauses_and_resume(app, c):
     assert body["safety"]["level"] == "crisis" and body["safety"]["resources"]
     assert body["record"] is None and body["closed"] is False
     assert body["journey"]["status"] == "paused_safety"
-    # nothing reached the engine or the quota
-    assert c.get("/api/me").json()["usage"]["today"] == 0
+    # nothing reached the engine or the quota (onboarding + first scene only)
+    assert c.get("/api/me").json()["usage"]["today"] == 2
     j = c.get(f"/api/journeys/{jid}").json()
     assert j["journey"]["status"] == "paused_safety" and j["records"] == []
     assert j["pending"] == pending
@@ -544,8 +547,9 @@ def test_llm_journey_and_budget_exhaustion(tmp_path):
     make_gateway = _make_gateway()
 
     gw, rec = make_gateway()
-    # budget: onboarding (1) + first scene (1) + one turn (1)
-    settings = make_settings(tmp_path, use_llm="auto", daily_llm_cycles_total=3, max_cycles=8)
+    # The budget counts model CALLS: onboarding (3 safety screens + the seed
+    # = 4) + first scene (1) + one turn (interpretation + next scene = 2) = 7
+    settings = make_settings(tmp_path, use_llm="auto", daily_llm_cycles_total=7, max_cycles=8)
     app = create_app(settings, gateway=gw)
     with client(app) as c:
         signup(c, onboard=False)
@@ -570,7 +574,8 @@ def test_llm_journey_and_budget_exhaustion(tmp_path):
         assert len(rec.requests) == calls
         with db_session(app) as db:
             from ana.app.models import GlobalUsage
-            assert db.execute(select(GlobalUsage)).scalars().one().llm_cycles == 3
+            # the counter is exactly the number of model requests made
+            assert db.execute(select(GlobalUsage)).scalars().one().llm_cycles == 7 == calls
 
 
 def test_llm_off_ignores_gateway(tmp_path):
