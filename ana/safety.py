@@ -1587,7 +1587,7 @@ def screen_text_llm(text: Optional[str], gateway: Any) -> SafetyResult:
     clipped = " ".join(str(text).split())[:2000].replace("<", "‹").replace(">", "›")
     try:
         data = gateway.structured(_LLM_SYSTEM, f"<text>{clipped}</text>", SAFETY_SCHEMA,
-                                  effort="low", max_tokens=400)
+                                  effort="low", max_tokens=4000)  # thinking counts against this
     except Exception:
         return det
     if not isinstance(data, dict):

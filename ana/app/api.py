@@ -73,6 +73,16 @@ class AppContext:
         return self.gateway if self.llm_available else None
 
 
+def screen(ctx: AppContext, text: str):
+    """Screen person-written text: deterministic floor + (when a model is
+    configured) the raise-only model second opinion. Independent of the model
+    budget — safety is never rationed."""
+    gw = ctx.gateway if ctx.llm_available else None
+    if gw is not None:
+        return safety_mod.screen_text_llm(text, gw)
+    return safety_mod.screen_text(text)
+
+
 def ctx_of(request: Request) -> AppContext:
     return request.app.state.ctx
 
@@ -507,6 +517,7 @@ def build_router() -> APIRouter:
         _rate(ctx.limiter_act, "act:" + user.id)
         on = _model_on(ctx, db, True)
         result = onboarding_mod.build_seed(body.answers, gateway=ctx.model_gateway() if on else None,
+                                           safety_gateway=ctx.gateway if ctx.llm_available else None,
                                            use_llm=on)
         if result.seed is None or result.safety.level == "crisis":
             _record_safety(db, user, "crisis")
@@ -539,8 +550,10 @@ def build_router() -> APIRouter:
         return {"identity": identity_view(ident)}
 
     @r.patch("/identity")
-    def identity_patch(body: IdentityPatch, user: User = Depends(current_user),
+    def identity_patch(body: IdentityPatch, request: Request,
+                       user: User = Depends(current_user),
                        db: Session = Depends(get_db)):
+        ctx = ctx_of(request)
         ident = _identity(db, user)
         if ident is None:
             raise ApiError(404, "no_identity", "Finish onboarding first.")
@@ -557,7 +570,7 @@ def build_router() -> APIRouter:
         if body.name is not None:
             name = onboarding_mod.clean_text(body.name, MAX_NAME)
             if name:
-                s = safety_mod.screen_text(name)
+                s = screen(ctx, name)
                 if s.level == "crisis":
                     _record_safety(db, user, "crisis")
                     db.commit()
@@ -771,7 +784,7 @@ def _act_locked(ctx: AppContext, db: Session, user: User, j: Journey,
 
     concern = None
     if text_:
-        s = safety_mod.screen_text(text_)
+        s = screen(ctx, text_)
         if s.level == "crisis":
             j.status = "paused_safety"
             j.updated_at = utcnow()

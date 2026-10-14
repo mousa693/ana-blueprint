@@ -777,3 +777,47 @@ def test_lazy_module_app(monkeypatch, tmp_path):
     monkeypatch.setenv("ANA_DEV", "0")
     with pytest.raises(ConfigError):
         main.create_app()
+
+
+# ─────────────────────────────────────────────────────────────
+# Safety second opinion: the model can catch what keywords miss
+# ─────────────────────────────────────────────────────────────
+
+class _SafetyOnlyGateway:
+    """A model that only answers the safety screen (everything else → None,
+    so the story stays deterministic). It flags one specific phrase."""
+
+    available = True
+
+    def __init__(self, flag_phrase: str):
+        self.flag_phrase = flag_phrase
+        self.safety_calls = 0
+
+    def structured(self, system, user, schema, **kw):
+        props = schema.get("properties", {})
+        if "level" in props and "reasons" in props:
+            self.safety_calls += 1
+            if self.flag_phrase in user:
+                return {"level": "crisis", "reasons": ["passive_death_wish"]}
+            return {"level": "none", "reasons": []}
+        return None
+
+    def complete(self, *a, **k):
+        return None
+
+
+def test_model_second_opinion_pauses_what_keywords_miss(tmp_path):
+    phrase = "i keep thinking about the long sleep"   # euphemism the keyword screen misses
+    from ana.safety import screen_text
+    assert screen_text(phrase).level != "crisis"          # precondition: keywords alone miss it
+    gw = _SafetyOnlyGateway(phrase)
+    app = create_app(make_settings(tmp_path, use_llm="auto"), gateway=gw)
+    with client(app) as c:
+        signup(c)
+        jid, _ = new_journey(c)
+        r = act(c, jid, text="I walk toward the lighthouse.")
+        assert r.status_code == 200 and not r.json().get("safety")
+        r = act(c, jid, text=phrase).json()
+        assert r["safety"]["level"] == "crisis" and r["record"] is None
+        assert r["journey"]["status"] == "paused_safety"
+    assert gw.safety_calls >= 2          # onboarding answers + both actions were screened

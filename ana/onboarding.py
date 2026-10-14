@@ -724,10 +724,17 @@ def _merge_llm(d: _Draft, data: dict) -> tuple[_Draft, bool]:
 # ─────────────────────────────────────────────────────────────
 
 
-def build_seed(answers: Any, gateway: Any = None, use_llm: bool = False) -> OnboardingResult:
+def build_seed(answers: Any, gateway: Any = None, use_llm: bool = False,
+               safety_gateway: Any = None) -> OnboardingResult:
     """Turn onboarding answers into an ``IdentitySeed`` (see module docstring)."""
     p = _parse(answers)
-    safety = combine([screen_text(t) for t in p.free_texts()])
+    # Safety is never rationed: with a model available, every free-text answer
+    # also gets the raise-only model second opinion (see ana.safety).
+    if safety_gateway is not None:
+        from .safety import screen_text_llm
+        safety = combine([screen_text_llm(t, safety_gateway) for t in p.free_texts()])
+    else:
+        safety = combine([screen_text(t) for t in p.free_texts()])
     if safety.level == "crisis":
         return OnboardingResult(seed=None, safety=safety, source=None)
 
