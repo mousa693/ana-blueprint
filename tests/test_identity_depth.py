@@ -114,10 +114,12 @@ def test_journal_meta_analysis_trends(ic):
     assert rec["leadership"]["met"] == 3 and rec["leadership"]["neutral"] == 1
     assert rec["trust"]["avoided"] == 3 and rec["trust"]["last_tick"] == 6
     stmts = ic.journal.meta_analysis()
-    assert "growing in leadership (3 of 4 encounters met)" in stmts
-    assert "repeatedly turning from trust (0 of 3 met)" in stmts
-    assert "the lighthouse keeps returning (7 appearances)" in stmts
-    assert any("improving on leadership but still struggling with trust" in s for s in stmts)
+    # Insights are read by the person: warm words, no counts or scores.
+    assert "Stepping into leadership." in stmts
+    assert "You have often stepped back from trust; it is still asking." in stmts
+    assert "The lighthouse keeps returning." in stmts
+    assert any("steadier with leadership, while trust still asks more" in s for s in stmts)
+    assert not any(ch.isdigit() for s in stmts for ch in s)
     assert ic.journal.suggested_focus() == "trust"
 
 
@@ -125,7 +127,7 @@ def test_stress_climbing_statement():
     j = Journal()
     for i, s in enumerate([0.2, 0.3, 0.4, 0.5]):
         j.record(tick=i, themes=["courage"], stress=s)
-    assert "stress has been climbing for 3 cycles" in j.meta_analysis()
+    assert "Strain has been building lately; go gently." in j.meta_analysis()
 
 
 def test_meta_analysis_is_deterministic_and_serialisable(ic):

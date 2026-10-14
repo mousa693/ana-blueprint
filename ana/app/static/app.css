@@ -629,3 +629,5 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .paused .resources { margin-top: 12px; }
 .paused .disclaimer { margin-top: 24px; }
 .paused .btn-row { justify-content: center; margin-top: 28px; }
+
+.beat-description.no-dropcap::first-letter { font-size: inherit; float: none; padding: 0; color: inherit; }

@@ -180,7 +180,7 @@ class JourneyArc:
 
     Args:
         max_chapters: guard for :meth:`should_close` — once the journey has run
-            through this many chapters (consecutive same-stage runs), it closes
+            through this many consecutive same-stage runs, it closes
             even if the return was never reached.
         max_cycles: a second guard on raw cycle count (``None`` disables it).
         close_convergence: convergence at which a journey that has reached the
@@ -196,7 +196,7 @@ class JourneyArc:
             its furthest stage before nudging it one stage onward.
     """
 
-    def __init__(self, *, max_chapters: int = 9, max_cycles: Optional[int] = 30,
+    def __init__(self, *, max_chapters: int = 12, max_cycles: Optional[int] = 30,
                  close_convergence: float = 0.75, close_goals: float = 0.8,
                  min_return_cycles: int = 1, max_return_cycles: Optional[int] = 3,
                  stage_dwell: int = 3) -> None:
@@ -272,23 +272,52 @@ class JourneyArc:
         return STAGES[max(STAGES.index(e.stage) for e in self.entries)]
 
     def chapters(self) -> list[dict]:
-        """Consecutive same-stage runs: ``[{stage, name, start, end, cycles}]``."""
+        """One chapter per stage reached, in the order first reached:
+        ``[{stage, name, start, end, cycles}]``.
+
+        A journey has at most six chapters. When the story steps back to an
+        earlier stage for a scene, that scene joins the existing chapter for
+        the stage (its ``cycles`` need not be contiguous) instead of opening a
+        new, repeated chapter."""
         out: list[dict] = []
+        by_stage: dict[str, dict] = {}
         for e in self.entries:
-            if out and out[-1]["stage"] == e.stage:
-                out[-1]["end"] = e.cycle
-                out[-1]["cycles"].append(e.cycle)
-            else:
-                out.append({"stage": e.stage, "name": CHAPTER_NAMES[e.stage],
-                            "start": e.cycle, "end": e.cycle, "cycles": [e.cycle]})
+            ch = by_stage.get(e.stage)
+            if ch is None:
+                ch = {"stage": e.stage, "name": CHAPTER_NAMES[e.stage],
+                      "start": e.cycle, "end": e.cycle, "cycles": []}
+                by_stage[e.stage] = ch
+                out.append(ch)
+            ch["end"] = e.cycle
+            ch["cycles"].append(e.cycle)
         return out
+
+    def _run_count(self) -> int:
+        """Consecutive same-stage runs (a story oscillating between stages
+        piles these up; the ``max_chapters`` guard closes it)."""
+        runs, prev = 0, None
+        for e in self.entries:
+            if e.stage != prev:
+                runs += 1
+                prev = e.stage
+        return runs
+
+    def chapter_number(self, stage: Optional[str]) -> int:
+        """The chapter number a scene of ``stage`` belongs to (a stage already
+        reached keeps its number; a new one opens the next chapter)."""
+        st = normalize_stage(stage)
+        ch = self.chapters()
+        for i, c in enumerate(ch, 1):
+            if c["stage"] == st:
+                return i
+        return len(ch) + 1
 
     def current_chapter(self) -> str:
         """E.g. ``"Chapter 3: Meeting the Mentor"`` (``"Prologue"`` before any cycle)."""
-        ch = self.chapters()
-        if not ch:
+        if not self.entries:
             return "Prologue"
-        return f"Chapter {len(ch)}: {ch[-1]['name']}"
+        st = self.entries[-1].stage
+        return f"Chapter {self.chapter_number(st)}: {CHAPTER_NAMES[st]}"
 
     def reached(self, stage: str) -> bool:
         st = normalize_stage(stage)
@@ -328,13 +357,13 @@ class JourneyArc:
         first_lesson = next((e for e in self.entries
                              if e.lesson and e.success is not False), None)
         if first_lesson:
-            events.append((first_lesson.cycle, 10, f"first lesson at cycle {first_lesson.cycle}"))
+            events.append((first_lesson.cycle, 12, f"first lesson at cycle {first_lesson.cycle}"))
         first_win = next((e for e in self.entries if e.success is True), None)
         if first_win:
             events.append((first_win.cycle, 11, f"first step taken in earnest at cycle {first_win.cycle}"))
         first_retreat = next((e for e in self.entries if e.success is False), None)
         if first_retreat:
-            events.append((first_retreat.cycle, 12, f"first time you turned away, at cycle {first_retreat.cycle}"))
+            events.append((first_retreat.cycle, 10, f"first time you turned away, at cycle {first_retreat.cycle}"))
 
         faced = self._faced_shadow()
         if faced is not None:
@@ -387,7 +416,7 @@ class JourneyArc:
         """
         if not self.entries:
             return False
-        if len(self.chapters()) >= self.max_chapters:
+        if self._run_count() >= self.max_chapters:
             return True
         if self.max_cycles is not None and len(self.entries) >= self.max_cycles:
             return True
@@ -400,10 +429,12 @@ class JourneyArc:
         return False
 
     def stage_hint(self, convergence: float) -> Optional[str]:
-        """The stage the *next* scene should realise, or ``None`` before the
-        journey has begun (let the generator open freely).
+        """The stage the *next* scene should realise.
 
         Rules, in order:
+
+        * A journey always opens at the call — even when the self carried
+          over from an earlier journey is already highly converged.
 
         * The hint never skips a stage: it is at most ``furthest + 1``, so
           ordeal, reward and return always arrive in that order.
@@ -415,11 +446,12 @@ class JourneyArc:
           convergence rises slowly.
         * It only looks back when the self actually slid back (convergence fell
           since the previous cycle and is below the furthest stage), and then
-          by exactly one stage, once — the next hint goes forward again. It
-          never returns more than one stage behind the furthest point reached.
+          by exactly one stage, once per stage — the next hint goes forward again. It
+          never returns more than one stage behind the furthest point reached,
+          and never back to the call once the threshold has been crossed.
         """
         if not self.entries:
-            return None
+            return STAGES[0]
         conv = max(0.0, min(0.999, float(convergence)))
         natural = int(conv * len(STAGES))
         furthest = STAGES.index(self.furthest_stage)  # type: ignore[arg-type]
@@ -436,7 +468,12 @@ class JourneyArc:
         slid_back = conv < prev_conv - 1e-9 and natural < furthest
         # The homecoming does not unwind: once the return has been lived, a dip
         # is part of coming home, not a reason to go back out.
-        if slid_back and last == furthest and 0 < furthest < len(STAGES) - 1:
+        # ...and at most once per stage: a second dip at the same high-water
+        # mark is lived where the story already is.
+        stepped_back = any(e.stage == STAGES[furthest - 1] and e.cycle > first_at_furthest
+                           for e in self.entries)
+        if slid_back and last == furthest and 1 < furthest < len(STAGES) - 1 \
+                and not stepped_back:
             return STAGES[furthest - 1]
         return STAGES[furthest]
 
@@ -479,7 +516,10 @@ def _npcs_in(record: CycleRecord) -> tuple[list[str], list[str], list[str]]:
     events = " \n ".join(record.outcome.npc_events)
     # Longest names first so "Sefa 2" is not swallowed by "Sefa".
     for name in sorted(by_name, key=len, reverse=True):
-        if re.search(rf"(^|\n|\s){re.escape(name)}(\s|$)", events):
+        # Names open a sentence capitalised ("The Keeper nods"): match the
+        # first letter either way.
+        pat = f"[{re.escape(name[:1].upper())}{re.escape(name[:1].lower())}]{re.escape(name[1:])}"
+        if re.search(rf"(^|\n|\s){pat}(\s|$)", events):
             add(name, by_name[name].archetype)
     return names, shadows, mentors
 
@@ -559,8 +599,16 @@ afterwards — the way a wise companion would talk them through what happened.
 You are given a factual digest of the journey and a plain draft debrief. Rewrite
 it so it reads as a warm, specific reflection addressed to the person as "you":
 - Stay strictly faithful to the facts: the same chapters in the same order, the
-  same lessons, the same numeric changes, the same symbols and people. Invent no
-  events, names or numbers.
+  same lessons, the same changes, the same symbols and people. Invent no events
+  or names.
+- Never use numbers, digits, percentages, counts or scores of any kind, and never
+  use the simulation's internal vocabulary: no "cycle", "turn count",
+  "confidence", "valence", "arousal", "stress level", "convergence", "entropy",
+  "trait" or "stage". Say "early in the journey", "by the end", "you grew
+  steadier in the face of grief", "something in you and the world began to
+  answer each other".
+- Only ask about turning away from something if the person mostly turned away
+  from it; questions must fit what actually happened.
 - Be concrete — name the places, the people and the objects that recurred — and
   tender without flattering. Setbacks are part of the story, not failures.
 - Never diagnose, label, or give clinical advice. Speak in the language of the
@@ -603,76 +651,136 @@ def _nice(name: str) -> str:
     return v.replace("_", " ").strip()
 
 
+def _base(name: str) -> str:
+    """'grief_confidence' -> 'grief'."""
+    v = name
+    for suffix in ("_confidence", "_level", "_score"):
+        if v.endswith(suffix):
+            v = v[: -len(suffix)]
+            break
+    return v.replace("_", " ").strip()
+
+
+def _cap(text: str) -> str:
+    return text[:1].upper() + text[1:] if text else text
+
+
+def _and(items: list[str]) -> str:
+    items = [i for i in items if i]
+    if len(items) <= 1:
+        return "".join(items)
+    if len(items) == 2:
+        return f"{items[0]} and {items[1]}"
+    return ", ".join(items[:-1]) + f", and {items[-1]}"
+
+
+# How the story names each stage inside a sentence ("moved through the call,
+# the crossing of the threshold, ...").
+_STAGE_PROSE: dict[str, str] = {
+    "call": "the call",
+    "threshold": "the crossing of the threshold",
+    "mentor": "a meeting with a mentor",
+    "ordeal": "the ordeal",
+    "reward": "the reward",
+    "return": "the road home",
+}
+
+
 def _how_changed(first: IdentitySnapshot, last: IdentitySnapshot) -> list[str]:
+    """How the self changed, in plain words: no scores, no engine terms."""
+    from ..identity.core import humanize_goal
+    from ..identity.journal import steadier_in
+
     out: list[str] = []
     before = {t.name: t.value for t in first.traits}
     after = {t.name: t.value for t in last.traits}
     deltas: list[tuple[float, str]] = []
     for name in list(dict.fromkeys(list(before) + list(after))):
         b, a = before.get(name), after.get(name)
+        base = _base(name)
+        conf = name.endswith("_confidence")
         if b is None and a is not None:
-            deltas.append((a, f"Something new took root: {_nice(name)} appeared and "
-                              f"grew to {a:.2f}."))
+            deltas.append((a, f"Something new took root: a first footing with {base}."
+                           if conf else f"Something new took root: your {base}."))
             continue
         if a is None or b is None:
             continue
         d = a - b
         if abs(d) < 0.01:
             continue
-        verb = "grew" if d > 0 else "softened"
-        deltas.append((abs(d), f"Your {_nice(name)} {verb} from {b:.2f} to {a:.2f} "
-                               f"({d:+.2f})."))
+        if conf:
+            if d >= 0.25:
+                line = (f"By the end you stood much steadier {steadier_in(base)} "
+                        f"than when you began.")
+            elif d > 0:
+                line = f"You grew a little steadier {steadier_in(base)}."
+            elif d <= -0.25:
+                line = (f"{_cap(base)} shook your footing more than before; that is "
+                        f"worth being gentle with.")
+            else:
+                line = f"{_cap(base)} felt a little less steady by the end."
+        else:
+            line = (f"Your {base} grew stronger." if d > 0
+                    else f"Your {base} softened a little.")
+        deltas.append((abs(d), line))
     deltas.sort(key=lambda x: -x[0])
     out.extend(t for _, t in deltas)
 
     e0, e1 = first.emotion, last.emotion
     dv = e1.valence - e0.valence
     if abs(dv) >= 0.05:
-        out.append(
-            f"Your mood {'brightened' if dv > 0 else 'darkened'} "
-            f"(valence {e0.valence:+.2f} to {e1.valence:+.2f})."
-        )
+        out.append("Your mood lifted as the journey went on." if dv > 0 else
+                   "The journey left your mood heavier than it found it, and that is allowed.")
     ds = e1.stress - e0.stress
     if abs(ds) >= 0.05:
-        out.append(
-            f"You carried {'less' if ds < 0 else 'more'} strain "
-            f"(stress {e0.stress:.2f} to {e1.stress:.2f})."
-        )
+        out.append("You were carrying less strain by the end." if ds < 0 else
+                   "You were carrying more strain by the end; be gentle with that.")
     if e0.dominant != e1.dominant:
         out.append(f"The feeling at the front shifted from {e0.dominant.value} "
                    f"to {e1.dominant.value}.")
     dc = last.convergence - first.convergence
     if dc >= 0.05:
-        out.append(f"Inner and outer drew closer together: convergence rose from "
-                   f"{first.convergence:.2f} to {last.convergence:.2f}.")
+        out.append("Something in you and the world began to answer each other.")
     new_beliefs = [b for b in last.beliefs if b not in first.beliefs]
     for b in new_beliefs[:2]:
         out.append(f"You came to hold a new belief: \"{b}\".")
     for g0 in first.goals:
         g1 = next((g for g in last.goals if g.description == g0.description), None)
-        if g1 and g1.progress - g0.progress >= 0.05:
-            out.append(f"You moved toward \"{g0.description}\" "
-                       f"({g0.progress:.0%} to {g1.progress:.0%}).")
+        if g1 is None:
+            continue
+        verb = humanize_goal(g0.description, form="verb")
+        if g1.realised and not g0.realised:
+            from ..identity.core import first_person_past
+            out.append(f"You can say it now: \"{first_person_past(g0.description)}\"")
+        elif g1.progress - g0.progress >= 0.05:
+            out.append(f"You moved closer to {humanize_goal(g0.description, form='hope')}."
+                       if verb else "You moved closer to something you hope for.")
     if not out:
-        out.append("On the surface little moved — sometimes a journey's work is "
+        out.append("On the surface little moved; sometimes a journey's work is "
                    "quiet, and shows itself later.")
     return out
 
 
-def _cast_lines(cast: Optional[list[dict]]) -> list[str]:
+def _cast_lines(cast: Optional[list[dict]], n_scenes: int = 0) -> list[str]:
+    """'Old Ines, the mentor — was with you for most of the way; grew warmer
+    toward you; came back at the ordeal.' (no counts)."""
     lines: list[str] = []
     for c in cast or []:
-        name = c.get("name", "someone")
+        name = _cap(c.get("name", "someone"))
         role = c.get("role", "")
         met = c.get("times_met", 0)
-        bits = [f"{name}"]
-        if role:
-            bits.append(f"the {role}")
-        line = ", ".join(bits)
+        line = f"{name}, the {role}" if role else name
         trend = c.get("trend")
         notes: list[str] = []
         if met:
-            notes.append(f"met {met} time{'s' if met != 1 else ''}")
+            if n_scenes and met >= 0.6 * n_scenes:
+                notes.append("was with you for most of the way")
+            elif met == 1:
+                notes.append("crossed your path once")
+            elif met <= 3:
+                notes.append("appeared now and then")
+            else:
+                notes.append("was often near")
         if trend == "warmer":
             notes.append("grew warmer toward you")
         elif trend == "cooler":
@@ -682,11 +790,18 @@ def _cast_lines(cast: Optional[list[dict]]) -> list[str]:
         if c.get("faced"):
             notes.append("was faced, not fled")
         if c.get("callbacks"):
-            notes.append("returned at " + ", ".join(c["callbacks"]))
+            notes.append("came back " + _and([_STAGE_AT.get(st, f"at {st}")
+                                              for st in c["callbacks"]]))
         if notes:
             line += " — " + "; ".join(notes)
         lines.append(line + ".")
     return lines
+
+
+_STAGE_AT: dict[str, str] = {
+    "call": "at the call", "threshold": "at the threshold", "mentor": "with the mentor",
+    "ordeal": "at the ordeal", "reward": "at the reward", "return": "on the road home",
+}
 
 
 def build_debrief(records: list[CycleRecord], gateway: Any = None,
@@ -731,97 +846,172 @@ def _arc_for(records: list[CycleRecord], stages: Optional[list[Optional[str]]]) 
     return arc
 
 
+def _when(cycle: int, n: int) -> str:
+    """A position in the journey said the way a person would."""
+    if n <= 1:
+        return ""
+    f = (cycle - 1) / max(1, n - 1)
+    if f <= 0.2:
+        return "early on"
+    if f >= 0.8:
+        return "near the end"
+    return "partway along"
+
+
+def _human_turning_points(arc: JourneyArc, records: list[CycleRecord]) -> list[str]:
+    """Milestones in the order they happened, in words (no cycle numbers)."""
+    n = len(arc.entries)
+    events: list[tuple[int, int, str]] = []
+    stage_lines = {
+        "call": "You heard the call.",
+        "threshold": "You crossed the threshold.",
+        "mentor": "Help came from someone who had walked this road before.",
+        "ordeal": "You entered the ordeal.",
+        "reward": "You reached for the reward.",
+        "return": "You turned for home.",
+    }
+    for i, st in enumerate(STAGES):
+        c = arc.first_cycle_at(st)
+        if c is not None:
+            events.append((c, i, stage_lines[st]))
+    first_lesson = next((e for e in arc.entries if e.lesson and e.success is not False), None)
+    if first_lesson:
+        events.append((first_lesson.cycle, 12,
+                       f"You put your first lesson into words: \"{first_lesson.lesson}\""))
+    first_win = next((e for e in arc.entries if e.success is True), None)
+    if first_win:
+        events.append((first_win.cycle, 11,
+                       f"You took your first step in earnest{', ' + _when(first_win.cycle, n) if _when(first_win.cycle, n) else ''}."))
+    first_retreat = next((e for e in arc.entries if e.success is False), None)
+    if first_retreat:
+        events.append((first_retreat.cycle, 10,
+                       "You turned away for the first time, and the story waited for you."))
+    faced = arc._faced_shadow()
+    if faced is not None:
+        e = arc.entries[faced - 1]
+        who = e.shadows[0] if e.shadows else "the Shadow"
+        events.append((faced, 13, f"You stood face to face with {who if e.shadows else 'the Shadow'}."))
+    first_reward = next((e for e in arc.entries if e.stage == "reward"), None)
+    ordeal_wins = [e for e in arc.entries if e.stage == "ordeal" and e.success is True
+                   and (first_reward is None or e.cycle < first_reward.cycle)]
+    if ordeal_wins and first_reward:
+        events.append((ordeal_wins[-1].cycle, 14, "You came through the ordeal."))
+    mirror = next((e for e in arc.entries if e.convergence >= 0.5), None)
+    if mirror:
+        events.append((mirror.cycle, 15,
+                       "Something in you and the world began to answer each other."))
+    events.sort()
+    out = [t for _, _, t in events]
+
+    if records:
+        peak = max(records, key=lambda r: (r.scene.intensity, -r.tick))
+        peak_action = peak.outcome.user_action.raw if peak.outcome.user_action else ""
+        if peak.scene.intensity >= 0.45:
+            act = peak_action.strip()
+            if act and act[-1:] not in ".!?":
+                act += "."
+            out.append(f"The most charged moment was \"{peak.scene.title}\""
+                       + (f", and what you did was: \"{act}\"" if act else "."))
+        surprise = max(records, key=lambda r: r.omega_surprise)
+        if surprise.omega_surprise > 0.0 and surprise is not peak \
+                and surprise.scene.title != peak.scene.title:
+            out.append(f"\"{surprise.scene.title}\" surprised the world most; it did "
+                       f"not go the way the pattern expected.")
+    return out
+
+
 def _deterministic_debrief(records: list[CycleRecord], *, arc: Optional[JourneyArc],
                            cast: Optional[list[dict]],
                            stages: Optional[list[Optional[str]]]) -> Debrief:
+    from ..identity.core import humanize_goal
+    from ..identity.journal import is_meaningful_symbol
+
     if not records:
         return Debrief(
             title="A journey not yet begun",
-            arc_summary="Nothing has happened yet — the road is still waiting for "
+            arc_summary="Nothing has happened yet; the road is still waiting for "
                         "your first step.",
             closing_image="A door, unopened, with light underneath it.",
         )
     arc = arc if arc is not None and arc.entries else _arc_for(records, stages)
     first, last = records[0], records[-1]
     themes = _themes(records)
-    symbols = _symbol_counts(records)
-    recurring = [s for s, n in symbols if n >= 2]
+    symbols = [(s, c) for s, c in _symbol_counts(records) if is_meaningful_symbol(s)]
+    recurring = [s for s, c in symbols if c >= 2]
     n = len(records)
 
-    # Title — the most persistent non-stage symbol + the leading themes.
-    stage_syms = set(STAGE_SYMBOLS.values())
-    emblem = next((s for s, c in symbols if s not in stage_syms and c >= 2), None)
+    # Title — the most persistent symbol + the leading themes.
+    emblem = next((s for s, c in symbols if c >= 2), None)
     theme_phrase = " and ".join(themes[:2]) if themes else "becoming"
-    title = (f"{emblem[0].upper() + emblem[1:]}: a journey through {theme_phrase}"
+    title = (f"{_cap(emblem)}: a journey through {theme_phrase}"
              if emblem else f"A journey through {theme_phrase}")
 
-    # Chapters.
+    # Chapters — one per stage reached (a step back joins its stage's chapter).
     chapter_lines: list[str] = []
     by_cycle = {e.cycle: (e, records[e.cycle - 1]) for e in arc.entries
                 if e.cycle - 1 < n}
     for i, ch in enumerate(arc.chapters(), 1):
-        span = (f"cycle {ch['start']}" if ch["start"] == ch["end"]
-                else f"cycles {ch['start']}-{ch['end']}")
         entries = [by_cycle[c][0] for c in ch["cycles"] if c in by_cycle]
         recs = [by_cycle[c][1] for c in ch["cycles"] if c in by_cycle]
-        places = list(dict.fromkeys(r.request.world.location for r in recs
-                                    if r.request))
         wins = sum(1 for e in entries if e.success is True)
         turns = sum(1 for e in entries if e.success is False)
         people = list(dict.fromkeys(p for e in entries for p in e.npcs))[:2]
-        desc = _chapter_prose(ch["stage"], wins, turns, people)
-        where = ""
-        if recs:
-            loc = recs[0].scene.summary
-            m = re.match(r"At (.+?), the protagonist", loc)
-            where = f" at {m.group(1)}" if m else ""
-        chapter_lines.append(f"Chapter {i}, {ch['name']} ({span}){where}: {desc}")
+        desc = _chapter_prose(ch["stage"], wins, turns, people, i)
+        place = next((r.request.world.location for r in recs if r.request), "")
+        head = f"Chapter {_NUMBER_WORDS[i]}, {ch['name']}"
+        chapter_lines.append(f"{head} — {_cap(place)}. {desc}" if place else f"{head}. {desc}")
 
-    # Turning points — milestones made personal, plus the sharpest moments.
-    turning: list[str] = []
-    for m in arc.milestones():
-        turning.append(m[0].upper() + m[1:] + ".")
-    peak = max(records, key=lambda r: (r.scene.intensity, -r.tick))
-    pi = records.index(peak) + 1
-    peak_action = peak.outcome.user_action.raw if peak.outcome.user_action else ""
-    if peak.scene.intensity >= 0.45:
-        turning.append(
-            f"The most charged moment came at cycle {pi}, \"{peak.scene.title}\""
-            + (f" — and what you did was: \"{peak_action}\"" if peak_action else "")
-            + ".")
-    surprise = max(records, key=lambda r: r.omega_surprise)
-    if surprise.omega_surprise > 0.0 and surprise is not peak:
-        si = records.index(surprise) + 1
-        turning.append(f"Cycle {si} surprised the world most — \"{surprise.scene.title}\" "
-                       f"did not go the way the pattern expected.")
+    turning = _human_turning_points(arc, records)
 
     # Lessons — only the ones earned; retreats become open questions.
     lessons: list[str] = []
-    retreats: list[str] = []
     for r in records:
         les = r.outcome.lesson
         if not les:
             continue
-        if r.outcome.success is False or "turned away" in les.lower():
-            if les not in retreats:
-                retreats.append(les)
-        elif les not in lessons:
+        if not (r.outcome.success is False or "turned away" in les.lower()) \
+                and les not in lessons:
             lessons.append(les)
 
     changed = _how_changed(first.identity_before, last.identity_before)
 
-    # Open questions.
+    # Open questions — only about what actually happened.
     questions: list[str] = []
-    for les in retreats:
-        m = re.search(r"turned away from (.+?) this time", les)
-        if m:
-            questions.append(f"What made you turn away from {m.group(1)} — and what "
-                             f"would let you stay with it next time?")
+    per_theme: dict[str, list[int]] = {}
+    for r in records:
+        for t in dict.fromkeys(list(r.outcome.themes_touched) or [r.scene.theme]):
+            if not t or t == "rest":
+                continue
+            met_avoid = per_theme.setdefault(t, [0, 0])
+            if r.outcome.success is True:
+                met_avoid[0] += 1
+            elif r.outcome.success is False:
+                met_avoid[1] += 1
+    for t, (met, avoided) in per_theme.items():
+        if avoided >= 1 and avoided > met:
+            questions.append(f"What made you turn away from {t}, and what would let "
+                             f"you stay with it a little longer next time?")
     for g in last.identity_before.goals:
-        if g.progress < 0.95:
-            questions.append(f"\"{g.description}\" is {g.progress:.0%} of the way — "
-                             f"what would the next honest step toward it look like?")
-    if arc.reached("ordeal") and arc._faced_shadow() is None:
+        if g.realised or g.progress >= 0.95:
+            continue
+        verb = humanize_goal(g.description, form="verb")
+        if verb is None:
+            questions.append("What would one small, honest step toward what you hope "
+                             "for look like?")
+        elif g.progress >= 0.3:
+            questions.append(f"You came part of the way toward your hope to {verb}. "
+                             f"What would the next honest step look like?"
+                             if not verb.startswith(("a ", "an ", "the ", "your ", "some"))
+                             else f"You came part of the way toward {verb}. What would "
+                                  f"the next honest step look like?")
+        else:
+            questions.append(f"You hope to {verb}. What would one small, honest step "
+                             f"toward that look like?"
+                             if not verb.startswith(("a ", "an ", "the ", "your ", "some"))
+                             else f"You hope for {verb}. What would one small, honest "
+                                  f"step toward that look like?")
+    if arc.reached("ordeal") and any(e.shadows for e in arc.entries) \
+            and arc._faced_shadow() is None:
         questions.append("The Shadow was glimpsed but not yet faced. What is it "
                          "still asking of you?")
     if not arc.reached("return"):
@@ -829,52 +1019,69 @@ def _deterministic_debrief(records: list[CycleRecord], *, arc: Optional[JourneyA
                          "need to carry back with you?")
     low = sorted(last.identity_before.traits, key=lambda t: t.value)
     if low and low[0].value < 0.4:
-        questions.append(f"Your {_nice(low[0].name)} is still finding its feet. "
-                         f"Where in ordinary life could it practise?")
+        base = _base(low[0].name)
+        questions.append(f"Your footing with {base} is still new. Where in ordinary "
+                         f"life could you practise it?")
     questions = list(dict.fromkeys(questions))[:5]
 
     # Arc summary — the reflection itself.
     start_place = first.request.world.location if first.request else "the beginning"
     start_mood = first.identity_before.emotion.dominant.value
-    stages_seen = [CHAPTER_NAMES[c["stage"]].lower() for c in arc.chapters()]
-    path = ", ".join(dict.fromkeys(stages_seen))
+    path = _and([_STAGE_PROSE[c["stage"]] for c in arc.chapters()])
     wins = sum(1 for r in records if r.outcome.success is True)
     turns = sum(1 for r in records if r.outcome.success is False)
     parts = [f"You set out from {start_place} carrying {start_mood} more than "
-             f"certainty, and over {n} cycle{'s' if n != 1 else ''} the story "
-             f"moved through {path}."]
+             f"certainty, and the story carried you through {path}."]
     if themes:
         parts.append(f"Again and again the world asked you about "
                      f"{' and '.join(themes[:2])}.")
-    if wins or turns:
-        txt = f"You stepped toward it {wins} time{'s' if wins != 1 else ''}"
-        if turns:
-            txt += (f" and turned away {turns} time{'s' if turns != 1 else ''} — "
-                    f"both are part of how a person learns where their edges are")
-        parts.append(txt + ".")
+    if wins and not turns:
+        parts.append("Each time it asked, you found a way to step toward it.")
+    elif wins > turns:
+        parts.append("More often than not you stepped toward it, and the times you "
+                     "turned away are part of how a person learns where their edges are.")
+    elif turns > wins:
+        parts.append("Often you held back, and that too is part of how a person "
+                     "learns where their edges are.")
+    elif wins and turns:
+        parts.append("Some days you stepped toward it and some days you stepped back; "
+                     "both are part of how a person learns where their edges are.")
+    else:
+        parts.append("Mostly you watched and wondered, which is its own way of "
+                     "meeting a thing.")
     if emblem:
-        cnt = dict(symbols)[emblem]
-        parts.append(f"{emblem[0].upper() + emblem[1:]} kept appearing — in {cnt} of "
-                     f"{n} scenes — as if the world wanted you to look at it.")
+        parts.append(f"{_cap(emblem)} kept appearing, as if the world wanted you to "
+                     f"look at it.")
     if lessons:
-        parts.append(f"The clearest thing you said to yourself was: \"{lessons[0]}\"")
-    if changed and "grew" in changed[0]:
-        parts.append(changed[0].replace("Your ", "Your ", 1))
+        les = lessons[0] if lessons[0][-1:] in ".!?" else lessons[0] + "."
+        parts.append(f"The clearest thing you said to yourself was: \"{les}\"")
+    if changed and ("steadier" in changed[0] or "stronger" in changed[0]):
+        parts.append(changed[0])
     summary = " ".join(parts)
 
     end_place = last.request.world.location if last.request else "the road"
-    tail_sym = next((s for s, _ in symbols if s not in stage_syms), None)
+    tail_sym = emblem or next((s for s, _ in symbols), None)
     if arc.reached("return"):
-        closing = (f"At {end_place}, the road bends homeward; "
-                   f"{tail_sym or 'what you found'} goes with you, and it looks "
-                   f"different than it did at the start.")
+        closing = (f"{_cap(tail_sym or 'what you found')} goes with you as the road "
+                   f"bends homeward, and it looks different than it did at the start.")
     else:
-        closing = (f"For now you rest at {end_place}, "
+        from ..environment.mirror import place_prep
+        closing = (f"For now you rest {place_prep(end_place)} {end_place}, "
                    f"{tail_sym or 'the next door'} still within sight, the story "
                    f"waiting for you to pick it up again.")
 
-    companions = _cast_lines(cast) if cast else [
-        f"{name}, who was there along the way." for name in arc.npcs_met()[:5]]
+    if cast:
+        # "Who walked with you" is the people who were actually in your scenes
+        # (spoke or answered you), and how often is counted in scenes shared.
+        shared: dict[str, int] = {}
+        for e in arc.entries:
+            for name in e.npcs:
+                shared[name] = shared.get(name, 0) + 1
+        met = [dict(c, times_met=shared[c.get("name")]) for c in cast
+               if c.get("name") in shared]
+        cast = met or cast
+    companions = _cast_lines(cast, n) if cast else [
+        f"{_cap(name)}, who was there along the way." for name in arc.npcs_met()[:5]]
 
     return Debrief(
         title=title,
@@ -891,25 +1098,35 @@ def _deterministic_debrief(records: list[CycleRecord], *, arc: Optional[JourneyA
     )
 
 
-def _chapter_prose(stage: str, wins: int, turns: int, people: list[str]) -> str:
+_NUMBER_WORDS = {1: "One", 2: "Two", 3: "Three", 4: "Four", 5: "Five", 6: "Six",
+                 7: "Seven", 8: "Eight", 9: "Nine", 10: "Ten", 11: "Eleven", 12: "Twelve"}
+
+
+def _chapter_prose(stage: str, wins: int, turns: int, people: list[str],
+                   n: int = 1) -> str:
     base = {
-        "call": "something called to you, and you had to decide whether to listen",
-        "threshold": "the familiar fell behind and the way narrowed to a single door",
-        "mentor": "help arrived in a form you did not expect",
-        "ordeal": "what you had been avoiding gathered in one place and would not be deferred",
-        "reward": "the thing you came for was finally within reach",
-        "return": "the road turned homeward, and you carried the journey with you",
+        "call": "Something called to you, and you had to decide whether to listen",
+        "threshold": "The familiar fell behind and the way narrowed to a single door",
+        "mentor": "Help arrived in a form you did not expect",
+        "ordeal": "What you had been avoiding gathered in one place and would not be deferred",
+        "reward": "The thing you came for was finally within reach",
+        "return": "The road turned homeward, and you carried the journey with you",
     }[stage]
     if wins and not turns:
-        tail = "you met it"
+        tail = "You met it."
     elif turns and not wins:
-        tail = "you held back, and that too told you something"
+        tail = "You held back, and that too told you something."
     elif wins and turns:
-        tail = "you met it some days and stepped back on others"
+        tail = "You met it some days and stepped back on others."
     else:
-        tail = "you moved through it, watching"
-    with_ = f", with {' and '.join(people)} nearby" if people else ""
-    return f"{base}{with_}; {tail}."
+        tail = "You moved through it, watching."
+    if not people:
+        return f"{base}. {tail}"
+    who = _and(people)
+    company = [f"{base}, with {who} nearby. {tail}",
+               f"{base}. {_cap(who)} {'were' if len(people) > 1 else 'was'} there. {tail}",
+               f"{base}, in the company of {who}. {tail}"]
+    return company[(n - 1) % len(company)]
 
 
 def _clip(text, n: int) -> str:
@@ -924,7 +1141,7 @@ def _debrief_prompt(records: list[CycleRecord], det: Debrief, arc: JourneyArc) -
             continue  # bound the prompt on very long journeys; milestones cover the rest
         e = arc.entries[i - 1] if i - 1 < len(arc.entries) else None
         digest.append({
-            "cycle": i,
+            "scene": i,
             "stage": e.stage if e else None,
             "title": _clip(r.scene.title, 120),
             "location": _clip(r.request.world.location, 80) if r.request else None,
@@ -934,7 +1151,6 @@ def _debrief_prompt(records: list[CycleRecord], det: Debrief, arc: JourneyArc) -
             "lesson": _clip(r.outcome.lesson, 200) if r.outcome.lesson else None,
             "npc_reactions": [_clip(x, 160) for x in r.outcome.npc_events[:3]],
             "symbols": [_clip(x, 60) for x in r.scene.symbols[:5]],
-            "convergence": round(r.convergence, 2),
         })
     draft = det.model_dump(exclude={"source"})
     return ("Journey digest (facts, in order):\n"
@@ -944,18 +1160,28 @@ def _debrief_prompt(records: list[CycleRecord], det: Debrief, arc: JourneyArc) -
             + json.dumps(draft, ensure_ascii=False, indent=1))
 
 
+_INTERNAL_WORDS = re.compile(
+    r"\d|\b(cycles?|confidence|valence|arousal|convergence|entropy)\b", re.IGNORECASE)
+
+
+def _leaks_internals(text: str) -> bool:
+    """Numbers or engine vocabulary in model-written debrief text."""
+    return bool(_INTERNAL_WORDS.search(text or ""))
+
+
 def _merge_llm(det: Debrief, data: dict) -> Debrief:
     """Take the model's fields where they are well-formed, else keep ours."""
 
     def s(key: str) -> str:
         v = data.get(key)
-        return v.strip() if isinstance(v, str) and v.strip() else getattr(det, key)
+        ok = isinstance(v, str) and v.strip() and not _leaks_internals(v)
+        return v.strip() if ok else getattr(det, key)
 
     def lst(key: str) -> list[str]:
         v = data.get(key)
         if isinstance(v, list):
             items = [str(x).strip() for x in v if isinstance(x, (str, int, float)) and str(x).strip()]
-            if items:
+            if items and not any(_leaks_internals(x) for x in items):
                 return items
         return list(getattr(det, key))
 

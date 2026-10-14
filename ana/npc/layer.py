@@ -95,6 +95,8 @@ _ARCHETYPE_LIB: dict[Archetype, dict] = {
             "{name} watches without moving, as if measuring what it costs you",
             "{name} mutters that you will fail, and means it",
             "{name} mirrors your gesture back, mockingly",
+            "{name} lets out a low laugh, as if it expected nothing else",
+            "{name} drifts a little closer, curious despite itself",
         ],
     },
     Archetype.MENTOR: {
@@ -106,6 +108,9 @@ _ARCHETYPE_LIB: dict[Archetype, dict] = {
             "{name} nods slowly and offers a single piece of hard-won counsel",
             "{name} steps closer, ready to steady your hand",
             "{name} asks the one question you were avoiding",
+            "{name} smiles, as if you had answered something long unasked",
+            "{name} says nothing, but stays near",
+            "{name} hands you a small, worn thing to keep for later",
         ],
     },
     Archetype.TRICKSTER: {
@@ -117,6 +122,8 @@ _ARCHETYPE_LIB: dict[Archetype, dict] = {
             "{name} laughs and does the opposite of what you asked",
             "{name} offers help, for a price named later",
             "{name} turns the moment sideways with a sly suggestion",
+            "{name} winks, as if you two share a secret",
+            "{name} pockets something when no one is looking, then hands it to you",
         ],
     },
     Archetype.ALLY: {
@@ -128,6 +135,8 @@ _ARCHETYPE_LIB: dict[Archetype, dict] = {
             "{name} falls in beside you without needing to be asked",
             "{name} shoulders part of the load and keeps pace",
             "{name} answers your call and moves to act",
+            "{name} catches your eye and nods: together, then",
+            "{name} keeps watch while you gather yourself",
         ],
     },
     Archetype.THRESHOLD_GUARDIAN: {
@@ -139,6 +148,8 @@ _ARCHETYPE_LIB: dict[Archetype, dict] = {
             "{name} blocks the way and demands to know your purpose",
             "{name} weighs you with a long, cold look before deciding",
             "{name} names the price of passage",
+            "{name} steps half aside, leaving room to pass if you mean it",
+            "{name} studies your face, and something in theirs softens",
         ],
     },
     Archetype.HERALD: {
@@ -149,7 +160,8 @@ _ARCHETYPE_LIB: dict[Archetype, dict] = {
         "reactions": [
             "{name} delivers word that reframes what you just did",
             "{name} points toward something you had not seen",
-            "{name} announces your act to others nearby",
+            "{name} hurries off to tell the others what you did",
+            "{name} leans in with a piece of news meant only for you",
         ],
     },
     Archetype.HERO: {
@@ -233,12 +245,23 @@ _ENTROPY_BY_CUE: dict[str, list[tuple[str, Optional[str]]]] = {
         ("You notice a letter on the table that was not there a breath ago.", "letter"),
         ("A draft carries the scent of somewhere you have never been.", "memory"),
     ],
+    "heights": [
+        ("The wind drops all at once, and the whole mountainside holds its breath.", "stillness"),
+        ("A hawk hangs in the air beside you, unmoving, then is gone.", "guide"),
+        ("You find a cairn of stones no one admits to building.", "a cairn of stones"),
+        ("Loose stones skitter away beneath your feet and fall a long way.", "falling stones"),
+    ],
+    "homeward": [
+        ("A cart passes, and the driver lifts a hand as if he knows you.", "a passing cart"),
+        ("Someone has tied a ribbon to a fence post along the way.", "a ribbon on a fence post"),
+        ("The smell of bread drifts from a house you cannot see.", "the smell of bread"),
+    ],
     "night": [
         ("A star falls, too slow, and leaves the dark feeling watched.", "omen"),
         ("Far off, a single light answers a light you did not know you'd shown.", "beacon"),
     ],
     "generic": [
-        ("The air shifts without warning; something in the scene is subtly wrong.", "entropy"),
+        ("The air shifts without warning; something here is subtly wrong.", "entropy"),
         ("A small object turns up where nothing should be — and it seems meant for you.", "gift"),
         ("Someone nearby does the unexpected, and the moment tilts.", "the unexpected turn"),
     ],
@@ -267,7 +290,7 @@ _ROLE_BY_ARCH: dict[Archetype, str] = {
 _STAGES = ("call", "threshold", "mentor", "ordeal", "reward", "return")
 
 _STAGE_PHRASE: dict[str, str] = {
-    "call": "at the very start, when the call first came",
+    "call": "at the very start",
     "threshold": "at the threshold",
     "mentor": "when you were first being guided",
     "ordeal": "in the ordeal",
@@ -430,6 +453,8 @@ class NPCDirector:
         # not ``represent`` them, personas / reactions / callback and entropy
         # beats that would name them are swapped for neutral variants.
         self.forbidden: list[str] = []
+        # Names no NPC may take (the protagonist's own name, set by the loop).
+        self.avoid_names: set[str] = set()
 
     # -- registry API ----------------------------------------------------
     @property
@@ -470,9 +495,12 @@ class NPCDirector:
         return _ARCHETYPE_LIB.get(arch, _DEFAULT_LIB)
 
     def _unique_name(self, arch: Archetype, taken: set[str]) -> str:
-        """Pick a fresh name for an archetype, avoiding collisions."""
+        """Pick a fresh name for an archetype, avoiding collisions — and never
+        the protagonist's own name (``avoid_names``)."""
         candidates = list(self._lib(arch)["names"])
         self.rng.shuffle(candidates)
+        avoid = {n.strip().lower() for n in getattr(self, "avoid_names", ()) if n}
+        candidates = [c for c in candidates if c.lower() not in avoid] or candidates
         for name in candidates:
             if name not in taken:
                 return name
@@ -484,13 +512,17 @@ class NPCDirector:
         return f"{base} {n}"
 
     def _make_persona(self, arch: Archetype, represents: Optional[str]) -> str:
-        """Deterministic persona, optionally enriched by the gateway."""
+        """Deterministic persona, optionally enriched by the gateway.
+
+        What the NPC carries is said in human words: a trait key or theme as
+        "your grief", a goal as "your hope to find your purpose". A goal too
+        long to say gracefully falls back to its theme (or is left unsaid) —
+        a person's raw goal text is never pasted into prose."""
         base = self._lib(arch)["persona"]
         if represents and not _mentions(represents, self.forbidden, synonyms=True):
-            from ..generative.engine import _humanize
-            h = _humanize(represents, represents)
-            phrase = h if h.startswith("the ") else f"your {h}"
-            base = f"{base}, carrying something of {phrase}"
+            phrase = _carried_phrase(represents)
+            if phrase:
+                base = f"{base}, carrying something of {phrase}"
         if self._llm_ready():
             try:
                 text = self.gateway.complete(  # type: ignore[union-attr]
@@ -748,7 +780,17 @@ class NPCDirector:
         self._pending = []
         self._callback_scenes.add(scene.id)
         if new_beats:
-            scene.beats = list(scene.beats) + new_beats
+            # Someone who returns says one thing, not two: their callback line
+            # takes the place of an ordinary line they already had here.
+            beats = list(scene.beats)
+            for nb in new_beats:
+                at = next((i for i, b in enumerate(beats) if b.kind == "dialogue"
+                           and b.speaker == nb.speaker and not b.symbol), None)
+                if at is None:
+                    beats.append(nb)
+                else:
+                    beats[at] = nb
+            scene.beats = beats
         return scene
 
     def withdraw(self, scene: Scene, *, requeue: bool = True) -> None:
@@ -794,7 +836,7 @@ class NPCDirector:
                                or _mentions(beat.symbol, self.forbidden)):
             beat = SceneBeat(
                 kind="dialogue", speaker=m.name, archetype=m.npc.archetype,
-                text=(f"{m.name}, whom you have met before, is here again, "
+                text=(f"{_cap(m.name)}, whom you have met before, is here again, "
                       f"and stays close."),
                 symbol="the one who returned")
         return beat
@@ -802,29 +844,30 @@ class NPCDirector:
     def _callback_beat_raw(self, m: "CastMember", kind: str) -> SceneBeat:
         when = _STAGE_PHRASE.get(m.first_stage or "", "earlier on the road")
         helped_before = m.treatment.get("helped", 0) + m.treatment.get("followed", 0)
+        name = _cap(m.name)
         if kind == "mentor_returns":
-            text = (f"{m.name}, who first met you {when}, is here again where it is "
+            text = (f"{name}, who first met you {when}, is here again where it is "
                     f"hardest. \"I said we'd meet once more. You already carry what "
-                    f"you need — use it.\"")
+                    f"you need. Use it.\"")
             sym = "the mentor's return"
         elif kind == "shadow_faced":
-            text = (f"{m.name} steps out of the dark and, this time, does not move "
+            text = (f"{name} steps out of the dark and, this time, does not move "
                     f"aside. \"No more going around me. Whatever you do next, you "
                     f"do it facing me.\"")
             sym = "the shadow"
         elif kind == "ally_helps":
             why = ("You helped me once. Let me return it." if helped_before
                    else "You let me walk with you. I'm still walking.")
-            text = (f"{m.name}, who stood beside you {when}, arrives with exactly "
+            text = (f"{name}, who stood beside you {when}, arrives with exactly "
                     f"what is needed. \"{why}\"")
             sym = "the returning ally"
         elif kind == "trust_issue":
-            text = (f"{m.name} — the one who fled when you called — comes back, eyes "
-                    f"low. \"I ran. I know I did. Will you trust me to stand with "
+            text = (f"{name}, the one who fled when you called, comes back with eyes "
+                    f"lowered. \"I ran. I know I did. Will you trust me to stand with "
                     f"you this time?\"")
             sym = "trust"
         else:  # witness
-            text = (f"{m.name}, who saw you {when}, is waiting at the edge of home "
+            text = (f"{name}, who saw you {when}, is waiting at the edge of home "
                     f"to see who has come back.")
             sym = "the witness"
         return SceneBeat(kind="dialogue", text=text, speaker=m.name,
@@ -888,10 +931,16 @@ class NPCDirector:
     def _entropy_bucket(self, world: WorldState, scene: Scene) -> list[tuple[str, Optional[str]]]:
         cue = f"{world.location} {scene.theme} {scene.title} {world.ambience}".lower()
         coast_words = ("coast", "sea", "harbor", "harbour", "shore", "lighthouse", "tide", "port", "beach", "dock")
-        forest_words = ("forest", "wood", "grove", "tree", "wild", "trail", "mountain")
+        heights_words = ("summit", "ridge", "climbing road", "mountain", "peak", "cliff")
+        forest_words = ("forest", "wood", "grove", "tree", "wild", "trail")
         town_words = ("town", "city", "market", "street", "village", "square", "tavern")
         interior_words = ("room", "house", "hall", "chamber", "cabin", "indoor", "interior", "home")
 
+        place = (world.location or "").lower()
+        if any(w in place for w in heights_words):
+            return _ENTROPY_BY_CUE["heights"]
+        if "road home" in place:
+            return _ENTROPY_BY_CUE["homeward"]
         if any(w in cue for w in coast_words):
             return _ENTROPY_BY_CUE["coast"]
         if any(w in cue for w in forest_words):
@@ -904,30 +953,91 @@ class NPCDirector:
             return _ENTROPY_BY_CUE["night"]
         return _ENTROPY_BY_CUE["generic"]
 
-    def react(self, scene: Scene, action: UserAction, world: WorldState) -> list[str]:
-        """Return 1-3 short strings of how NPCs respond to the user's action.
+    def react(self, scene: Scene, action: UserAction, world: WorldState, *,
+              gentle: bool = False) -> list[str]:
+        """Return up to 3 short strings of how NPCs respond to the user's action.
 
-        Each present NPC's response is driven by its archetype, disposition and
-        ``autonomy``: high-autonomy NPCs may act *against* their disposition
-        (the lighthouse texture — one villager follows, another flees), while
-        mirror NPCs stay closer to type. Deterministic via the shared rng; the
-        gateway may rephrase a line when enabled and available.
+        Only NPCs who are *in this scene* react — those who spoke in it (or
+        were brought back by a callback); someone standing in the world but
+        absent from the scene stays silent. Each response is driven by the
+        NPC's archetype, disposition and ``autonomy``: high-autonomy NPCs may
+        act *against* their disposition (the lighthouse texture — one villager
+        follows, another flees), while mirror NPCs stay closer to type. A
+        reaction never contradicts what the NPC just said: someone who came
+        back asking to stand with you does not flee in the same beat, and
+        companions who promised to walk with you hesitate rather than run.
+
+        ``gentle`` (the person wrote something that sounded like real
+        distress): allies and mentors move closer, everyone else stays quiet,
+        and nothing about the moment is read as a treatment of the cast.
+
+        Deterministic via the shared rng; the gateway may rephrase a line when
+        enabled and available.
         """
-        present = [n for n in world.npcs if n.alive]
+        present = self._in_scene(scene, world)
         if not present:
             return []
+        if gentle:
+            return self._react_gently(present)
 
         # Choose up to 3 reacting NPCs, prioritising variety of archetype.
         self.rng.shuffle(present)
         reactors = present[: min(3, len(present))]
+        intents = {name: kind for name, kind, _st in self._injected.get(scene.id, [])}
 
         reactions: list[str] = []
         for npc in reactors:
-            line, kind = self._react_one_kind(npc, action)
+            intent = intents.get(npc.name)
+            if intent in _INTENT_REACTIONS:
+                bank = _INTENT_REACTIONS[intent]
+                if _turns_away(action) and intent in _INTENT_WHEN_YOU_TURN:
+                    bank = _INTENT_WHEN_YOU_TURN[intent]
+                line, kind = self.rng.choice(bank).format(
+                    name=_cap(npc.name)), _INTENT_KIND[intent]
+            else:
+                line, kind = self._react_one_kind(npc, action)
             reactions.append(line)
             self._note_reaction(npc, kind)
-        self._drift(present, action)
+        self._drift([n for n in world.npcs if n.alive], action)
         return reactions[:3]
+
+    def _in_scene(self, scene: Scene, world: WorldState) -> list[NPC]:
+        """The living NPCs who take part in ``scene``: dialogue speakers, plus
+        anyone a beat names as its subject (a callback, an LLM-written line).
+
+        A scene with no beats at all (direct API use, no story text to be
+        consistent with) falls back to everyone standing in the world."""
+        by_name = {n.name: n for n in world.npcs if n.alive}
+        if not scene.beats:
+            return list(by_name.values())
+        out: list[NPC] = []
+        for b in scene.beats:
+            cand = None
+            if b.speaker and b.speaker in by_name:
+                cand = by_name[b.speaker]
+            else:
+                low = (b.text or "").lower()
+                for name in sorted(by_name, key=len, reverse=True):
+                    if low.startswith(name.lower() + " ") or low.startswith(name.lower() + ","):
+                        cand = by_name[name]
+                        break
+            if cand is not None and cand not in out:
+                out.append(cand)
+        return out
+
+    def _react_gently(self, present: list[NPC]) -> list[str]:
+        """After distress: the companions come closer; the rest stay quiet."""
+        out: list[str] = []
+        warm = [n for n in present
+                if self._lib(n.archetype).get("help_bias", 0.0) > 0.0
+                and n.archetype not in (Archetype.SHADOW, Archetype.TRICKSTER)]
+        bank = list(_GENTLE_REACTIONS)
+        self.rng.shuffle(bank)
+        for npc, template in zip(warm[:2], bank):
+            out.append(template.format(name=_cap(npc.name)))
+            m = self._cast.get(npc.name) or self._register(npc, self._stage, managed=False)
+            m.interactions += 1
+        return out
 
     def _note_reaction(self, npc: NPC, kind: str) -> None:
         m = self._cast.get(npc.name) or self._register(npc, self._stage, managed=False)
@@ -960,6 +1070,15 @@ class NPCDirector:
     def _react_one(self, npc: NPC, action: UserAction) -> str:
         return self._react_one_kind(npc, action)[0]
 
+    def _pick_reaction(self, npc: NPC, options: list[str]) -> str:
+        """A reaction template this NPC did not use in its last two reactions."""
+        last = self.__dict__.setdefault("_last_reactions", {}).setdefault(npc.name, [])
+        pool = [o for o in options if o not in last] or options
+        choice = self.rng.choice(pool)
+        last.append(choice)
+        del last[:-2]
+        return choice
+
     def _react_one_kind(self, npc: NPC, action: UserAction) -> tuple[str, str]:
         """One NPC's reaction line plus its kind: ``help``, ``flee``/``hold`` or
         ``neutral``."""
@@ -972,23 +1091,32 @@ class NPCDirector:
         help_score += swing
 
         kind = "neutral"
+        name = _cap(npc.name)
         reactions = self._clean(list(lib["reactions"])) or ["{name} reacts in their own way"]
+        # A guide or a companion does not cheer a retreat: when you turn
+        # away, they wait for you instead.
+        if npc.archetype in (Archetype.MENTOR, Archetype.ALLY) and _turns_away(action):
+            line = self._pick_reaction(npc, _HOLD_LINES[npc.archetype]).format(name=name)
+            return line, "hold"
         if help_score >= 0.55:
-            template = self.rng.choice(reactions)
-            line = template.format(name=npc.name)
+            template = self._pick_reaction(npc, reactions)
+            line = template.format(name=name)
             if lib.get("help_bias", 0.0) > 0.0:
                 kind = "help"
         elif help_score <= 0.2:
-            # Defection / retreat — autonomous pushback.
-            if npc.autonomy >= 0.6:
-                line = f"{npc.name} turns and flees, wanting no part of it"
+            # Defection / retreat — autonomous pushback. Only those whose word
+            # was never a promise (tricksters, heralds, guardians, strangers)
+            # may run; a companion or a guide holds back instead.
+            if npc.autonomy >= 0.6 and npc.archetype in _MAY_FLEE:
+                line = self.rng.choice(_FLEE_LINES).format(name=name)
                 kind = "flee"
             else:
-                line = f"{npc.name} hesitates and holds back, unwilling to commit"
+                holds = _HOLD_LINES.get(npc.archetype, _HOLD_LINES[None])
+                line = self.rng.choice(holds).format(name=name)
                 kind = "hold"
         else:
-            template = self.rng.choice(reactions)
-            line = template.format(name=npc.name)
+            template = self._pick_reaction(npc, reactions)
+            line = template.format(name=name)
 
         if self._llm_ready():
             try:
@@ -1007,3 +1135,88 @@ class NPCDirector:
             except Exception:
                 pass
         return line, kind
+
+
+def _turns_away(action: UserAction) -> bool:
+    from ..engine.interpret import classify_stance  # lazy: avoid import cycle
+    return classify_stance(action.raw or "") == "avoid"
+
+
+def _cap(text: str) -> str:
+    """Sentence-initial capital ("the Keeper" -> "The Keeper")."""
+    return text[:1].upper() + text[1:] if text else text
+
+
+def _carried_phrase(represents: str) -> Optional[str]:
+    """What an NPC carries of the self, in human words: "your grief",
+    "your hope to find your purpose" — or ``None`` when it cannot be said
+    gracefully (a long goal with no recognisable theme)."""
+    from ..identity.core import canonical_themes, humanize_goal
+
+    v = represents.strip()
+    for suffix in ("_confidence", "_level", "_score"):
+        if v.endswith(suffix):
+            v = v[: -len(suffix)]
+    v = v.replace("_", " ").strip()
+    words = v.split()
+    if not words:
+        return None
+    if len(words) <= 2 and words[0].lower() not in ("find", "become", "be", "learn"):
+        return f"your {v}"
+    hope = humanize_goal(v, form="hope", max_words=9)
+    if hope:
+        return hope
+    themes = canonical_themes(v)
+    return f"your {themes[0]}" if themes else None
+
+
+# Archetypes whose word is not a promise: they may turn and run.
+_MAY_FLEE = (Archetype.TRICKSTER, Archetype.HERALD, Archetype.THRESHOLD_GUARDIAN)
+
+_FLEE_LINES = [
+    "{name} turns and flees, wanting no part of it",
+    "{name} slips away before anyone can ask anything of them",
+]
+
+_HOLD_LINES: dict[Optional[Archetype], list[str]] = {
+    Archetype.SHADOW: ["{name} hangs back in the shadows, watching",
+                       "{name} says nothing, and does not move"],
+    Archetype.MENTOR: ["{name} says nothing, letting you find it yourself",
+                       "{name} waits, as if the next move is yours alone",
+                       "{name} lets you go, and keeps the lamp lit"],
+    Archetype.ALLY: ["{name} stays close, waiting to see what you need",
+                     "{name} hesitates, unsure how to help",
+                     "{name} keeps pace with you, saying nothing"],
+    None: ["{name} hesitates and holds back, unwilling to commit",
+           "{name} keeps their distance for now"],
+}
+
+# What someone brought back by a callback does in the same beat — always in
+# keeping with what they just said.
+_INTENT_REACTIONS: dict[str, list[str]] = {
+    "trust_issue": ["{name} stays this time, and stands with you",
+                    "{name} does not run; they plant their feet beside yours"],
+    "ally_helps": ["{name} sets to work beside you without a word",
+                   "{name} takes the other end of the load and keeps pace"],
+    "mentor_returns": ["{name} steadies your hand, then lets go",
+                       "{name} nods once, as if this was always how it would go"],
+    "shadow_faced": ["{name} holds its ground, facing you, and does not look away",
+                     "{name} meets your eyes and, for once, says nothing"],
+    "witness": ["{name} watches you come home, and nods",
+                "{name} lifts a hand in greeting as you come closer"],
+}
+# ...and what they do if you turn away instead: they stay, without approving.
+_INTENT_WHEN_YOU_TURN: dict[str, list[str]] = {
+    "trust_issue": ["{name} stays anyway, close by, as if to show it can be done"],
+    "ally_helps": ["{name} stays close, waiting to see what you need"],
+    "mentor_returns": ["{name} does not stop you, and does not leave either"],
+}
+_INTENT_KIND = {"trust_issue": "help", "ally_helps": "help", "mentor_returns": "help",
+                "shadow_faced": "neutral", "witness": "neutral"}
+
+_GENTLE_REACTIONS = [
+    "{name} comes to sit beside you, and says nothing that needs an answer",
+    "{name} moves closer and stays, quiet and steady",
+    "{name} sets a warm hand on your shoulder for a moment",
+    "{name} makes room for you by the fire",
+]

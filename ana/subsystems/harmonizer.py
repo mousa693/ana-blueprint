@@ -81,7 +81,7 @@ _REVIVAL_REASONS = (
 # Grounding wisdom an NPC could deliver — the "proverb or piece of real
 # knowledge that gives perspective" the blueprint calls for. About a dozen.
 _GROUNDING_NOTES = (
-    "Sometimes, even in the real world, one must face their inner demons.",
+    "Whatever this place shows you, your feet are still on solid ground.",
     "A mirror shows a true face only to those willing to look.",
     "Storms pass; the lighthouse remains. What in you is the lighthouse?",
     "Not every sign is a summons — some are only weather.",
@@ -89,8 +89,8 @@ _GROUNDING_NOTES = (
     "The map is not the territory; hold your certainties loosely.",
     "Grief and growth often wear the same coat.",
     "Even here, breath is real and the ground still holds you.",
-    "A symbol points beyond itself; do not mistake the finger for the moon.",
-    "Courage is not the absence of fear but moving while afraid.",
+    "A symbol points past itself. Look where it points, not only at it.",
+    "You can be afraid and still choose your next step.",
     "What repeats is asking to be understood, not obeyed.",
     "The strangest visions still answer to an honest heart.",
 )

@@ -943,7 +943,9 @@
       return h("li", { class: `beat beat-event${entropy ? " entropy" : ""}` }, h("span", { class: "sr-only" }, "Event: "), speaker ? `${speaker}: ` : "", text);
     }
     if (kind === "choice") return h("li", { class: "beat beat-choice" }, text);
-    return h("li", { class: "beat beat-description" }, text);
+    // A drop cap on a one-letter word ("A town…") reads as "Atown": skip it.
+    const oneLetter = /^\W*\w\s/.test(String(text));
+    return h("li", { class: oneLetter ? "beat beat-description no-dropcap" : "beat beat-description" }, text);
   }
 
   const actionText = (a) => (isObj(a) ? str(a.raw || a.text) : str(a));
@@ -1269,6 +1271,9 @@
 
   // ── debrief ─────────────────────────────────────────────────
   function chapterItem(line) {
+    // Current format: "Chapter One, The Call — An unmarked threshold. …"
+    const n = /^Chapter\s+(\w+),\s*(.+?)\s+—\s+(.*)$/.exec(line);
+    if (n) return h("li", null, h("strong", null, n[2]), h("br"), cap(n[3]));
     const m = /^Chapter\s+\d+,\s*(.+?)\s*\((cycles?\s[^)]*)\)\s*(.*)$/i.exec(line);
     if (!m) return h("li", null, line);
     const rest = m[3].replace(/^at\s+/i, "");
