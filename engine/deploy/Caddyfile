@@ -1,0 +1,30 @@
+# Caddy in front of ANA: automatic HTTPS (Let's Encrypt / ZeroSSL) for $ANA_DOMAIN.
+#
+# Used by `docker compose --profile caddy up -d` (see docs/DEPLOY.md). For a
+# bare-metal Caddy, replace `app:8000` with `127.0.0.1:8000`.
+#
+# ANA's request guard needs, for ANA_DOMAIN=ana.example.com:
+#   ANA_PUBLIC_ORIGIN=https://ana.example.com   (adds the host to the allowlist,
+#                                                turns on HSTS + Secure cookies)
+#   FORWARDED_ALLOW_IPS=*                       (trust Caddy's X-Forwarded-For; the
+#                                                app port is not public)
+# Caddy forwards the original Host header unchanged, so no header rewriting.
+#
+# Optional: add a global options block at the top with `email you@example.com`
+# so the CA can warn you about expiring certificates.
+
+{$ANA_DOMAIN:localhost} {
+	encode zstd gzip
+
+	reverse_proxy app:8000 {
+		# Journeys can take a few seconds per turn when a model is dreaming them.
+		transport http {
+			read_timeout 120s
+		}
+	}
+
+	log {
+		output stdout
+		format console
+	}
+}

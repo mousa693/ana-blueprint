@@ -21,6 +21,7 @@ swappable.
 """
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Optional
 
 from ..contracts import (
@@ -32,6 +33,7 @@ from ..contracts import (
     Outcome,
     Scene,
     SceneBeat,
+    UserAction,
     WorldState,
 )
 from ..interfaces import (
@@ -59,6 +61,27 @@ INTERLUDE_THEME = "rest"
 # Prefix of the request constraints that carry the forbidden list to the
 # Generative Engine (it also reads ExperienceEngine.forbidden when present).
 NEVER_DEPICT = "never depict:"
+
+
+@dataclass
+class PendingCycle:
+    """A cycle whose scene has been dreamed (and passed every safety layer) but
+    whose action has not been taken yet: the state ``begin_cycle()`` hands to
+    ``complete_cycle()``.
+
+    ``scene`` is the scene to show; ``view`` the safe view of the self the
+    driver/person acts from. ``ident`` is the real snapshot (kept for the
+    record), ``world`` the live world the NPCs react in."""
+
+    ident: IdentitySnapshot
+    view: IdentitySnapshot
+    forbidden: list[str]
+    stage: Optional[str]
+    world: WorldState
+    request: GenerationRequest
+    scene: Scene
+    report: AlignmentReport
+    verdict: HarmonizerVerdict
 
 
 class FeedbackLoopEngine:
@@ -106,6 +129,8 @@ class FeedbackLoopEngine:
         # milestones so far, and whether it has come home.
         self.arc = JourneyArc()
         self.closed = False
+        # The half-finished cycle between begin_cycle() and complete_cycle().
+        self._pending: Optional[PendingCycle] = None
 
     # ------------------------------------------------------------------
     def run(self, cycles: int, *, until_close: bool = False) -> list[CycleRecord]:
@@ -184,7 +209,33 @@ class FeedbackLoopEngine:
         return snap
 
     # ------------------------------------------------------------------
+    # One heartbeat, in two halves
+    # ------------------------------------------------------------------
     def step(self) -> CycleRecord:
+        """One full cycle: dream the scene, let the driver act, resolve it.
+
+        Exactly ``begin_cycle()`` + ``driver.act(...)`` + ``complete_cycle(...)``;
+        a turn-based front end (the web runtime) calls the two halves itself
+        and supplies the person's action in between."""
+        pending = self.begin_cycle()
+        action = self.driver.act(pending.scene, pending.view)
+        return self.complete_cycle(action)
+
+    @property
+    def pending(self) -> Optional["PendingCycle"]:
+        """The cycle waiting for an action (``None`` between cycles)."""
+        return self._pending
+
+    def begin_cycle(self) -> "PendingCycle":
+        """First half of a cycle: everything up to and including the final,
+        safety-gated scene (snapshot, safe view, world, synchronicity, recall,
+        request, generation, entropy, harmonizer, alignment gate, block
+        handling). Returns the scene the protagonist now faces.
+
+        Idempotent while a cycle is pending: calling it again returns the same
+        :class:`PendingCycle` without dreaming anything new."""
+        if self._pending is not None:
+            return self._pending
         ident = self.identity.snapshot()
         forbidden = self.forbidden()
         self._arm_forbidden(forbidden)
@@ -270,8 +321,25 @@ class FeedbackLoopEngine:
             self._pending_corrections = list(dict.fromkeys(
                 self._pending_corrections + list(verdict.corrections)))
 
-        # The protagonist acts; NPCs react.
-        action = self.driver.act(scene, view)
+        self._pending = PendingCycle(
+            ident=ident, view=view, forbidden=forbidden, stage=stage, world=world,
+            request=request, scene=scene, report=report, verdict=verdict)
+        return self._pending
+
+    def complete_cycle(self, action: UserAction) -> CycleRecord:
+        """Second half of a cycle: resolve the pending scene with ``action``
+        (NPC reactions, interpretation, convergence, identity update,
+        carry-forward, record, arc, close check, observers).
+
+        Raises ``RuntimeError`` if no cycle is pending."""
+        p = self._pending
+        if p is None:
+            raise RuntimeError("complete_cycle() called with no pending cycle; "
+                               "call begin_cycle() first")
+        ident, view, forbidden, stage, world = p.ident, p.view, p.forbidden, p.stage, p.world
+        request, scene, report, verdict = p.request, p.scene, p.report, p.verdict
+
+        # The protagonist has acted; NPCs react.
         npc_events = self.npc.react(scene, action, world)
 
         # Interpret the outcome and run the convergence dynamics.
@@ -313,6 +381,8 @@ class FeedbackLoopEngine:
             omega_surprise=conv.omega_surprise,
             alpha_surprise=conv.alpha_surprise,
         )
+        # The cycle is resolved from here on, even if an observer raises.
+        self._pending = None
         self.history.append(record)
         self.arc.record(record, stage=scene.stage or stage)
         if self.arc.should_close(conv.convergence, self.goal_progress()):
@@ -320,6 +390,17 @@ class FeedbackLoopEngine:
         for obs in self.observers:
             obs.on_cycle(record)
         return record
+
+    def abandon_cycle(self) -> None:
+        """Drop the pending cycle without resolving it (the journey is being
+        ended early). Its NPC callbacks are un-marked and the harmonizer
+        forgets the scene, as for any composed scene that is never played.
+        No-op when nothing is pending."""
+        p = self._pending
+        if p is None:
+            return
+        self._pending = None
+        self._discard(p.scene, requeue=False)
 
     # ------------------------------------------------------------------
     def _compose(self, request: GenerationRequest, world: WorldState,

@@ -1,0 +1,80 @@
+# ANA — local / single-host deployment (docs/DEPLOY.md).
+#
+#   cp .env.example .env    # then set ANA_SECRET_KEY (see the file)
+#   docker compose up -d --build                    # app on http://127.0.0.1:8000
+#   docker compose --profile postgres up -d --build # + Postgres (set ANA_DATABASE_URL, see .env.example)
+#   docker compose --profile caddy up -d --build    # + Caddy with automatic HTTPS for ANA_DOMAIN
+#
+# The app always needs the /data volume: even with Postgres, the MCMG memory
+# shards live in a SQLite file (ANA_SHARD_DB=/data/shards.db).
+name: ana
+
+services:
+  app:
+    build: .
+    image: ${ANA_IMAGE:-ana:local}
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: true
+    environment:
+      # Container-side paths; override in .env only if you know why.
+      ANA_DATABASE_URL: ${ANA_DATABASE_URL:-sqlite:////data/ana.db}
+      ANA_SHARD_DB: /data/shards.db
+      FORWARDED_ALLOW_IPS: ${FORWARDED_ALLOW_IPS:-127.0.0.1}
+    ports:
+      # Loopback only by default. Put a TLS proxy in front (the caddy profile,
+      # or your own) instead of publishing this on a public interface.
+      - "${ANA_BIND:-127.0.0.1}:${ANA_PORT:-8000}:8000"
+    volumes:
+      - ana-data:/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+        required: false          # only when the postgres profile is enabled
+    stop_grace_period: 30s       # let the runtime cache flush shards on SIGTERM
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+
+  postgres:
+    image: postgres:16-bookworm
+    profiles: [postgres]
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ana
+      POSTGRES_USER: ana
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-}
+    volumes:
+      - ana-pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ana -d ana"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    # No published port: only the app reaches it, over the compose network.
+
+  caddy:
+    image: caddy:2.10-alpine
+    profiles: [caddy]
+    restart: unless-stopped
+    depends_on: [app]
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      ANA_DOMAIN: ${ANA_DOMAIN:-localhost}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  ana-data:
+  ana-pg:
+  caddy-data:
+  caddy-config:

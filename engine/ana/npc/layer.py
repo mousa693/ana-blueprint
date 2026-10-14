@@ -88,7 +88,7 @@ def _mentions(text: Optional[str], forbidden: Iterable[str], synonyms: bool = Fa
 _ARCHETYPE_LIB: dict[Archetype, dict] = {
     Archetype.SHADOW: {
         "names": ["Mara", "the Hollow Man", "Veil", "Corren", "the Other"],
-        "persona": "a figure who wears the user's unspoken fears like a cloak",
+        "persona": "a figure who wears your unspoken fears like a cloak",
         "help_bias": -0.4,
         "disposition": -0.3,
         "reactions": [
@@ -487,7 +487,10 @@ class NPCDirector:
         """Deterministic persona, optionally enriched by the gateway."""
         base = self._lib(arch)["persona"]
         if represents and not _mentions(represents, self.forbidden, synonyms=True):
-            base = f"{base}; an embodiment of '{represents}'"
+            from ..generative.engine import _humanize
+            h = _humanize(represents, represents)
+            phrase = h if h.startswith("the ") else f"your {h}"
+            base = f"{base}, carrying something of {phrase}"
         if self._llm_ready():
             try:
                 text = self.gateway.complete(  # type: ignore[union-attr]

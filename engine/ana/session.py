@@ -62,6 +62,16 @@ class ANASession:
     def step(self) -> CycleRecord:
         return self.engine.step()
 
+    def begin_cycle(self):
+        """Dream (or return the already pending) scene — see
+        FeedbackLoopEngine.begin_cycle. Turn-based callers use this with
+        complete_cycle instead of step(); ana.runtime.JourneyRuntime wraps it."""
+        return self.engine.begin_cycle()
+
+    def complete_cycle(self, action) -> CycleRecord:
+        """Resolve the pending scene with ``action`` (a UserAction)."""
+        return self.engine.complete_cycle(action)
+
     @property
     def gateway(self) -> Optional[ModelGateway]:
         return getattr(self.engine.generative, "gateway", None)

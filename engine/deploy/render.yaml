@@ -1,0 +1,50 @@
+# Render Blueprint — one Docker web service with a persistent disk at /data
+# (docs/DEPLOY.md#render). Render reads `render.yaml` from the repo root:
+# copy this file there (or point the Blueprint at deploy/render.yaml).
+#
+# A disk needs a paid instance type and pins the service to ONE instance
+# (no zero-downtime deploys) — which is exactly what ANA v1 needs anyway.
+services:
+  - type: web
+    name: ana
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: starter
+    region: frankfurt
+    numInstances: 1
+    healthCheckPath: /healthz
+    autoDeploy: true
+    disk:
+      name: ana-data
+      mountPath: /data
+      sizeGB: 5
+    envVars:
+      - key: ANA_SECRET_KEY
+        generateValue: true          # random, stable across deploys
+      - key: PORT
+        value: "8000"
+      - key: ANA_DATABASE_URL
+        value: sqlite:////data/ana.db
+      - key: ANA_SHARD_DB
+        value: /data/shards.db
+      # Your onrender.com URL or custom domain, exactly as browsers see it.
+      - key: ANA_PUBLIC_ORIGIN
+        value: https://ana.onrender.com
+      # Keep localhost for the image HEALTHCHECK. If Render's health check
+      # shows 400 "bad_host" in the logs, add the Host it sends here.
+      - key: ANA_ALLOWED_HOSTS
+        value: localhost
+      # Only Render's proxy reaches the container: trust its X-Forwarded-For.
+      - key: FORWARDED_ALLOW_IPS
+        value: "*"
+      - key: ANA_USE_LLM
+        value: auto
+      - key: ANA_DAILY_CYCLES_PER_USER
+        value: "60"
+      - key: ANA_DAILY_LLM_CYCLES_TOTAL
+        value: "2000"
+      - key: ANTHROPIC_API_KEY
+        sync: false                  # set in the dashboard (optional)
+      - key: ANA_INVITE_CODES
+        sync: false                  # set in the dashboard (optional)
