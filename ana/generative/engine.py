@@ -241,7 +241,7 @@ class ExperienceEngine:
         choices = [c for c in scene.choices if not _hits(c, ban)]
         scene.choices = choices or ["Pause and breathe", "Move on when ready"]
         if _hits(scene.title, ban):
-            scene.title = label.title()
+            scene.title = _sentence(label)
         if _hits(scene.summary, ban):
             scene.summary = (f"At {request.world.location}, the protagonist meets "
                              f"{label}.")
@@ -338,7 +338,7 @@ class ExperienceEngine:
             intensity = min(intensity, 0.4)
         theme = str(data.get("theme") or self._pick_theme(request))
         return Scene(
-            title=str(data.get("title") or theme.title()),
+            title=str(data.get("title") or theme.capitalize()),
             summary=str(data.get("summary") or ""),
             beats=beats,
             theme=theme,
@@ -489,7 +489,7 @@ class ExperienceEngine:
         templates = [
             f"\"{voice['open']} {represents}. {voice['close']}\"",
             f"\"You stand at {stage['label']}, whether you name it or not.\"",
-            f"\"They never tell you {voice['secret']} about {represents}.\"",
+            f"\"About {represents}? Nobody warns you {voice['secret']}.\"",
             f"\"{voice['close']}\"",
             f"\"I have been watching you circle {represents}. {voice['close']}\"",
             f"\"Ask me about {represents}. Or don't — you already know.\"",
@@ -506,7 +506,7 @@ class ExperienceEngine:
             self._met_npcs.add(npc.name)
             text = f"{npc.name}, {persona}, speaks. {line}"
         else:
-            verbs = ["says", "says quietly", "tells you", "murmurs", "says, not looking at you"]
+            verbs = ["says", "says quietly", "tells you", "murmurs", "says softly"]
             text = f"{npc.name} {self.rng.choice(verbs)}: {line}"
         return SceneBeat(kind="dialogue", text=text, speaker=npc.name,
                          archetype=npc.archetype)
@@ -641,9 +641,9 @@ class ExperienceEngine:
 
     def _make_title(self, stage: dict, theme: str, motif: str) -> str:
         patterns = [
-            f"{stage['label'].title()}",
-            f"{theme.title()} and {motif}",
-            f"At {stage['label'].title()}",
+            _sentence(stage['label']),
+            f"{theme.capitalize()} and {motif}",
+            f"At {stage['label']}",
         ]
         return self.rng.choice(patterns)
 
@@ -654,6 +654,11 @@ class ExperienceEngine:
             f"At {world.location}, the protagonist meets {stage['label']} — "
             f"a scene that turns {tone} on {theme}."
         )
+
+
+def _sentence(text: str) -> str:
+    """Sentence case: 'the call to adventure' -> 'The call to adventure'."""
+    return text[:1].upper() + text[1:] if text else text
 
 
 def _humanize(value: str, fallback: str) -> str:

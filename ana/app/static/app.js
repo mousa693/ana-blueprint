@@ -808,7 +808,7 @@
   function splitDialogue(text, speaker) {
     if (!speaker) return { intro: "", line: text };
     const sp = escRe(speaker);
-    let m = new RegExp(`^${sp}\\s+(?:says|tells you|murmurs|asks|whispers|calls out|answers|replies|adds|warns)(?: softly| quietly)?:\\s*(.+)$`, "i").exec(text);
+    let m = new RegExp(`^${sp}\\s+(?:says|tells you|murmurs|asks|whispers|calls out|answers|replies|adds|warns)(?: softly| quietly)?(?:,[^:"“]{1,40})?:\\s*(.+)$`, "i").exec(text);
     if (m) return { intro: "", line: m[1] };
     m = new RegExp(`^${sp},\\s*(.+?),?\\s+speaks\\.\\s*(.+)$`, "i").exec(text);
     if (m) return { intro: m[1], line: m[2] };
