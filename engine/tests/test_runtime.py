@@ -360,7 +360,10 @@ def test_identity_persists_across_journeys_and_never_leaks(tmp_path):
     fulfilled = j1.session.identity.fulfilled_visions()
     state = j1.identity_state()
     json.dumps(state)  # JSON-safe for the backend
-    progress = {g["description"]: g["progress"] for g in state["goals"]}
+    # A realised goal reports progress 1.0 for views; the engine resumes from
+    # the progress it actually learned (``learned_progress``).
+    progress = {g["description"]: g.get("learned_progress", g["progress"])
+                for g in state["goals"]}
     assert learned and max(progress.values()) > 0
     j1.close()
 

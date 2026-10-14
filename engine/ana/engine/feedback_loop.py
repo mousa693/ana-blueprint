@@ -131,6 +131,10 @@ class FeedbackLoopEngine:
         self.closed = False
         # The half-finished cycle between begin_cycle() and complete_cycle().
         self._pending: Optional[PendingCycle] = None
+        # No one in the cast shares the protagonist's own name.
+        avoid = getattr(self.npc, "avoid_names", None)
+        if isinstance(avoid, set) and getattr(identity, "name", None):
+            avoid.add(str(identity.name))
 
     # ------------------------------------------------------------------
     def run(self, cycles: int, *, until_close: bool = False) -> list[CycleRecord]:
@@ -269,9 +273,21 @@ class FeedbackLoopEngine:
             hint = None
 
         # Recall past + future-memory shards for continuity and backcasting.
+        # Only human-meaningful memories are handed on (seeded memories,
+        # beliefs, lessons, visions) — never the loop's own outcome records,
+        # which are bookkeeping, not something a person remembers.
         recalled = self.identity.memory.recall(
-            " ".join(view.active_themes) or "journey", top_k=3
+            " ".join(view.active_themes) or "journey", top_k=6
         )
+        meaningful = _meaningful_contents(self.identity.memory)
+        if meaningful is not None:
+            recalled = [r for r in recalled if r in meaningful]
+        recalled = recalled[:3]
+        # Keep the person's own seeded memories and beliefs in rotation, so
+        # what they told us about themselves can surface, not only lessons.
+        seeded = _seeded_contents(self.identity.memory)
+        if seeded:
+            recalled.append(seeded[ident.tick % len(seeded)])
         recalled += self.identity.memory.recall_future(top_k=2)
         recalled = [r for r in dict.fromkeys(recalled) if not self._bad(r, forbidden)]
 
@@ -326,10 +342,17 @@ class FeedbackLoopEngine:
             request=request, scene=scene, report=report, verdict=verdict)
         return self._pending
 
-    def complete_cycle(self, action: UserAction) -> CycleRecord:
+    def complete_cycle(self, action: UserAction, *, gentle: bool = False) -> CycleRecord:
         """Second half of a cycle: resolve the pending scene with ``action``
         (NPC reactions, interpretation, convergence, identity update,
         carry-forward, record, arc, close check, observers).
+
+        ``gentle``: the person's words sounded like real distress (the safety
+        screen's "concern"). The story then answers as a companion, not as a
+        game: NPC reactions are supportive (allies and mentors come closer,
+        shadows and tricksters stay quiet), the moment is not read as
+        avoidance (no setback, no penalty, no "turned away" lesson), and the
+        next scene is a warm, low-intensity beat.
 
         Raises ``RuntimeError`` if no cycle is pending."""
         p = self._pending
@@ -339,11 +362,21 @@ class FeedbackLoopEngine:
         ident, view, forbidden, stage, world = p.ident, p.view, p.forbidden, p.stage, p.world
         request, scene, report, verdict = p.request, p.scene, p.report, p.verdict
 
-        # The protagonist has acted; NPCs react.
-        npc_events = self.npc.react(scene, action, world)
+        # The protagonist has acted; NPCs react. In the warm scene that follows
+        # a moment of distress, the cast stays gentle too.
+        from ..generative.engine import TENDER_CONSTRAINT
+        if gentle or TENDER_CONSTRAINT in (request.constraints or []):
+            try:
+                npc_events = self.npc.react(scene, action, world, gentle=True)
+            except TypeError:  # an NPC layer without a gentle mode: say nothing
+                npc_events = []
+        else:
+            npc_events = self.npc.react(scene, action, world)
 
         # Interpret the outcome and run the convergence dynamics.
         outcome = self.interpreter.interpret(scene, action, world, view)
+        if gentle:
+            outcome = _gentle_outcome(outcome)
         outcome.npc_events = npc_events
         outcome = self._filter_outcome(outcome, scene, forbidden)
         # Novelty: only a real NPC-layer entropy shock adds surprise — never the
@@ -368,6 +401,8 @@ class FeedbackLoopEngine:
 
         # Let alignment shape the next cycle.
         self._carry_forward(report, outcome)
+        if gentle:
+            self._soften_next()
 
         record = CycleRecord(
             tick=ident.tick,
@@ -542,6 +577,17 @@ class FeedbackLoopEngine:
                                                  "trait_updates": traits})
         return outcome
 
+    def _soften_next(self) -> None:
+        """After distress, the next scene is a warm, quiet beat."""
+        from ..generative.engine import TENDER_CONSTRAINT
+
+        self._next_intensity = min(self._next_intensity, GENTLE_INTENSITY)
+        self._next_directive = "offer a gentle, warm, low-intensity beat of company and rest"
+        self._next_constraints = list(dict.fromkeys(
+            ["keep gentle", "offer hope", TENDER_CONSTRAINT]
+            + [c for c in self._next_constraints
+               if not c.startswith(("raise the stakes", "introduce a more direct"))]))
+
     def _carry_forward(self, report, outcome) -> None:
         self._next_intensity = report.recommended_intensity
         # Alignment nudges plus any harmonizer corrections still owed (these
@@ -561,6 +607,55 @@ class FeedbackLoopEngine:
 
 
 _INTERLUDE_ALT_TITLE = "A quiet clearing"
+
+# Intensity cap for the scene that follows a moment of distress.
+GENTLE_INTENSITY = 0.25
+
+
+def _gentle_outcome(outcome: Outcome) -> Outcome:
+    """A moment of distress is not a move in the story: never a setback, no
+    trait penalty, no "turned away" lesson; a small, restful settling."""
+    from ..contracts import EmotionalState
+
+    traits = {k: v for k, v in outcome.trait_updates.items() if v > 0}
+    lesson = outcome.lesson if outcome.success is True else None
+    d = outcome.emotion_delta
+    delta = EmotionalState(valence=max(0.0, min(d.valence, 0.05)),
+                           arousal=min(d.arousal, 0.1),
+                           stress=min(d.stress, -0.05))
+    return outcome.model_copy(update={
+        "success": None if outcome.success is False else outcome.success,
+        "trait_updates": traits, "lesson": lesson, "emotion_delta": delta})
+
+
+def _seeded_contents(memory) -> list[str]:
+    """The person's seeded identity facts (memories and beliefs), oldest first."""
+    nodes = getattr(memory, "nodes", None)
+    if nodes is None:
+        return []
+    try:
+        return [str(n.content) for n in nodes()
+                if "kind:identity" in (getattr(n, "tags", None) or set())]
+    except Exception:
+        return []
+
+
+def _meaningful_contents(memory) -> Optional[set[str]]:
+    """Contents of the memory's human-meaningful shards (seeded identity facts
+    and beliefs, lessons, visions), or ``None`` if the memory cannot say."""
+    nodes = getattr(memory, "nodes", None)
+    if nodes is None:
+        return None
+    try:
+        out: set[str] = set()
+        for n in nodes():
+            tags = getattr(n, "tags", None) or set()
+            if any(t in tags for t in ("kind:identity", "kind:lesson", "kind:vision",
+                                       "kind:belief", "kind:fulfilled")):
+                out.add(str(n.content))
+        return out
+    except Exception:
+        return None
 
 
 def is_interlude(scene: Scene) -> bool:

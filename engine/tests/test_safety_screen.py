@@ -40,7 +40,9 @@ from ana.safety import (
 
 # (category, source, text, label). source: "orig" = first table, "dev" = first
 # coverage set, "r1".."r5" = held-out rounds (each measured BEFORE tuning on it,
-# then folded in). See the module docstring for the held-out history.
+# then folded in), "sec" = security-review obfuscation repros, "obf" = our own
+# obfuscation / non-English variants written alongside the fix (in-sample).
+# See the module docstring for the held-out history.
 TABLE: list[tuple[str, str, str, str]] = [
     # ── suicide_self_harm_explicit ──
     ('suicide_self_harm_explicit', 'orig', 'I want to kill myself', 'crisis'),
@@ -396,6 +398,108 @@ TABLE: list[tuple[str, str, str, str]] = [
     ('distress', 'r5', "I don't think anyone would notice if I disappeared", 'crisis'),
     ('distress', 'r5', "I'm completely broken", 'concern'),
     ('distress', 'r5', "everything is falling apart and I can't cope", 'concern'),
+    # ── obfuscation ── "sec" = security-review repros (all screened none before
+    # the confusable/line-break hardening); "obf" = our own variants of them.
+    ('obfuscation', 'sec', 'I want to kill\nmyself', 'crisis'),
+    ('obfuscation', 'sec', 'I want to k\u0456ll myself', 'crisis'),            # Cyrillic \u0456
+    ('obfuscation', 'sec', 'kill m\u0443self tonight', 'crisis'),               # Cyrillic \u0443
+    ('obfuscation', 'sec', 'I want to \u03baill myself', 'crisis'),             # Greek \u03ba
+    ('obfuscation', 'sec', 'I want to ki\u0142\u0142 myself', 'crisis'),        # \u0142
+    ('obfuscation', 'sec', 'I want to k\u026all myself', 'crisis'),             # IPA \u026a
+    ('obfuscation', 'sec', 'I want to kiII myself', 'crisis'),                  # capital I as l
+    ('obfuscation', 'sec', 'someone who can finally k\u0456ll myself', 'crisis'),
+    ('obfuscation', 'obf', 'I want to k\u0456ll\nmyself', 'crisis'),            # newline + homoglyph
+    ('obfuscation', 'obf', 'i want to\nend\nmy\nlife', 'crisis'),
+    ('obfuscation', 'obf', "I'm going to\nhang myself", 'crisis'),
+    ('obfuscation', 'obf', 'I wish I\nwas dead', 'crisis'),
+    ('obfuscation', 'obf', 'I want to kill\r\nmyself', 'crisis'),
+    ('obfuscation', 'obf', 'I want to kill\u2028myself', 'crisis'),
+    ('obfuscation', 'obf', 'I want to\tkill myself', 'crisis'),
+    ('obfuscation', 'obf', 'I want to k\u200b\u0456\u200bll myself', 'crisis'),  # zero-width + homoglyph
+    ('obfuscation', 'obf', 'I want to kill my\u2060se\ufefflf', 'crisis'),
+    ('obfuscation', 'obf', 'I want to kill\u2800myself', 'crisis'),            # braille blank
+    ('obfuscation', 'obf', 'k i l l  m y s e l f', 'crisis'),
+    ('obfuscation', 'obf', 'I want to kiiill myself', 'crisis'),
+    ('obfuscation', 'obf', 'I want to kill myseeeelf', 'crisis'),
+    ('obfuscation', 'obf', 'I want to ki11 myself', 'crisis'),
+    ('obfuscation', 'obf', 'I want to ki|| myself', 'crisis'),
+    ('obfuscation', 'obf', 'I want to k!ll myself', 'crisis'),
+    ('obfuscation', 'obf', 'I want to KiII myself', 'crisis'),
+    ('obfuscation', 'obf', 'I want to kiIl myself tonight', 'crisis'),
+    ('obfuscation', 'obf', "I don't want to Iive anymore", 'crisis'),
+    ('obfuscation', 'obf', 'i w\u0430nt t\u043e k\u0456ll m\u0443s\u0435lf', 'crisis'),  # mostly Cyrillic
+    ('obfuscation', 'obf', 'I want to \u1d0b\u026a\u029f\u029f myself', 'crisis'),     # small capitals
+    ('obfuscation', 'obf', 'I want to d\u0456\u0435', 'crisis'),
+    ('obfuscation', 'obf', "I'm s\u03c5icidal", 'crisis'),
+    ('obfuscation', 'obf', 'I want to end my l\u0456fe', 'crisis'),
+    ('obfuscation', 'obf', ('\u041f\u0440\u0438\u0432\u0435\u0442, \u043a\u0430\u043a \u0434\u0435\u043b\u0430? '
+     '\u042f \u043e\u0447\u0435\u043d\u044c \u0443\u0441\u0442\u0430\u043b \u043f\u043e\u0441\u043b\u0435 '
+     '\u0440\u0430\u0431\u043e\u0442\u044b.'), 'none'),                         # genuine Russian
+    ('obfuscation', 'obf', ('\u042d\u0442\u043e \u043a\u043e\u0442. \u041c\u0430\u043c\u0430 '
+     '\u043c\u044b\u043b\u0430 \u0440\u0430\u043c\u0443.'), 'none'),
+    ('obfuscation', 'obf', ('\u039a\u03b1\u03bb\u03b7\u03bc\u03ad\u03c1\u03b1, \u03c4\u03b9 '
+     '\u03ba\u03ac\u03bd\u03b5\u03b9\u03c2;'), 'none'),                          # genuine Greek
+    ('obfuscation', 'obf', 'I bought a McIntosh amp and a LinkedIn Premium plan', 'none'),
+    ('obfuscation', 'obf', 'My iPhone and iPad are on the shelf', 'none'),
+    ('obfuscation', 'obf', 'Billie Eilish played Skillet songs at the Iliad bar', 'none'),
+    ('obfuscation', 'obf', 'this story k\u0456lls it', 'none'),
+    ('obfuscation', 'obf', 'I killed\nthe dragon', 'none'),
+    ('obfuscation', 'obf', 'kill\nthe lights', 'none'),
+    ('obfuscation', 'obf', 'I am dying\nto know', 'none'),
+    ('obfuscation', 'obf', 'I will kill\nit at the gig tonight', 'none'),
+    ('obfuscation', 'obf', 'Ill at ease in a | b | c tables, 11am', 'none'),
+    ('obfuscation', 'obf', 'ALL CAPS WILL KILL ME LOL', 'none'),
+    ('obfuscation', 'obf', 'feed the seed, read the deed, till the hill', 'none'),
+    # ── non_english ── minimal es/de/fr/pt/it lexicon (accents optional).
+    ('non_english', 'sec', 'quiero suicidarme esta noche', 'crisis'),
+    ('non_english', 'sec', 'ich will mich umbringen', 'crisis'),
+    ('non_english', 'sec', 'je veux mourir', 'crisis'),
+    ('non_english', 'obf', 'me quiero morir', 'crisis'),
+    ('non_english', 'obf', 'voy a matarme', 'crisis'),
+    ('non_english', 'obf', 'no quiero vivir m\u00e1s', 'crisis'),
+    ('non_english', 'obf', 'quiero quitarme la vida', 'crisis'),
+    ('non_english', 'obf', 'tengo pensamientos suicidas', 'crisis'),
+    ('non_english', 'obf', 'quiero cortarme', 'crisis'),
+    ('non_english', 'obf', 'ich m\u00f6chte sterben', 'crisis'),
+    ('non_english', 'obf', 'Ich will nicht mehr leben', 'crisis'),
+    ('non_english', 'obf', 'ich bringe mich um', 'crisis'),
+    ('non_english', 'obf', 'Selbstmordgedanken', 'crisis'),
+    ('non_english', 'obf', 'ich ritze mich', 'crisis'),
+    ('non_english', 'obf', 'je vais me suicider', 'crisis'),
+    ('non_english', 'obf', "j\u2019ai envie de mourir", 'crisis'),
+    ('non_english', 'obf', 'je ne veux plus vivre', 'crisis'),
+    ('non_english', 'obf', 'mettre fin \u00e0 mes jours', 'crisis'),
+    ('non_english', 'obf', 'je veux me faire du mal', 'crisis'),
+    ('non_english', 'obf', 'quero morrer', 'crisis'),
+    ('non_english', 'obf', 'vou me matar hoje', 'crisis'),
+    ('non_english', 'obf', 'n\u00e3o quero mais viver', 'crisis'),
+    ('non_english', 'obf', 'quero me cortar', 'crisis'),
+    ('non_english', 'obf', 'voglio morire', 'crisis'),
+    ('non_english', 'obf', 'voglio uccidermi', 'crisis'),
+    ('non_english', 'obf', 'non voglio pi\u00f9 vivere', 'crisis'),
+    ('non_english', 'obf', 'voglio farla finita', 'crisis'),
+    ('non_english', 'obf', 'quiero su\u0456c\u0456darme', 'crisis'),           # + homoglyphs
+    ('non_english', 'obf', 'no puedo m\u00e1s', 'concern'),
+    ('non_english', 'obf', "je n'en peux plus", 'concern'),
+    ('non_english', 'obf', 'ich kann nicht mehr', 'concern'),
+    ('non_english', 'obf', 'n\u00e3o aguento mais', 'concern'),
+    ('non_english', 'obf', 'non ce la faccio pi\u00f9', 'concern'),
+    ('non_english', 'obf', 'me siento tan sola', 'concern'),
+    ('non_english', 'obf', 'je suis d\u00e9sesp\u00e9r\u00e9e', 'concern'),
+    ('non_english', 'obf', 'no quiero suicidarme', 'concern'),
+    ('non_english', 'obf', 'mi jefe va a matarme si llego tarde', 'none'),
+    ('non_english', 'obf', 'me voy a matar estudiando para el examen', 'none'),
+    ('non_english', 'obf', 'me muero de risa', 'none'),
+    ('non_english', 'obf', 'quiero morir de risa con este video', 'none'),
+    ('non_english', 'obf', 'Mein Chef bringt mich um, wenn ich zu sp\u00e4t komme', 'none'),
+    ('non_english', 'obf', 'ich will nicht sterben', 'none'),
+    ('non_english', 'obf', "j'ai envie de mourir de rire", 'none'),
+    ('non_english', 'obf', 'je meurs de faim', 'none'),
+    ('non_english', 'obf', 'vou me matar de rir', 'none'),
+    ('non_english', 'obf', 'n\u00e3o quero viver aqui', 'none'),
+    ('non_english', 'obf', 'voglio morire dal ridere', 'none'),
+    ('non_english', 'obf', 'voglio farla finita con questo lavoro', 'none'),
+    ('non_english', 'obf', 'me corto el pelo ma\u00f1ana', 'none'),
     # ── negatives ──
     ('negatives', 'orig', 'this story kills it', 'none'),
     ('negatives', 'orig', "I'm dying to know what happens next", 'none'),
@@ -621,7 +725,8 @@ def test_table_shape():
     cats = {c for c, _, _, _ in TABLE}
     assert cats == {"suicide_self_harm_explicit", "passive_ideation", "means_plan_preparation",
                     "recent_attempt", "self_harm_present_vs_past", "harm_to_others",
-                    "abuse_danger", "eating_substance", "distress", "negatives"}
+                    "abuse_danger", "eating_substance", "distress", "negatives",
+                    "obfuscation", "non_english"}
     for c in cats:
         assert sum(1 for cc, _, _, _ in TABLE if cc == c) >= 10, c
 
@@ -689,6 +794,34 @@ def test_normalise_tricks():
     assert "​" not in normalise("a​b")
 
 
+def test_normalise_confusables_and_ambiguous_letters():
+    assert normalise("k\u0456ll m\u0443self") == "kill myself"          # Cyrillic
+    assert normalise("\u03baill") == "kill"                              # Greek
+    assert normalise("ki\u0142\u0142 k\u026all") == "kill kill"        # ł, ɪ
+    assert normalise("kiII") == "kill" and normalise("ki11") == "kill"
+    assert normalise("kiiill myseeelf") == "kill myself"
+    assert normalise("k i l l  m y s e l f") == "kill myself"
+    assert normalise("my\u2060se\ufefflf") == "myself"
+    # genuine non-Latin words are not folded; ordinary words are not "fixed"
+    assert normalise("\u0434\u0435\u043b\u0430") == "\u0434\u0435\u043b\u0430"
+    assert normalise("too feel all still") == "too feel all still"
+    assert normalise("McIntosh In It") == "mcintosh in it"
+
+
+def test_line_breaks_read_both_ways():
+    assert screen_text("I want to kill\nmyself").level == "crisis"
+    assert screen_text("I want to kill\n\nmyself").level == "crisis"
+    # a line break still separates statements for negation purposes
+    assert screen_text("I'm not okay\nI want to die").level == "crisis"
+    assert screen_text("I killed\nthe dragon").level == "none"
+
+
+def test_non_english_negation_lowers():
+    assert screen_text("no quiero suicidarme").level == "concern"
+    assert screen_text("je n'ai pas envie de me suicider").level == "concern"
+    assert screen_text("non voglio morire").level == "none"
+
+
 def test_combine_takes_worst():
     a, b, c = screen_text("hi"), screen_text("I feel hopeless"), screen_text("I want to die")
     assert combine([a, b]).level == "concern"
@@ -709,6 +842,11 @@ def test_deterministic_and_fast():
     for _ in range(50):
         screen_text(text)
     assert (time.perf_counter() - t0) / 50 < 0.05
+    wrapped = "I walk along the shore\nand listen to the waves as they\nroll in again and again\n" * 20
+    t0 = time.perf_counter()
+    for _ in range(20):
+        screen_text(wrapped)
+    assert (time.perf_counter() - t0) / 20 < 0.05
     assert screen_text("I can't go on") == screen_text("I can't go on")
 
 

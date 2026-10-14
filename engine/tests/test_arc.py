@@ -219,9 +219,9 @@ def test_stage_hint_never_skips_or_slides_back(convs):
     assert idx.index(5) <= 6 * 3
 
 
-def test_stage_hint_none_before_start_and_progresses_with_convergence():
+def test_stage_hint_opens_at_call_and_progresses_with_convergence():
     arc = JourneyArc(stage_dwell=10)
-    assert arc.stage_hint(0.9) is None
+    assert arc.stage_hint(0.9) == "call"        # a journey always opens at the call
     arc.record(make_record(0, "call"), stage="call")
     assert arc.stage_hint(0.0) == "call"
     assert arc.stage_hint(0.9) == "threshold"   # ready, but one stage at a time
@@ -257,14 +257,14 @@ def test_deterministic_debrief_from_real_session(session_records):
     first = records[0].identity_before.trait("leadership_confidence")
     last = records[-1].identity_before.trait("leadership_confidence")
     assert last != first
-    line = next(x for x in d.how_you_changed if "leadership confidence" in x)
-    assert f"{first:.2f}" in line and f"{last:.2f}" in line
+    line = next(x for x in d.how_you_changed if "in leading" in x)
+    assert "steadier" in line and not any(ch.isdigit() for ch in line)
     # recurring symbols really recur
     for sym in d.recurring_symbols:
         n = sum(1 for r in records if sym in r.scene.symbols or sym in r.outcome.symbols)
         assert n >= 2
     assert d.recurring_symbols
-    assert len(d.chapters) >= 1 and d.chapters[0].startswith("Chapter 1, The Call")
+    assert len(d.chapters) >= 1 and d.chapters[0].startswith("Chapter One, The Call")
     assert d.open_questions
     md = d.to_markdown()
     assert md.startswith(f"# {d.title}")
@@ -555,6 +555,6 @@ def test_staged_journey_reaches_return_and_closes(tmp_path):
 
     d = build_debrief(eng.history, arc=arc, cast=npc.cast_summary())
     assert any(", The Return" in c for c in d.chapters)  # chapter number varies with step-backs
-    assert any("returned at ordeal" in c for c in d.companions)
+    assert any("came back at the ordeal" in c for c in d.companions)
     assert "the road bends homeward" in d.closing_image
     sess.close()

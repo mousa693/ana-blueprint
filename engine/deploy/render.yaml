@@ -35,9 +35,11 @@ services:
       # shows 400 "bad_host" in the logs, add the Host it sends here.
       - key: ANA_ALLOWED_HOSTS
         value: localhost
-      # Only Render's proxy reaches the container: trust its X-Forwarded-For.
-      - key: FORWARDED_ALLOW_IPS
-        value: "*"
+      # Client IP for the per-IP rate limits: the RIGHTMOST X-Forwarded-For
+      # entry, the one Render's proxy appends (entries to its left are written
+      # by the client and never trusted). Do NOT set FORWARDED_ALLOW_IPS="*".
+      - key: ANA_TRUSTED_PROXY_HOPS
+        value: "1"
       - key: ANA_USE_LLM
         value: auto
       - key: ANA_DAILY_CYCLES_PER_USER

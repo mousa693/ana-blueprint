@@ -21,6 +21,24 @@ Everything else — the generative dream‑maker, the NPC/entropy layer, and the
 three cross‑cutting subsystems — is built around those cores against a single set
 of typed contracts.
 
+## The product
+
+ANA ships as a public, multi-user web app: sign up, a gentle onboarding
+conversation seeds your self, then you live journeys turn by turn in the
+browser — choosing or writing what you do — until you come home to a debrief.
+Your self persists across journeys. Every free-text input is safety-screened
+(deterministic floor + Claude second opinion when configured); crisis pauses
+the journey and shows support resources. People can export or delete
+everything.
+
+```bash
+cp .env.example .env          # set ANA_SECRET_KEY (and optionally ANTHROPIC_API_KEY)
+docker compose up -d          # http://127.0.0.1:8000
+```
+
+See `docs/DEPLOY.md` (Fly.io, Render, any VPS + Caddy/TLS, Postgres option,
+budgets, backups) and `docs/PRODUCT_SPEC.md` (API and architecture).
+
 ## It runs with no API key
 
 The whole simulation runs **fully offline and deterministically**. A Claude model

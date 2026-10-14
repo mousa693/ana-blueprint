@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any, Optional
@@ -19,9 +20,10 @@ from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from .api import AppContext, build_router, check_db
-from .auth import SessionManager
+from .auth import SessionManager, configure_hashing
 from .config import ConfigError, Settings
 from .db import init_db, make_engine, make_sessionmaker
+from .metering import MeteredGateway
 from .runtimes import JourneyBusy, RuntimeCache
 from .security import ApiError, GuardMiddleware, RateLimiter
 
@@ -65,6 +67,15 @@ def create_app(settings: Optional[Settings] = None, *, gateway: Any = None) -> F
     if not settings.secret_key:
         raise ConfigError("ANA_SECRET_KEY is required (set ANA_DEV=1 for local development)")
     gw, llm_available = _resolve_llm(settings, gateway)
+    if gw is not None and not isinstance(gw, MeteredGateway):
+        gw = MeteredGateway(gw)          # every model call counts (ana/app/metering.py)
+    configure_hashing(settings.password_hash_concurrency, settings.password_hash_wait_seconds)
+    if (os.environ.get("FORWARDED_ALLOW_IPS", "").strip() == "*"
+            and not settings.client_ip_header and settings.trusted_proxy_hops <= 0):
+        logger.warning("FORWARDED_ALLOW_IPS=* without ANA_CLIENT_IP_HEADER or "
+                       "ANA_TRUSTED_PROXY_HOPS: uvicorn takes the client IP from the LEFTMOST "
+                       "X-Forwarded-For entry, which clients can forge to dodge per-IP rate "
+                       "limits. See docs/DEPLOY.md#client-ip.")
     logger.info("ANA effective config: %s", settings.describe())
     logger.info("ANA model: %s", "available" if llm_available else "off (deterministic journeys)")
 

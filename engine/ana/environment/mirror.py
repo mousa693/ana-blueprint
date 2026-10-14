@@ -35,11 +35,33 @@ JOURNEY_PLACES = [
     "an unmarked threshold",
     "a town waking by the water",
     "the climbing road out of town",
-    "the summit, with the storm all around",
-    "the high places where the wind lives, after the storm",
-    "the long road home, changed",
+    "a summit wrapped in storm",
+    "a high ridge where the wind lives",
+    "the long road home",
 ]
 JOURNEY_HOURS = ["dawn", "morning", "midday", "late afternoon", "dusk", "first light"]
+# The preposition each place takes in prose ("on the climbing road out of town").
+PLACE_PREP: dict[str, str] = {
+    "an unmarked threshold": "at",
+    "a town waking by the water": "in",
+    "the climbing road out of town": "on",
+    "a summit wrapped in storm": "on",
+    "a high ridge where the wind lives": "on",
+    "the long road home": "on",
+}
+# Weather a place implies. It overrides the mirror's valence weather, so the
+# storm-wrapped summit is never described as "clear".
+PLACE_WEATHER: dict[str, str] = {
+    "a summit wrapped in storm": "storm",
+    "a high ridge where the wind lives": "clearing",
+}
+
+
+def place_prep(location: str) -> str:
+    """The preposition for ``location`` in prose ("at" when unknown)."""
+    return PLACE_PREP.get(location, "at")
+
+
 # One place per Hero's-journey stage, in story order.
 STAGE_ORDER = ["call", "threshold", "mentor", "ordeal", "reward", "return"]
 
@@ -60,8 +82,15 @@ class EnvironmentMirror:
         else:
             idx = max(0, min(len(JOURNEY_PLACES) - 1,
                              int(max(0.0, min(0.999, convergence)) * len(JOURNEY_PLACES))))
+        before = self.world.location
         self.world.location = JOURNEY_PLACES[idx]
         self.world.time_of_day = JOURNEY_HOURS[idx]
+        if self.world.location in PLACE_WEATHER:
+            self.world.weather = PLACE_WEATHER[self.world.location]
+        elif before in PLACE_WEATHER and self.world.weather == PLACE_WEATHER[before]:
+            # Leaving a place that brought its own weather: the sky clears
+            # (reflect() re-colours it from the mood when the dial is up).
+            self.world.weather = "clear"
 
     def reflect(self, identity: IdentitySnapshot, reflectiveness: float) -> WorldState:
         """Shape the world from the identity, scaled by the reflectiveness dial.
@@ -76,6 +105,9 @@ class EnvironmentMirror:
         # Weather tracks emotional valence more strongly as the dial rises.
         if w.reflectiveness >= 0.4:
             w.weather = _weather_for(identity.emotion.valence)
+        # ...but a place that carries its own weather keeps it.
+        if w.location in PLACE_WEATHER:
+            w.weather = PLACE_WEATHER[w.location]
         w.ambience = "charged" if identity.emotion.arousal > 0.6 else "quiet"
 
         # Surface motifs for active themes, more of them as the dial rises.

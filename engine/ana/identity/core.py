@@ -13,7 +13,7 @@ Depth added on top of the basic loop:
     themes, weighted by success, scene intensity and whether a lesson was
     learned; avoidance does not advance (and slightly regresses near-term goals).
   * **Self-remembering.** A `Journal` records every cycle; its meta-analysis
-    ("growing in leadership (3 of 4 encounters met)") and recurring symbols are
+    ("Stepping into leadership.") and recurring symbols are
     surfaced in the snapshot alongside the most relevant Prime lessons.
   * **Memories of the future, fulfilled.** Future-memory goals are strengthened
     in memory each time the self moves toward them; when a goal crosses the
@@ -44,7 +44,8 @@ THEME_LEXICON: dict[str, tuple[str, ...]] = {
     "leadership": ("lead", "follow", "charge", "command", "captain", "responsib",
                    "organiz", "organis", "guide"),
     "purpose": ("purpose", "meaning", "calling", "useful", "mission", "vocation"),
-    "courage": ("courage", "brave", "fear", "afraid", "bold", "dare", "daring"),
+    "courage": ("courage", "brave", "fear", "afraid", "bold", "dare", "daring",
+                "speak", "voice", "stand"),
     "trust": ("trust", "believe", "belief", "rely", "reliable", "faith", "depend"),
     "home": ("home", "belong", "family", "roots", "hearth"),
     "connection": ("connect", "friend", "love", "together", "companion", "lonel",
@@ -134,23 +135,90 @@ _PAST = {"become": "became", "find": "found", "be": "was", "learn": "learned",
          "give": "gave", "come": "came", "trust": "trusted", "heal": "healed",
          "return": "returned", "protect": "protected", "face": "faced",
          "accept": "accepted", "belong": "belonged", "overcome": "overcame",
-         "earn": "earned", "keep": "kept", "let": "let", "hold": "held"}
+         "earn": "earned", "keep": "kept", "let": "let", "hold": "held",
+         "do": "did", "tell": "told", "say": "said", "write": "wrote",
+         "start": "started", "stop": "stopped", "finish": "finished",
+         "ask": "asked", "try": "tried", "leave": "left", "move": "moved",
+         "change": "changed", "show": "showed", "open": "opened",
+         "care": "cared", "rest": "rested", "love": "loved", "live": "lived",
+         "reach": "reached", "create": "created", "help": "helped"}
+
+_GOAL_LEADS = ("i will ", "i want to ", "i'd like to ", "i would like to ", "i'll ",
+               "i hope to ", "i wish to ", "to ")
+
+
+def _strip_goal_lead(description: str) -> str:
+    d = " ".join(str(description or "").split()).strip().rstrip(".!")
+    low = d.lower()
+    for prefix in _GOAL_LEADS:
+        if low.startswith(prefix):
+            return d[len(prefix):]
+    return d
 
 
 def first_person_past(description: str) -> str:
     """'become someone who can lead' -> 'I became someone who can lead.'"""
-    d = description.strip().rstrip(".")
-    low = d.lower()
-    for prefix in ("i will ", "i want to ", "i'll ", "to "):
-        if low.startswith(prefix):
-            d = d[len(prefix):]
-            break
+    d = _strip_goal_lead(description)
     parts = d.split(" ", 1)
     verb = parts[0].lower()
     rest = parts[1] if len(parts) > 1 else ""
     if verb in _PAST:
+        rest = re.sub(r"\bI have been\b", "I had been", rest)
         return f"I {_PAST[verb]} {rest}".strip() + "."
-    return f"I lived into my vision: {d}."
+    return f"I lived into my vision: {d[:1].lower() + d[1:]}."
+
+
+# Second-person rewriting of a person's own words ("my purpose" -> "your purpose").
+_TO_YOU = {"i": "you", "me": "you", "my": "your", "mine": "yours", "myself": "yourself",
+           "i'm": "you're", "i've": "you've", "i'll": "you'll", "i'd": "you'd",
+           "am": "are", "was": "were"}
+# Words that open a noun phrase rather than a verb phrase ("a home of my own").
+_NOUN_LEADS = frozenset("a an the my your more less some someone something peace "
+                        "freedom love courage purpose".split())
+
+
+def _you(words: list[str]) -> list[str]:
+    out: list[str] = []
+    after_i = False
+    for w in words:
+        low = w.lower()
+        rep = _TO_YOU.get(low)
+        if low in ("am", "was") and not after_i:
+            rep = None                      # only "I am" -> "you are"
+        out.append(rep if rep is not None else w)
+        after_i = low == "i"
+    return out
+
+
+def humanize_goal(description: str, *, form: str = "wish",
+                  max_words: int = 9) -> Optional[str]:
+    """A person's goal as a phrase the story can say back to them.
+
+    ``form``:
+
+    * ``"verb"`` - the bare infinitive phrase, second person:
+      "Become someone who can speak up" -> "become someone who can speak up";
+      "find my purpose" -> "find your purpose".
+    * ``"wish"`` - a noun phrase: "the wish to become someone who can speak up".
+    * ``"hope"`` - a possessive noun phrase: "your hope to find your purpose".
+
+    Returns ``None`` when the goal is longer than ``max_words`` (callers then
+    fall back to its theme rather than pasting a sentence into prose)."""
+    d = _strip_goal_lead(description)
+    words = d.split()
+    if not words or len(words) > max_words:
+        return None
+    is_noun = words[0].lower() in _NOUN_LEADS
+    words = _you(words)
+    first = words[0]
+    if not (len(first) > 1 and first[1:2].isupper()):     # keep acronyms
+        words[0] = first[:1].lower() + first[1:]
+    phrase = " ".join(words)
+    if form == "verb":
+        return phrase
+    if form == "hope":
+        return f"your hope for {phrase}" if is_noun else f"your hope to {phrase}"
+    return f"the wish for {phrase}" if is_noun else f"the wish to {phrase}"
 
 
 # ─────────────────────────────────────────────────────────────

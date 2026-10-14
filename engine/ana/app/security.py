@@ -14,6 +14,7 @@ The guard is a pure-ASGI middleware (pattern from the dev viewer,
 """
 from __future__ import annotations
 
+import ipaddress
 import json
 import threading
 import time
@@ -226,6 +227,13 @@ class RateLimiter:
                 self._prune(now)
             return ok
 
+    def peek(self, key: str) -> bool:
+        """Whether ``allow(key)`` would succeed, without taking a token."""
+        now = self._clock()
+        with self._lock:
+            tokens, ts = self._buckets.get(key, (self.capacity, now))
+            return min(self.capacity, tokens + (now - ts) * self.rate) >= 1.0
+
     def retry_after(self) -> int:
         return max(1, int(round(1.0 / self.rate))) if self.rate > 0 else 60
 
@@ -238,3 +246,49 @@ class RateLimiter:
     def reset(self) -> None:
         with self._lock:
             self._buckets.clear()
+
+
+# ─────────────────────────────────────────────────────────────
+# Client IP (what the per-IP rate limits key on)
+# ─────────────────────────────────────────────────────────────
+
+def _valid_ip(value: str) -> Optional[str]:
+    v = value.strip().strip('"')
+    if v.startswith("[") and "]" in v:              # [v6]:port
+        v = v[1:v.index("]")]
+    elif v.count(":") == 1:                         # v4:port
+        v = v.split(":", 1)[0]
+    try:
+        return str(ipaddress.ip_address(v))
+    except ValueError:
+        return None
+
+
+def client_ip(headers: list[tuple[str, str]], peer: Optional[str], *,
+              header: Optional[str] = None, hops: int = 0) -> str:
+    """The client address, trusting only what our own edge proxy wrote.
+
+    1. ``header`` (e.g. ``fly-client-ip``): a single-value header the platform's
+       proxy *sets* (overwriting anything the client sent);
+    2. else, with ``hops`` >= 1, the ``hops``-th entry from the RIGHT of
+       ``X-Forwarded-For`` — the address the trusted proxy appended. The
+       leftmost entries are client-controlled and never used;
+    3. else the socket peer.
+    A missing or malformed value falls through to the next rule.
+    """
+    if header:
+        vals = [v for k, v in headers if k == header]
+        if len(vals) == 1:
+            ip = _valid_ip(vals[0])
+            if ip:
+                return ip
+    if hops > 0:
+        parts: list[str] = []
+        for k, v in headers:
+            if k == "x-forwarded-for":
+                parts += [p.strip() for p in v.split(",") if p.strip()]
+        if len(parts) >= hops:
+            ip = _valid_ip(parts[-hops])
+            if ip:
+                return ip
+    return peer or "unknown"

@@ -98,15 +98,18 @@ reaches the model.
 
 ## Safety screen
 
-`screen_text` is deterministic, offline and reasonably fast (about 9 ms for a
-350-character paragraph, ~18 ms at the 20,000-character cap), and never stores
+`screen_text` is deterministic, offline and reasonably fast (roughly 15–20 ms
+for an 800-character paragraph and 40–50 ms for 1,900 characters on the shared
+dev box; the obfuscation hardening added ~0–3 ms per paragraph and ~1 ms on a
+short text), and never stores
 or logs the text — only level and reason codes leave the module.
 
 ### Levels and categories
 
 | level | category | examples |
 |---|---|---|
-| crisis | explicit suicide / self-harm intent | "I want to kill myself", leetspeak/spaced/zero-width variants |
+| crisis | explicit suicide / self-harm intent | "I want to kill myself", including leetspeak, spaced, zero-width, lookalike-letter (Cyrillic/Greek/IPA) and line-broken variants |
+| crisis / concern | minimal non-English (es/de/fr/pt/it) | "quiero suicidarme", "ich will mich umbringen", "je veux mourir", "voglio morire", "quero me matar"; concern: "no puedo más", "je n'en peux plus", "ich kann nicht mehr" |
 | crisis | passive ideation | no point living, wish I wasn't here / born, want to disappear forever, better off without me, "nobody would notice if I died", tired of being alive, waiting to die, don't care if I live or die |
 | crisis | means, plan, preparation | pills saved up / stockpiled / counted out, rope or noose bought, gun + intent, bridge/roof/tracks + looking/going, method searches, goodbye notes/messages, giving things away, affairs in order, a chosen date/time, "I know how I'd do it" |
 | crisis | recent attempt | tried/attempted/overdosed + recency, stomach pumped, ER after hurting myself |
@@ -126,11 +129,31 @@ Policy choices worth knowing: any mention of being suicidal, even negated
 
 ### How it works
 
-1. **Normalise**: NFKC; zero-width, control and combining marks stripped;
-   casefold; quotes unified; light leetspeak inside words (`k1ll`, `$uicide`,
-   `k!ll`, `ki||`); letters spaced/dotted out joined (`k i l l`); long letter
-   runs squeezed (`diiiie`).
-2. **Phrase rules (~170)** run on every clause *and* on the whole sentence
+1. **Normalise**: NFKC; zero-width and other format characters (U+200B–U+200F,
+   U+2060–U+2064, U+FEFF, soft hyphen, bidi marks) and combining marks (after
+   NFKD) stripped; invisible "blank" letters (braille blank, Hangul fillers)
+   read as spaces; casefold; quotes unified. **Confusables** are folded to ASCII
+   from a curated map of Cyrillic, Greek, IPA / small-capital and Latin-extended
+   lookalikes (`і у о а е с р к κ ο α ł ɪ ı ʟ ᴋ` …) — only inside a token that
+   already contains Latin letters or consists *entirely* of lookalikes, so
+   genuine Russian or Greek text is left alone. Light leetspeak inside words
+   (`k1ll`, `$uicide`, `0`→o, `@`→a). **Ambiguous i/l characters** — `1`, `|`,
+   `!` inside a word, and a capital `I` in an otherwise lowercase word
+   (`kiII`) — are resolved against a small lexicon of the words the screen keys
+   on (`ki11` → kill), else default to i (l for `|`). Letters spaced/dotted out
+   joined (`k i l l  m y s e l f`); letter runs squeezed, and a token with
+   doubled letters that spells a lexicon word once undone is mapped to it
+   (`kiiill`, `myseeelf`). The lexicon holds only words no ordinary word
+   collapses into (no "to", "lose").
+2. **Several readings, most severe wins.** The text is screened as normalised
+   (a bare line break is a sentence boundary there, so "I'm not okay⏎I want to
+   die" keeps its own negation scope); plus the ~8 words either side of each
+   bare line break re-joined with a space ("I want to kill⏎myself"), only
+   where that window contains risk vocabulary; plus, when the text has a
+   capital I inside a lowercase word, the sentences where reading it as "l"
+   changes a risk word. Line breaks after a negator are therefore read both
+   ways ("I would never⏎kill myself" → crisis, as before this change).
+3. **Phrase rules (~170)** run on every clause *and* on the whole sentence
    (clauses split on punctuation, "but", "and"; results combine by maximum, so
    the sentence pass can only add). Each rule has a base level, a sentence-level
    **exclude** guard (benign purposes, fiction/game words, colloquial contexts
@@ -138,7 +161,7 @@ Policy choices worth knowing: any mention of being suicidal, even negated
    five words before; "I don't **think** I want to be alive" is not negation),
    *past* ("used to", "years ago", "as a kid" → usually concern) and *recent*
    ("again", "last night", "an hour ago" → crisis).
-3. **Concept composition** (per sentence, after stripping idioms; skipped when
+4. **Concept composition** (per sentence, after stripping idioms; skipped when
    fiction/game words are present): first person + a death concept + desire or
    acceptance ("I'd be happy if I didn't wake up"); first person + a means +
    preparation/time ("the pills are in my hand right now", "I've been looking
@@ -146,14 +169,25 @@ Policy choices worth knowing: any mention of being suicidal, even negated
    + harm verb + a real target + intent ("I'm going to poison my husband's
    food"). This layer is what lets unseen paraphrases through to the right
    level.
-4. **Text-level combiner**: weaker signals escalate together — a plan cue +
+5. **Text-level combiner**: weaker signals escalate together — a plan cue +
    means/goodbye/distress, two plan cues ("tomorrow is the day, I've made up my
    mind"), alcohol + pills taken, weapon + revenge, giving things away + "won't
    need", someone coming into my room + fear/touching, hiding + an armed or
    angry person, a means object + "I keep looking at it".
-5. **Squashed pass** for a few high-signal phrases written with separators or no
+6. **Squashed pass** for a few high-signal phrases written with separators or no
    spaces (`kill.my.self`, `endmylife`), anchored at a word start, used only
    when the plain spelling is absent (so exclusions on the plain form hold).
+7. **Minimal non-English lexicon** (Spanish, German, French, Portuguese,
+   Italian): first-person suicide / self-harm intent and "I want to die / kill
+   myself / end my life / don't want to live any more" phrasings → crisis; a
+   handful of distress phrases ("no puedo más", "je n'en peux plus", "ich kann
+   nicht mehr", "não aguento mais", "non ce la faccio più", "I feel so alone",
+   "I'm desperate / depressed") → concern. Matched accent-insensitively, with
+   hyperbole guards ("me muero de risa", "vou me matar de rir", "voglio morire
+   dal ridere", "mi jefe va a matarme") and a negator check in the few words
+   before ("no", "nicht", "pas", "non", "não"). **This coverage is minimal and
+   literal — the model second opinion is the real coverage for non-English
+   text**, and for any other language the deterministic screen sees nothing.
 
 Messages are short and warm, chosen by family (self / others / abuse / general
 concern / someone else). Resources: emergency-number note, findahelpline.com
@@ -169,9 +203,16 @@ we recommend enabling it whenever a model is available.**
 
 ### Measured
 
-`tests/test_safety_screen.py` holds a categorised, hand-labelled table of 539
-rows (258 crisis, 90 concern, 191 none) across the categories above, with
-≥10 rows per category, including the false-positive traps.
+`tests/test_safety_screen.py` holds a categorised, hand-labelled table of 634
+rows (318 crisis, 98 concern, 218 none) across the categories above, with
+≥10 rows per category, including the false-positive traps. The `obfuscation`
+and `non_english` categories hold the security-review repros (`sec`) and our
+own variants (`obf`: line break + homoglyph, zero-width inside words, spaced
+and repeated letters, genuine Russian / Greek text, product names, idioms in
+each language); they were written alongside the fix, so they are in-sample.
+On the independent held-out set (`heldout_eval/run.py`, not read while
+tuning) the hardening changed nothing: crisis P 0.83 / R 0.71, none→crisis 5,
+before and after.
 
 The table was built in rounds. Each round was written fresh, **measured before
 any tuning on it**, and only then used to tune — those pre-tuning numbers are
@@ -215,6 +256,13 @@ combinations of concepts; it does not understand people.
   concern, not crisis.
 - **Benign-purpose guards can hide real risk** ("rope for the garden swing" is
   none — so would be a person using that as cover).
-- **English only.** Other languages pass as none.
+- **Mostly English.** Spanish, German, French, Portuguese and Italian have a
+  minimal literal lexicon (see step 7); paraphrases in those languages, and
+  every other language, pass as none unless the model second opinion is on.
+  Turn it on for any non-English audience.
+- **Obfuscation is an arms race.** Folding covers the common lookalikes, i/l
+  swaps, zero-width and spacing tricks, but not every Unicode confusable,
+  reversed or transposed text ("myslef"), images of text, or words split
+  across separate messages.
 - It cannot verify identity, age, location or context, and it is not a substitute
   for human moderation, a clinician, or emergency services.

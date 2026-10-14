@@ -362,6 +362,18 @@ def _identity_from_seed(seed: IdentitySeed, identity_id: str,
     return ic
 
 
+def _goal_state(goal: Goal) -> dict:
+    """A goal for ``identity_state``. A realised goal reports ``progress`` 1.0
+    (so a view shows it complete, never "83%"); the progress the engine
+    actually learned travels as ``learned_progress`` and is what a later
+    journey resumes from."""
+    d = goal.model_dump(mode="json")
+    if goal.realised:
+        d["learned_progress"] = d["progress"]
+        d["progress"] = 1.0
+    return d
+
+
 def _apply_identity_state(ic: IdentityCore, state: dict) -> None:
     """Overlay what the self learned in earlier journeys onto a freshly seeded
     Identity Core (see the module docstring)."""
@@ -378,6 +390,8 @@ def _apply_identity_state(ic: IdentityCore, state: dict) -> None:
     by_desc = {g.description.strip().lower(): i for i, g in enumerate(ic.goals)}
     for gd in state.get("goals", []):
         goal = Goal.model_validate(gd)
+        if "learned_progress" in gd:          # see _goal_state
+            goal.progress = float(gd["learned_progress"])
         goal.advanced_at = [t - shift for t in goal.advanced_at]
         if goal.realised_at is not None:
             goal.realised_at -= shift
@@ -504,16 +518,24 @@ class JourneyRuntime:
     def has_pending(self) -> bool:
         return self.engine.pending is not None
 
-    def act(self, action: UserAction) -> CycleRecord:
+    def act(self, action: UserAction, *, gentle: bool = False) -> CycleRecord:
         """Resolve the pending scene with the person's action. A
         ``choice_index`` must name one of the scene's choices (its text fills
-        an empty ``raw``); free text is clipped."""
+        an empty ``raw``); free text is clipped.
+
+        ``gentle=True`` when the person's words raised a safety *concern*
+        (e.g. "I feel so hopeless lately"): the story answers as a companion —
+        supportive NPC reactions, no setback read into the moment, and a
+        warm, low-intensity next scene (see
+        ``FeedbackLoopEngine.complete_cycle``)."""
         if self.closed:
             raise JourneyClosedError("the journey is closed")
         p = self.engine.pending
         if p is None:
             raise NoPendingSceneError("no scene is pending; call pending() first")
         action = self._normalise_action(action, p.scene)
+        if gentle:
+            return self.engine.complete_cycle(action, gentle=True)
         return self.engine.complete_cycle(action)
 
     @staticmethod
@@ -535,8 +557,9 @@ class JourneyRuntime:
     def _pending_scene(self, p: PendingCycle) -> PendingScene:
         scene = p.scene
         stage = normalize_stage(scene.stage or p.stage) or self.engine.arc.stage or STAGES[0]
-        chapters = self.engine.arc.chapters()
-        n = len(chapters) if chapters and chapters[-1]["stage"] == stage else len(chapters) + 1
+        # A stage already lived keeps its chapter number (a step back never
+        # opens a new chapter), so a journey has at most six.
+        n = self.engine.arc.chapter_number(stage)
         return PendingScene(
             journey_tick=p.ident.tick,
             scene=scene.model_copy(deep=True),
@@ -595,7 +618,7 @@ class JourneyRuntime:
             "identity_id": self.identity_id,
             "journey_ticks": ic.tick,
             "traits": [t.model_dump(mode="json") for t in ic.traits.values()],
-            "goals": [g.model_dump(mode="json") for g in ic.goals],
+            "goals": [_goal_state(g) for g in ic.goals],
             "active_themes": list(ic.active_themes),
             "emotion": ic.emotion.model_dump(mode="json"),
             "journal": {"entries": [e.to_dict() for e in ic.journal.entries]},

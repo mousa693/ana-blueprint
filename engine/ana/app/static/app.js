@@ -81,6 +81,7 @@
     me: null,           // GET /api/me payload, or null when logged out
     onboarding: null,   // GET /api/onboarding payload (cached)
     pendingCache: new Map(), // journey id -> pending scene handed over by POST /api/journeys
+    lastSafety: new Map(),   // journey id -> last crisis safety result seen this session
     keyHandler: null,   // per-view keyboard handler
     flash: null,        // message to show after the next navigation
   };
@@ -141,6 +142,7 @@
 
   function onUnauthorized() {
     const wasIn = !!state.me;
+    obClear();
     state.me = null;
     updateNav();
     if (wasIn) state.flash = "Your session has ended. Please log in again.";
@@ -207,11 +209,37 @@
     const root = $("#overlay-root");
     clear(root);
     const resources = arr(s.resources).filter(isObj);
+    const returnTo = document.activeElement;
+    // Everything behind the card is inert and hidden from assistive tech while
+    // it is open (skip link, header, view, toasts…), so focus can't escape.
+    const behind = [...document.body.children].filter((el) => el !== root && el.tagName !== "SCRIPT");
+    const prevState = behind.map((el) => [el, el.hasAttribute("inert"), el.getAttribute("aria-hidden")]);
+    for (const el of behind) { el.setAttribute("inert", ""); el.setAttribute("aria-hidden", "true"); }
+    const prevKeys = state.keyHandler;
     const close = () => {
+      document.removeEventListener("keydown", trap, true);
       clear(root);
-      for (const el of [$("#view"), $("#topbar")]) el.removeAttribute("inert");
+      for (const [el, wasInert, aria] of prevState) {
+        if (!wasInert) el.removeAttribute("inert");
+        if (aria === null) el.removeAttribute("aria-hidden"); else el.setAttribute("aria-hidden", aria);
+      }
+      state.keyHandler = prevKeys;
+      if (returnTo && returnTo.isConnected && typeof returnTo.focus === "function") returnTo.focus({ preventScroll: true });
       (onClose || (() => go("#/home")))();
     };
+    // Belt and braces for browsers without `inert`: keep Tab inside the card.
+    const trap = (e) => {
+      if (e.key !== "Tab") return;
+      const card = root.firstChild;
+      if (!card) return;
+      const f = [...card.querySelectorAll("a[href], button:not([disabled]), [tabindex]:not([tabindex='-1'])")];
+      if (!f.length) { e.preventDefault(); return; }
+      const first = f[0], last = f[f.length - 1];
+      const inside = card.contains(document.activeElement);
+      if (e.shiftKey && (!inside || document.activeElement === first || document.activeElement === $("#safety-title"))) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && (!inside || document.activeElement === last)) { e.preventDefault(); first.focus(); }
+    };
+    document.addEventListener("keydown", trap, true);
     const card = h("div", { class: "safety", role: "alertdialog", "aria-modal": "true", "aria-labelledby": "safety-title", "aria-describedby": "safety-msg" },
       h("div", { class: "safety-inner" },
         h("div", { class: "breath", "aria-hidden": "true" }),
@@ -227,7 +255,6 @@
           })) : null,
         h("div", { class: "btn-row" }, h("button", { class: "btn btn-primary", type: "button", onclick: close }, buttonLabel))));
     root.append(card);
-    for (const el of [$("#view"), $("#topbar")]) el.setAttribute("inert", "");
     $("#safety-title").focus();
   }
 
@@ -282,8 +309,15 @@
         clear(view).append(node);
         document.title = title ? `${title} · ANA` : "ANA";
         window.scrollTo(0, 0);
+        // Move focus to the new heading on in-app navigation, but not on the
+        // first page load: there the document start is the right place, so the
+        // first Tab lands on "Skip to content".
         const focusEl = view.querySelector("h1");
-        if (focusEl) { focusEl.setAttribute("tabindex", "-1"); focusEl.focus({ preventScroll: true }); }
+        if (focusEl) {
+          focusEl.setAttribute("tabindex", "-1");
+          if (state.navigated) focusEl.focus({ preventScroll: true });
+        }
+        if (node && !node.classList.contains("loading")) state.navigated = true;
         if (state.flash) { toast(state.flash); state.flash = null; }
         return true;
       },
@@ -319,6 +353,18 @@
     state.onboarding = obj(await api("/api/onboarding", { expect401: true }));
     return state.onboarding;
   }
+  const SCENE_MOVED = "This scene moved on in another window — here's where you are.";
+  // Mirrors ana/safety.py RESOURCES exactly (names, URLs, numbers). Used only
+  // when no safety result from the server is at hand (e.g. a paused journey
+  // opened in a fresh session).
+  const RESOURCES = [
+    { name: "Emergency services", url: null, note: "If you or someone else is in immediate danger, call your local emergency number now (for example 911, 112 or 999)." },
+    { name: "Find A Helpline", url: "https://findahelpline.com", note: "Free, confidential helplines around the world — search by country and by what you're going through." },
+    { name: "988 Suicide & Crisis Lifeline", url: "https://988lifeline.org", note: "United States: call or text 988, any time." },
+    { name: "9-8-8 Suicide Crisis Helpline", url: "https://988.ca", note: "Canada: call or text 9-8-8, any time." },
+    { name: "Samaritans", url: "https://www.samaritans.org", note: "UK & Ireland: call 116 123, free, any time." },
+    { name: "Lifeline", url: "https://www.lifeline.org.au", note: "Australia: call 13 11 14, any time." },
+  ];
   const FALLBACK_DISCLAIMER = "ANA is a reflective story, not therapy or medical advice, and it is for adults (18+). If you are in crisis, please contact local emergency services or a crisis line such as those listed at findahelpline.com.";
 
   // ── landing ─────────────────────────────────────────────────
@@ -368,6 +414,11 @@
     else { btn.disabled = false; btn.classList.remove("busy"); if (btn.dataset.label) btn.textContent = btn.dataset.label; }
   }
 
+  // Same shape as the server's _EMAIL_RE: 1–64 char local part, a dotted
+  // domain, and a top-level part of at least two characters.
+  const EMAIL_RE = /^[^@\s\x00-\x1f]{1,64}@[^@\s\x00-\x1f]+\.[^@\s\x00-\x1f]{2,}$/;
+  const validEmail = (e) => e.length >= 3 && e.length <= 254 && EMAIL_RE.test(e);
+
   async function afterAuth() {
     state.me = obj(await api("/api/me"));
     updateNav();
@@ -380,7 +431,7 @@
     const submit = h("button", { class: "btn btn-primary", type: "submit" }, "Create account");
     const form = h("form", { novalidate: true },
       fieldEl({ id: "email", label: "Email", type: "email", autocomplete: "email", attrs: { required: true, inputmode: "email", autocapitalize: "off", spellcheck: "false" } }),
-      fieldEl({ id: "password", label: "Password", type: "password", autocomplete: "new-password", hint: "At least 10 characters.", attrs: { required: true, minlength: 10 } }),
+      fieldEl({ id: "password", label: "Password", type: "password", autocomplete: "new-password", hint: "At least 10 characters, not counting spaces at either end.", attrs: { required: true, minlength: 10, maxlength: 256 } }),
       inviteField,
       h("label", { class: "check", for: "age" },
         h("input", { type: "checkbox", id: "age", name: "age", required: true }),
@@ -404,8 +455,12 @@
       const age = $("#age").checked;
       const invite = $("#invite").value.trim();
       for (const id of ["email", "password"]) $(`#${id}`).removeAttribute("aria-invalid");
-      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { $("#email").setAttribute("aria-invalid", "true"); $("#email").focus(); errBox.show("Please enter a valid email address."); return; }
-      if (password.length < 10) { $("#password").setAttribute("aria-invalid", "true"); $("#password").focus(); errBox.show("Your password needs at least 10 characters."); return; }
+      // Mirrors the server's rules (ana/app/auth.py) and wording, so the browser
+      // and the server never disagree; if the server still rejects, its own
+      // message is shown verbatim below.
+      if (!validEmail(email)) { $("#email").setAttribute("aria-invalid", "true"); $("#email").focus(); errBox.show("That doesn't look like an email address."); return; }
+      if (password.trim().length < 10) { $("#password").setAttribute("aria-invalid", "true"); $("#password").focus(); errBox.show("Your password needs at least 10 characters (not counting spaces at either end)."); return; }
+      if (password.length > 256) { $("#password").setAttribute("aria-invalid", "true"); $("#password").focus(); errBox.show("Please use a password of at most 256 characters."); return; }
       if (!age) { $("#age").focus(); errBox.show("ANA is for adults. Please confirm you are 18 or older."); return; }
       const payload = { email, password, age_confirmed: true };
       if (invite) payload.invite_code = invite;
@@ -417,6 +472,8 @@
         } catch (err) {
           busy(submit, false);
           if (err instanceof NetError) { report(err, () => { busy(submit, true, "Creating…"); attempt(); }); return; }
+          if (/email/i.test(err.code || "")) { $("#email").setAttribute("aria-invalid", "true"); $("#email").focus(); }
+          else if (/password/i.test(err.code || "")) { $("#password").setAttribute("aria-invalid", "true"); $("#password").focus(); }
           if (/invite/i.test(err.code || "")) {
             inviteField.hidden = false;
             $("#invite").setAttribute("aria-invalid", "true");
@@ -468,13 +525,32 @@
   const optLabel = (o) => str(isObj(o) ? (o.label !== undefined ? o.label : o.value) : o);
   const allowsText = (q) => q.allow_other === true || q.allow_text === true || q.free_text === true || q.allow_free_text === true || q.allows_text === true;
 
+  // In-progress onboarding survives a reload: answers + current step live in
+  // sessionStorage (this tab only), tied to the account, and are cleared on
+  // submit, logout, session end or account deletion. Never holds passwords.
+  const OB_KEY = "ana.onboarding";
+  const meId = () => str(obj(obj(state.me).user).id);
+  function obLoad() {
+    try {
+      const d = JSON.parse(sessionStorage.getItem(OB_KEY) || "null");
+      return isObj(d) && d.v === 1 && d.uid === meId() && isObj(d.answers) ? d : null;
+    } catch (_) { return null; }
+  }
+  function obSave(i, answers) {
+    try { sessionStorage.setItem(OB_KEY, JSON.stringify({ v: 1, uid: meId(), i, answers })); } catch (_) { /* storage off */ }
+  }
+  function obClear() { try { sessionStorage.removeItem(OB_KEY); } catch (_) { /* storage off */ } }
+
   async function viewOnboarding(ctx) {
     ctx.mount(loading(), "Welcome");
     const ob = await getOnboarding();
     const questions = arr(ob.questions).filter(isObj);
     if (!ctx.alive()) return;
+    const saved = obLoad();
     const answers = {};
-    let i = 0;
+    const ids = new Set(questions.map((q) => str(q.id)));
+    if (saved) for (const [k, v] of Object.entries(saved.answers)) if (ids.has(k)) answers[k] = v;
+    let i = saved ? Math.max(0, Math.min(questions.length - 1, num(saved.i, 0))) : 0;
     const root = h("div", { class: "ob" });
     ctx.mount(root, "Welcome");
 
@@ -561,7 +637,8 @@
         read = () => { const v = input.value.trim(); return v || undefined; };
       }
 
-      const back = h("button", { class: "btn btn-quiet", type: "button", onclick: () => { answers[str(q.id)] = read(); i -= 1; renderQ(); } }, "← Back");
+      const keep = () => { const v = read(); if (isEmpty(v)) delete answers[str(q.id)]; else answers[str(q.id)] = v; };
+      const back = h("button", { class: "btn btn-quiet", type: "button", onclick: () => { keep(); i -= 1; obSave(i, answers); renderQ(); } }, "← Back");
       if (i === 0) back.setAttribute("hidden", "");
       const last = i === total - 1;
       const next = h("button", { class: "btn btn-primary", type: "submit" }, last ? "Begin" : (q.optional && isEmpty(prev) ? "Skip / next" : "Next"));
@@ -573,8 +650,12 @@
         h("div", { class: "ob-nav" }, i === 0 ? h("span") : back, next));
 
       // live "Skip" label for optional questions
-      form.addEventListener("input", () => { if (!last) next.textContent = q.optional && isEmpty(read()) ? "Skip / next" : "Next"; });
-      form.addEventListener("change", () => { if (!last) next.textContent = q.optional && isEmpty(read()) ? "Skip / next" : "Next"; });
+      const onEdit = () => {
+        if (!last) next.textContent = q.optional && isEmpty(read()) ? "Skip / next" : "Next";
+        keep(); obSave(i, answers);
+      };
+      form.addEventListener("input", onEdit);
+      form.addEventListener("change", onEdit);
       form.addEventListener("keydown", (e) => {
         if (e.key === "Enter" && e.target.tagName === "TEXTAREA" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); form.requestSubmit(); }
       });
@@ -587,18 +668,20 @@
           return;
         }
         if (isEmpty(v)) delete answers[str(q.id)]; else answers[str(q.id)] = v;
-        if (!last) { i += 1; renderQ(); return; }
+        if (!last) { i += 1; obSave(i, answers); renderQ(); return; }
         busy(next, true, "Seeding your self…");
         const send = async () => {
           try {
             const res = obj(await api("/api/onboarding", { method: "POST", body: { answers } }));
             if (res.safety && obj(res.safety).level === "crisis") {
               busy(next, false);
+              obClear();
               showSafety(res.safety, { buttonLabel: "Return", onClose: () => { i = 0; renderQ(); } });
               return;
             }
+            obClear();
             state.me = Object.assign({}, state.me, { has_identity: true });
-            seeded(obj(res.identity), res.safety);
+            seeded(obj(res.identity), res.safety, Object.assign({}, answers));
           } catch (err) {
             busy(next, false);
             report(err, err instanceof NetError ? () => { busy(next, true, "Seeding your self…"); send(); } : null);
@@ -620,19 +703,29 @@
       (kind === "text" && first ? first : title).focus({ preventScroll: true });
     }
 
-    function seeded(identity, safety) {
+    // Labels for what the person actually picked (or wrote) for a question.
+    function chosenLabels(qid, value) {
+      const q = questions.find((x) => str(x.id) === qid) || {};
+      const labels = new Map(arr(q.options).map((o) => [str(optValue(o)), optLabel(o)]));
+      return arr(value).map(str).map((v) => v.trim()).filter(Boolean).map((v) => labels.get(v) || v);
+    }
+    function seededCopy(given) {
+      const carried = chosenLabels("carrying", given.carrying);
+      const never = chosenLabels("never_show", given.never_show);
+      const start = carried.length ? `The world will begin with what you carry — ${carried.join(", ")}` : "The world will begin with what you shared";
+      return never.length ? `${start} — and it will keep what you asked it never to show out of every scene.` : `${start}.`;
+    }
+
+    function seeded(identity, safety, given) {
       clear(root);
       const name = str(identity.name);
-      const themes = arr(identity.active_themes).map(str).filter(Boolean);
       const start = h("button", { class: "btn btn-primary", type: "button" }, "Begin your first journey");
       start.addEventListener("click", () => beginJourney(start));
       root.append(h("div", { class: "ob-q fade-in" },
         h("p", { class: "kicker" }, "Your self is seeded"),
         h("h1", { tabindex: "-1" }, name && name !== "the wanderer" ? `Thank you, ${name}.` : "Thank you."),
-        h("p", { class: "help" }, themes.length
-          ? `The world will begin with what you carry — ${themes.join(", ")} — and it will keep what you asked it never to show out of every scene.`
-          : "The world will begin with what you shared, and keep what you asked it never to show out of every scene."),
-        concernNote(safety),
+        concernNote(safety, { lead: true }),
+        h("p", { class: "help u-text" }, seededCopy(obj(given))),
         h("div", { class: "ob-nav" }, h("a", { class: "btn btn-quiet", href: "#/home" }, "Go to home"), start)));
       root.querySelector("h1").focus();
     }
@@ -644,16 +737,27 @@
     renderQ();
   }
 
-  function concernNote(safety) {
+  function concernNote(safety, { lead = false } = {}) {
     const s = obj(safety);
     if (!s.level || s.level === "none") return null;
     const res = arr(s.resources).filter(isObj);
-    return h("div", { class: "concern", role: "note" },
+    return h("aside", { class: `concern${lead ? " concern-lead" : ""}`, role: "note", "aria-label": "A gentle note" },
       h("p", null, str(s.message) || "If things feel heavy, support is available."),
       res.length ? h("ul", null, res.map((r) => {
         const url = safeUrl(r.url);
         return h("li", null, url ? h("a", { href: url, target: "_blank", rel: "noopener noreferrer" }, str(r.name)) : str(r.name), r.note ? ` — ${str(r.note)}` : "");
       })) : null);
+  }
+
+  /** Support lines as cards (paused view). */
+  function resourcesList(resources) {
+    return h("ul", { class: "resources", "aria-label": "Support you can reach now" },
+      resources.map((r) => {
+        const url = safeUrl(r.url);
+        return h("li", null,
+          h("div", { class: "name" }, url ? h("a", { href: url, target: "_blank", rel: "noopener noreferrer" }, str(r.name) || url) : str(r.name)),
+          r.note ? h("div", { class: "note" }, str(r.note)) : null);
+      }));
   }
 
   // ── home ────────────────────────────────────────────────────
@@ -714,13 +818,15 @@
       themes.length ? [h("h3", null, "What you carry"), h("div", { class: "tags" }, themes.map((t) => h("span", { class: "tag" }, humanize(t))))] : null,
       goals.length ? [h("h3", null, "Who you're becoming"),
         h("ul", { class: "goals" }, goals.map((g) => {
-          const p = Math.max(0, Math.min(1, num(g.progress, 0)));
+          const done = g.realised === true;
+          // A realised goal is complete, whatever its last progress number was.
+          const p = done ? 1 : Math.max(0, Math.min(1, num(g.progress, 0)));
           const fill = h("span");
           requestAnimationFrame(() => setWidth(fill, p));
-          return h("li", { class: `goal${g.realised ? " realised" : ""}` },
-            h("div", { class: "desc" }, h("span", null, cap(str(g.description))),
-              g.realised ? h("span", { class: "badge" }, "✦ realised") : h("span", { class: "pct" }, `${Math.round(p * 100)}%`)),
-            h("div", { class: "bar", role: "progressbar", "aria-label": `Progress toward ${str(g.description)}`, "aria-valuemin": 0, "aria-valuemax": 100, "aria-valuenow": Math.round(p * 100) }, fill));
+          return h("li", { class: `goal${done ? " realised" : ""}` },
+            h("div", { class: "desc" }, h("span", { class: "u-text" }, cap(str(g.description))),
+              done ? h("span", { class: "badge" }, h("span", { "aria-hidden": "true" }, "✦"), "Realised") : h("span", { class: "pct" }, `${Math.round(p * 100)}%`)),
+            h("div", { class: "bar", role: "progressbar", "aria-label": `Progress toward ${str(g.description)}`, "aria-valuemin": 0, "aria-valuemax": 100, "aria-valuenow": Math.round(p * 100), "aria-valuetext": done ? "Realised" : `${Math.round(p * 100)}%` }, fill));
         }))] : null,
       [h("h3", null, "What the journal has noticed"),
         insights.length ? h("ul", { class: "insights" }, insights.slice(0, 5).map((x) => h("li", null, cap(x))))
@@ -837,7 +943,9 @@
       return h("li", { class: `beat beat-event${entropy ? " entropy" : ""}` }, h("span", { class: "sr-only" }, "Event: "), speaker ? `${speaker}: ` : "", text);
     }
     if (kind === "choice") return h("li", { class: "beat beat-choice" }, text);
-    return h("li", { class: "beat beat-description" }, text);
+    // A drop cap on a one-letter word ("A town…") reads as "Atown": skip it.
+    const oneLetter = /^\W*\w\s/.test(String(text));
+    return h("li", { class: oneLetter ? "beat beat-description no-dropcap" : "beat beat-description" }, text);
   }
 
   const actionText = (a) => (isObj(a) ? str(a.raw || a.text) : str(a));
@@ -864,6 +972,11 @@
       }
     }
     let turn = Math.max(records.length, num(obj(pending).journey_tick, 0)) + 1;
+    // Turn numbers follow the scene's journey_tick, so a scene re-rendered
+    // after "scene_changed" shows the right turn without counting locally.
+    const baseTick = num(obj(pending).journey_tick);
+    const baseTurn = turn;
+    let sceneTick = baseTick;    // journey_tick of the scene on screen
 
     const head = h("header", { class: "play-head" });
     const trackSlot = h("div");
@@ -909,18 +1022,37 @@
         showScene(obj(r.pending));
       } catch (err) { busy(btn, false); report(err, err instanceof NetError ? () => resume(btn) : null); }
     }
-    function showPaused() {
+    function showPaused(safety) {
+      state.keyHandler = null;
       clear(head); clear(trackSlot); ribbon.hidden = true; turnLbl.textContent = "";
-      clear(stage).append(h("div", { class: "notice fade-in" },
-        h("p", null, "This journey was paused so you could take care of yourself. There's no hurry."),
+      const s = obj(safety || state.lastSafety.get(jid) || journey.safety);
+      const res = arr(s.resources).filter(isObj);
+      const disc = h("p", { class: "disclaimer" }, FALLBACK_DISCLAIMER);
+      const title = h("h1", { class: "paused-title", tabindex: "-1" }, "Your journey is paused");
+      clear(stage).append(h("section", { class: "paused fade-in", "aria-labelledby": "paused-title" },
+        title,
+        h("p", { class: "msg" }, "This journey was paused so you could take care of yourself. There's no hurry — it will be here whenever you're ready."),
+        h("h2", { class: "kicker" }, "Support you can reach now"),
+        resourcesList(res.length ? res : RESOURCES),
+        disc,
         h("div", { class: "btn-row db-actions" },
           h("button", { class: "btn btn-primary", type: "button", onclick: (e) => resume(e.currentTarget) }, "I'm ready to continue"),
           h("a", { class: "btn btn-quiet", href: "#/home" }, "Return home"))));
+      title.id = "paused-title";
+      document.title = "Paused · ANA";
+      title.focus({ preventScroll: true });
+      getOnboarding().then((ob) => { if (ob.disclaimer && disc.isConnected) disc.textContent = str(ob.disclaimer); }).catch(() => {});
     }
     if (journey.status === "paused_safety") { showPaused(); return; }
     showScene(obj(pending));
 
-    function showScene(p) {
+    /** Render a scene. `notice` is a calm line shown above it (e.g. the scene
+     *  moved on in another window); `safety` a concern-level result whose
+     *  gentle note leads the scene rather than trailing the last turn. */
+    function showScene(p, { notice = "", safety = null } = {}) {
+      const tick = num(p.journey_tick);
+      sceneTick = tick;
+      if (tick !== null && baseTick !== null) turn = baseTurn + (tick - baseTick);
       ribbon.hidden = false;
       setHead(p);
       const scene = obj(p.scene);
@@ -933,7 +1065,8 @@
       title.id = "scene-title";
       const controls = h("div", { class: "reveal-row" });
       const after = h("div");
-      clear(stage).append(card, controls, after);
+      const noticeEl = notice ? h("p", { class: "notice scene-moved", role: "status" }, notice) : null;
+      appendKids(clear(stage), [noticeEl, concernNote(safety, { lead: true }), card, controls, after]);
       card.classList.add("fade-in");
       window.scrollTo({ top: 0, behavior: reducedMotion() ? "auto" : "smooth" });
       title.setAttribute("tabindex", "-1");
@@ -985,7 +1118,14 @@
       if (shown < beats.length) controls.append(nextBtn, hint, allBtn);
     }
 
+    async function reloadScene(notice) {
+      const p = obj(await api(`/api/journeys/${enc}/pending`));
+      if (p.closed) { go(`#/debrief/${enc}`); return; }
+      showScene(obj(p.pending), { notice });
+    }
+
     function renderChoices(scene, slot) {
+      const expectedTick = sceneTick;   // the scene this person is answering
       const choices = arr(scene.choices).map(str).filter(Boolean);
       const errEl = h("p", { class: "notice", role: "alert", hidden: true });
       const head2 = h("h2", { class: "kicker", tabindex: "-1" }, "What do you do?");
@@ -1011,13 +1151,14 @@
       });
       ta.addEventListener("keydown", (e) => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); writeForm.requestSubmit(); } });
 
-      const buttons = choices.map((c, k) => h("button", { class: "choice", type: "button", onclick: () => act({ choice_index: k }, buttons[k]) },
+      const withTick = (body) => (expectedTick !== null ? Object.assign(body, { expected_tick: expectedTick }) : body);
+      const buttons = choices.map((c, k) => h("button", { class: "choice", type: "button", onclick: () => act(withTick({ choice_index: k }), buttons[k]) },
         h("span", { class: "num", "aria-hidden": "true" }, String(k + 1)), h("span", null, c)));
       writeForm.addEventListener("submit", (e) => {
         e.preventDefault();
         const text = ta.value.trim();
         if (!text) { ta.focus(); return; }
-        act({ text }, null);
+        act(withTick({ text }), null);
       });
 
       const lockAll = (on) => {
@@ -1041,19 +1182,38 @@
         slot.append(thinking);
         state.keyHandler = null;
         try {
+          // `payload` is sent byte-for-byte the same on Retry, including
+          // expected_tick, so the server can recognise an already-applied turn
+          // (200 with `replayed: true`) or a scene that moved on (409).
           const res = obj(await api(`/api/journeys/${enc}/act`, { method: "POST", body: payload }));
           thinking.remove();
           if (res.safety && obj(res.safety).level === "crisis") {
+            state.lastSafety.set(jid, res.safety);
             showSafety(res.safety, { onClose: () => go("#/home") });
             return;
           }
-          resolveTurn(res, slot);
+          resolveTurn(res, slot);   // a replay (res.replayed) renders exactly like a fresh turn
         } catch (err) {
           thinking.remove();
           lockAll(false);
           if (chosenBtn) chosenBtn.classList.remove("chosen");
           if (err.handled) return;
-          if (err instanceof NetError) { report(err, () => act(payload, chosenBtn)); return; }
+          if (err instanceof NetError) {
+            // Only offer to resend when the act carries expected_tick — without
+            // it a resend could apply the turn twice. Otherwise, re-read where
+            // the story stands (a safe GET) instead.
+            if (payload.expected_tick !== undefined) report(err, () => act(payload, chosenBtn));
+            else toast(err.message, { sticky: true, action: { label: "Check where I am", fn: () => reloadScene("").catch((e) => report(e)) } });
+            return;
+          }
+          if (err.status === 409 && err.code === "scene_changed") {
+            const d = obj(err.data);
+            const p = d.pending || obj(d.error).pending;
+            if (d.closed === true) { go(`#/debrief/${enc}`); return; }
+            if (isObj(p)) showScene(p, { notice: SCENE_MOVED });
+            else { try { await reloadScene(SCENE_MOVED); } catch (e2) { report(e2); } }
+            return;
+          }
           if (err.status === 429) {
             errEl.textContent = err.message || DEFAULT_MESSAGES[429];
             errEl.hidden = false;
@@ -1062,7 +1222,7 @@
             return;
           }
           if (err.status === 409 && /closed/i.test(err.code)) { go(`#/debrief/${enc}`); return; }
-          if (err.status === 409 && /paused/i.test(err.code)) { showPaused(); return; }
+          if (err.status === 409 && /paused/i.test(err.code)) { showPaused(obj(err.data).safety); return; }
           errEl.textContent = err.message;
           errEl.hidden = false;
         }
@@ -1073,13 +1233,14 @@
       const rec = obj(res.record);
       const reactions = arr(rec.npc_events).map(str).filter(Boolean);
       const lesson = str(rec.lesson);
+      const concern = obj(res.safety).level === "concern" ? res.safety : null;
       if (num(rec.convergence) !== null) ribbon.update(rec.convergence);
       const contBtn = h("button", { class: "btn btn-primary", type: "button" });
       const box = h("section", { class: "resolve fade-in", "aria-label": "What happened" },
+        concernNote(res.safety, { lead: true }),
         actionText(rec.action) ? h("p", { class: "you" }, actionText(rec.action)) : null,
         reactions.length ? h("ul", { class: "reactions" }, reactions.map((r) => h("li", null, cap(r)))) : null,
         lesson ? h("p", { class: "epigraph" }, typo(lesson)) : null,
-        concernNote(res.safety),
         h("div", { class: "reveal-row" }, contBtn));
       clear(slot).append(box);
       turn += 1;
@@ -1090,12 +1251,12 @@
           busy(contBtn, true, "One moment…");
           try {
             const p = obj(await api(`/api/journeys/${enc}/pending`));
-            if (p.closed) go(`#/debrief/${enc}`); else showScene(obj(p.pending));
+            if (p.closed) go(`#/debrief/${enc}`); else showScene(obj(p.pending), { safety: concern });
           } catch (err) { busy(contBtn, false); report(err); }
         });
       } else {
         contBtn.textContent = "Continue the journey";
-        contBtn.addEventListener("click", () => showScene(obj(res.pending)));
+        contBtn.addEventListener("click", () => showScene(obj(res.pending), { safety: concern }));
       }
       state.keyHandler = (e) => {
         const t = e.target;
@@ -1110,6 +1271,9 @@
 
   // ── debrief ─────────────────────────────────────────────────
   function chapterItem(line) {
+    // Current format: "Chapter One, The Call — An unmarked threshold. …"
+    const n = /^Chapter\s+(\w+),\s*(.+?)\s+—\s+(.*)$/.exec(line);
+    if (n) return h("li", null, h("strong", null, n[2]), h("br"), cap(n[3]));
     const m = /^Chapter\s+\d+,\s*(.+?)\s*\((cycles?\s[^)]*)\)\s*(.*)$/i.exec(line);
     if (!m) return h("li", null, line);
     const rest = m[3].replace(/^at\s+/i, "");
@@ -1190,7 +1354,7 @@
     const renderChips = () => {
       clear(chips);
       if (!forbidden.length) chips.append(h("p", { class: "muted small" }, "Nothing on the list."));
-      forbidden.forEach((t, k) => chips.append(h("span", { class: "removable" }, t,
+      forbidden.forEach((t, k) => chips.append(h("span", { class: "removable" }, h("span", { class: "u-text" }, t),
         h("button", { type: "button", "aria-label": `Remove ${t}`, onclick: () => { forbidden.splice(k, 1); markDirty(); renderChips(); addInput.focus(); } }, "×"))));
     };
     const markDirty = () => { dirty = true; saveBtn.disabled = false; savedLbl.textContent = ""; };
@@ -1258,6 +1422,7 @@
       busy(delBtn, true, "Deleting…");
       try {
         await api("/api/me", { method: "DELETE", body: { password: pw.value }, expect401: true });
+        obClear();
         state.me = null;
         state.flash = "Your account and everything in it has been deleted.";
         updateNav();
@@ -1274,6 +1439,7 @@
     logoutBtn.addEventListener("click", async () => {
       busy(logoutBtn, true, "Logging out…");
       try { await api("/api/auth/logout", { method: "POST", expect401: true }); } catch (err) { if (err instanceof NetError) { busy(logoutBtn, false); report(err); return; } }
+      obClear();
       state.me = null;
       updateNav();
       go("#/");
