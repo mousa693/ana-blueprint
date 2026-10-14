@@ -22,10 +22,19 @@ Levels
 
 How it works
 ------------
-1. Normalise: Unicode NFKC, strip zero-width and control characters and
-   combining marks, casefold, unify quotes, undo light leetspeak inside words
-   (``k1ll`` → ``kill``, ``$uicide`` → ``suicide``), join letters spaced out to
-   dodge filters (``k i l l`` → ``kill``), squeeze long letter repeats.
+1. Normalise: Unicode NFKC, strip zero-width / format / control characters
+   and combining marks, casefold, unify quotes, fold curated Cyrillic / Greek /
+   IPA / Latin-extended lookalikes to ASCII (``kіll`` with a Cyrillic і →
+   ``kill``) in tokens that are Latin or entirely lookalikes, undo light
+   leetspeak inside words (``k1ll`` → ``kill``, ``$uicide`` → ``suicide``),
+   resolve ambiguous i/l characters (``1``, ``|``, ``!``, a capital I in a
+   lowercase word: ``kiII``) against a small lexicon, join letters spaced out
+   to dodge filters (``k i l l`` → ``kill``), squeeze letter repeats
+   (``kiiill`` → ``kill``).
+   ``screen_text`` screens several readings and keeps the most severe: the
+   normalised text (a bare line break is a sentence boundary), short windows
+   re-joined across each bare line break (``kill⏎myself``), and the capital-I-
+   as-l reading where it changes a word.
 2. Split into clauses (sentence punctuation, commas, "but") so a negation in
    one clause cannot cancel a statement in another.
 3. Match phrase rules. Each rule has a base level and may be *negated* ("I would
@@ -34,6 +43,9 @@ How it works
 4. A squashed pass (letters only, anchored at a word start) catches the few
    highest-signal phrases written with separators or no spaces
    (``kill.my.self``, ``endmylife``).
+5. A minimal es/de/fr/pt/it lexicon (first-person suicide / self-harm intent,
+   death wish, a few distress phrases). Non-English coverage is deliberately
+   small; the model second opinion is the real coverage there.
 
 The text is never stored or logged here: only levels and reason *codes* leave
 this module. It is pure, deterministic, offline and fast (pre-compiled regexes).
@@ -43,6 +55,7 @@ from __future__ import annotations
 import re
 import unicodedata
 from dataclasses import dataclass
+from itertools import product
 from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, Field
@@ -156,34 +169,147 @@ _FAMILY = {
 
 _ZERO_WIDTH = dict.fromkeys(map(ord, "​‌‍‎‏⁠⁡⁢"
                                      "⁣⁤﻿­᠎͏"), None)
+# Invisible "letters" some systems render as blanks: treat as a space.
+_BLANKS = str.maketrans(dict.fromkeys(map(ord, "⠀ㅤᅟᅠﾠ"), " "))
 _QUOTES = str.maketrans({"‘": "'", "’": "'", "‛": "'", "ʼ": "'",
                          "′": "'", "`": "'", "´": "'",
                          "“": '"', "”": '"', "„": '"'})
-_LEET = str.maketrans({"0": "o", "1": "i", "3": "e", "4": "a", "5": "s", "7": "t",
+# i-or-l placeholders for characters that stand for either letter: "1", "|",
+# "!" inside a word, and a capital I inside a lowercase word ("kiII").
+_AMB_I = ""   # defaults to i
+_AMB_L = ""   # defaults to l
+_AMB = _AMB_I + _AMB_L
+_LEET = str.maketrans({"0": "o", "1": _AMB_I, "3": "e", "4": "a", "5": "s", "7": "t",
                        "@": "a", "$": "s"})
 _SEP = r"[ .\-_*~+/\\]"
 
+# Curated lookalikes (after casefold) -> ASCII: Cyrillic, Greek, IPA and Latin
+# extended letters people use to dodge filters ("kіll" with a Cyrillic і).
+_CONFUSABLES = {
+    # Cyrillic
+    "а": "a", "е": "e", "ё": "e", "і": "i", "ї": "i", "ј": "j", "к": "k", "м": "m", "н": "h",
+    "о": "o", "п": "n", "р": "p", "с": "c", "т": "t", "у": "y", "х": "x", "ѕ": "s",
+    "ԁ": "d", "ӏ": "l", "ԛ": "q", "ԝ": "w", "һ": "h", "ь": "b", "ӱ": "y", "ў": "y",
+    # Greek
+    "α": "a", "ά": "a", "γ": "y", "ε": "e", "έ": "e", "η": "n", "ι": "i", "ί": "i", "ϊ": "i",
+    "κ": "k", "ν": "v", "ο": "o", "ό": "o", "ρ": "p", "τ": "t", "υ": "u", "ύ": "u",
+    "χ": "x", "ω": "w",
+    # IPA / small capitals / Latin extended
+    "ɪ": "i", "ı": "i", "ɩ": "i", "ʟ": "l", "ł": "l", "ɫ": "l", "ƚ": "l", "ɭ": "l",
+    "ɑ": "a", "ɐ": "a", "ᴀ": "a", "ɛ": "e", "ɘ": "e", "ə": "e", "ᴇ": "e", "ɔ": "o",
+    "ɵ": "o", "ø": "o", "ᴏ": "o", "ʏ": "y", "ʀ": "r", "ɾ": "r", "ɹ": "r", "ɴ": "n",
+    "ᴋ": "k", "ƙ": "k", "ᴍ": "m", "ᴛ": "t", "ŧ": "t", "ᴜ": "u", "ʋ": "v", "ᴠ": "v",
+    "ᴅ": "d", "đ": "d", "ᴄ": "c", "ᴡ": "w", "ᴢ": "z", "ꜱ": "s", "ʂ": "s", "ȿ": "s",
+    "ʜ": "h", "ħ": "h", "ɢ": "g", "ɡ": "g", "ʙ": "b", "ᴊ": "j", "ᴘ": "p", "ƒ": "f",
+}
+_CONF_TABLE = str.maketrans(_CONFUSABLES)
+_CONF_CHARS = frozenset(_CONFUSABLES)
+_CAP_I = "IІΙӀ"   # Latin I, Cyrillic І, Greek Ι, palochka Ӏ
 
-def _deleet_token(m: re.Match) -> str:
+# Words the screen keys on. A token with ambiguous i/l characters or doubled
+# letters is resolved to one of these when it can be ("ki11" -> "kill",
+# "kiiill" -> "kill", "myseeelf" -> "myself"); otherwise it is left alone.
+# Only words no ordinary English word collapses into ("to", "lose" are out).
+_LEX = frozenset("""kill kills killing killed myself self suicide suicidal die dying died dead
+death end ending life live living alive want wanna wish pill pills cut cutting hang hanging
+hurt hurting harm harming overdose unalive slit wrists wrist kms sewerslide jump jumping
+bleed noose rope""".split())
+
+
+def _fold_token(m: re.Match) -> str:
     tok = m.group(0)
-    if re.search(r"[a-z]", tok) and re.search(r"[013457@$]", tok):
-        return tok.translate(_LEET)
+    letters = [c for c in tok if c.isalpha()]
+    if any("a" <= c <= "z" for c in letters) or all(
+            ("a" <= c <= "z") or c in _CONF_CHARS for c in letters):
+        return tok.translate(_CONF_TABLE)
+    return tok   # genuine non-Latin text (e.g. Russian, Greek) is left as is
+
+
+def _mark_cap_i(m: re.Match) -> str:
+    """In a lowercase word, a capital I may stand for l ("kiII", "Iife")."""
+    w = m.group(0)
+    if len(w) < 2 or not any(c in _CAP_I for c in w):
+        return w
+    others = [c for c in w[1:] if c not in _CAP_I]
+    low = sum(c.islower() for c in others)
+    if low == 0 or sum(c.isupper() for c in others) >= low:
+        return w
+    return "".join(_AMB_I if c in _CAP_I else c for c in w)
+
+
+def _lex_fix(tok: str) -> Optional[str]:
+    """The lexicon word this token spells with doubled letters undone, if any."""
+    if tok in _LEX:
+        return tok
+    runs = [(mm.group(1), len(mm.group(0))) for mm in re.finditer(r"([a-z])\1*", tok)]
+    if not 0 < sum(n > 1 for _, n in runs) <= 4:
+        return None
+    for combo in product(*[(1, 2) if n > 1 else (1,) for _, n in runs]):
+        cand = "".join(c * k for (c, _), k in zip(runs, combo))
+        if cand in _LEX:
+            return cand
+    return None
+
+
+def _resolve_amb(tok: str, i_as_l: bool) -> str:
+    def default(c: str) -> str:
+        if c == _AMB_L or (c == _AMB_I and i_as_l):
+            return "l"
+        return "i" if c == _AMB_I else c
+    base = "".join(default(c) for c in tok)
+    idx = [k for k, c in enumerate(tok) if c in _AMB]
+    if not idx or len(idx) > 4:
+        return base
+    chars = list(tok)
+    for combo in product("il", repeat=len(idx)):
+        for k, ch in zip(idx, combo):
+            chars[k] = ch
+        cand = re.sub(r"([a-z])\1{2,}", r"\1\1", "".join(chars))
+        fixed = _lex_fix(cand)
+        if fixed:
+            return fixed
+    return base
+
+
+def _deleet_token(m: re.Match, i_as_l: bool = False) -> str:
+    tok = m.group(0)
+    if re.search(r"[a-z]", tok) and re.search(r"[03457@$]", tok):
+        tok = tok.translate(_LEET)
+    if "1" in tok and (re.search(r"[a-z" + _AMB + "]", tok)):
+        tok = tok.replace("1", _AMB_I)
+    if _AMB_I in tok or _AMB_L in tok:
+        return _resolve_amb(tok, i_as_l)
     return tok
 
 
-def normalise(text: str) -> str:
-    """Canonical lowercase form used by the screen (exposed for tests)."""
-    t = unicodedata.normalize("NFKC", str(text or "")).translate(_ZERO_WIDTH)
-    t = "".join(c for c in unicodedata.normalize("NFKD", t) if not unicodedata.combining(c))
+def _lex_word(m: re.Match) -> str:
+    return _lex_fix(m.group(0)) or m.group(0)
+
+
+def normalise(text: str, i_as_l: bool = False) -> str:
+    """Canonical lowercase form used by the screen (exposed for tests).
+
+    ``i_as_l`` resolves an ambiguous capital I inside a lowercase word to "l"
+    instead of "i" when no lexicon word decides it (the screen tries both)."""
+    t = unicodedata.normalize("NFKC", str(text or "")).translate(_ZERO_WIDTH).translate(_BLANKS)
+    t = "".join(c for c in unicodedata.normalize("NFKD", t)
+                if not unicodedata.combining(c) and unicodedata.category(c) != "Cf")
+    if any(c in t for c in _CAP_I):
+        t = re.sub(r"[^\W\d_]+", _mark_cap_i, t)
     t = t.casefold().translate(_QUOTES)
-    t = "".join(c if c == "\n" or unicodedata.category(c)[0] != "C" else " " for c in t)
-    t = re.sub(r"(?<=[a-z])!(?=[a-z])", "i", t)        # k!ll
-    t = t.replace("|", "l")                               # ki||
-    t = re.sub(r"[a-z0-9@$]+", _deleet_token, t)          # k1ll, $uicide
+    if not t.isascii():
+        t = re.sub(r"\S+", _fold_token, t)
+    t = "".join("\n" if c in "  " else
+                c if c == "\n" or unicodedata.category(c)[0] != "C" or c in _AMB else " " for c in t)
+    t = re.sub(r"(?<=[a-z])!(?=[a-z])", _AMB_I, t)       # k!ll
+    t = t.replace("|", _AMB_L)                            # ki||
+    t = re.sub(f"[a-z0-9@${_AMB_I}{_AMB_L}]+", lambda m: _deleet_token(m, i_as_l), t)
+    t = t.replace(_AMB_I, "l" if i_as_l else "i").replace(_AMB_L, "l")
     # Letters spaced or dotted out: "k i l l", "s.u.i.c.i.d.e".
     t = re.sub(rf"(?<![a-z])(?:[a-z]{_SEP}){{2,}}[a-z](?![a-z])",
                lambda m: re.sub(_SEP, "", m.group(0)), t)
     t = re.sub(r"([a-z])\1{2,}", r"\1\1", t)             # diiiie -> diie
+    t = re.sub(r"\b[a-z]*([a-z])\1[a-z]*\b", _lex_word, t)  # kiill -> kill
     t = re.sub(r"(?<=\bd)ii(?=e\b)", "i", t)              # die
     t = re.sub(r"[ \t\r\f\v]+", " ", t)
     return t.strip()
@@ -1341,6 +1467,152 @@ def _concepts(norm: str) -> list[tuple[str, Level]]:
                 out.append(("harm_to_others", "crisis"))
     return out
 
+# ── Minimal non-English lexicon (es / de / fr / pt / it) ──
+# Deliberately small and literal: first-person suicide / self-harm intent and
+# "I want to die / kill myself / end my life" phrasings (crisis), plus a few
+# distress phrases (concern). Matched on the normalised text, so accents are
+# already gone (quiero, mochte, deprime, nao, piu). A negator in the few words
+# before a match ("no", "nicht", "pas", "non", "nao") drops it to the rule's
+# negated level. The model second opinion is the real coverage for other
+# languages and phrasings; see docs/ONBOARDING_AND_SAFETY.md.
+_FOREIGN_NEG = re.compile(
+    r"\b(?:no|nunca|jamas|tampoco|nicht|nie|niemals|kein|keine|keinen|pas|jamais|non|mai|nao|nem)\b")
+_FOREIGN_HINT = re.compile(
+    r"\b(?:mor|mour|meur|bring|mal\b|faire|aguent|muert|mort|sterb|tot|matar|mata|uccid|ammazz|suicid|selbstmord|suizid|umbring|toten|tuer|"
+    r"vida|vita|vie|leben|viv|jours|finit|finir|cort|scarifi|ritz|verletz|schneide|dano|male|machuc|lastim|"
+    r"herir|ferir|veine|vena|puedo|aguanto|peux|kann|faccio|desesper|deprim|depress|disperat|verzweifel|"
+    r"hoffnungslos|esperan|espoir|speranz|sol[oa]|seule?|sozinh|allein|einsam|despert|taglio|ferisco|"
+    r"autoles|pensamientos|pensamentos|pensieri|pensees|idees|gedanken|tuo|togliermi|quitarme|tirar)")
+_HYPERBOLE_ES = r"(?!\s+(?:de\s+(?:risa|hambre|sueno|verguenza|calor|frio|amor|ganas)|estudiando|trabajando|corriendo|a\s+(?:estudiar|trabajar|entrenar)|en\s+el\s+(?:gym|gimnasio)))"
+_HYPERBOLE_PT = r"(?!\s+(?:de\s+(?:rir|fome|sono|vergonha|calor|frio|saudade|estudar|trabalhar)|estudando|trabalhando|na\s+academia))"
+_HYPERBOLE_IT = r"(?!\s+(?:dal|dalla|dalle|dai|di|a)\b)"
+_HYPERBOLE_FR = r"(?!\s+(?:de\s+rire|de\s+faim|de\s+honte|d'ennui|de\s+froid|de\s+chaud|a\s+la\s+tache|au\s+travail|a\s+la\s+salle))"
+
+
+def _f(reason: str, level: Level, pat: str, negated: Level = "concern") -> tuple:
+    return (reason, level, re.compile(pat), negated)
+
+
+_FOREIGN: list[tuple[str, Level, re.Pattern, Level]] = [
+    # ── es ──
+    _f("self_harm_intent", "crisis",
+       r"\b(?:quiero|quisiera|voy a|pienso|pensando en|he pensado en|decidi|tengo ganas de|ganas de|necesito)\s+"
+       r"(?:matarme|suicidarme|quitarme la vida)\b" + _HYPERBOLE_ES),
+    _f("self_harm_intent", "crisis",
+       r"\bme\s+(?:quiero|voy a|pienso|tengo que)\s+(?:matar|suicidar)\b" + _HYPERBOLE_ES),
+    _f("self_harm_intent", "crisis",
+       r"\bsuicidarme\b|\bquitarme\s+la\s+vida\b|\b(?:acabar|terminar)\s+con\s+mi\s+(?:propia\s+)?vida\b"),
+    _f("passive_death_wish", "crisis",
+       r"\b(?:quiero|quisiera|deseo|tengo ganas de|me gustaria|me quiero)\s+morir(?:me)?\b"
+       r"(?!\s+(?:de|del|por|en\s+paz\s+de\s+viej[oa])\b)", negated="none"),
+    _f("passive_death_wish", "crisis",
+       r"\b(?:quiero|quisiera)\s+estar\s+muert[oa]\b|\bojala\s+(?:estuviera|estuviese)\s+muert[oa]\b"
+       r"|\bojala\s+no\s+(?:hubiera|hubiese)\s+nacido\b", negated="none"),
+    _f("passive_death_wish", "crisis",
+       r"\bno\s+quiero\s+(?:seguir\s+)?vivi(?:r|endo)\b(?!\s+(?:aqui|alli|ahi|en|con|asi|sol[oa]|lejos|cerca|"
+       r"de\s+esta|de\s+este|otra|como))"
+       r"|\bno\s+quiero\s+(?:volver\s+a\s+)?despertar(?:me)?\b(?!\s+(?:temprano|tan|a\s+las|pronto|ma[n]ana))",
+       negated="none"),
+    _f("suicidal_ideation", "crisis",
+       r"\b(?:tengo|con)\s+(?:pensamientos|ideas)\s+suicidas\b|\b(?:pienso|pensando|pensado)\s+en\s+(?:el\s+)?"
+       r"suicidio\b"),
+    _f("self_harm_current", "crisis",
+       r"\b(?:quiero|voy a|necesito|tengo ganas de)\s+(?:cortarme|hacerme dano|lastimarme|herirme|"
+       r"autolesionarme)\b(?!\s+(?:el\s+pelo|las\s+unas|el\s+flequillo))"
+       r"|\bme\s+(?:corto|lastimo|autolesiono)\s+(?:otra vez|de nuevo|a proposito|los brazos|las munecas|"
+       r"las piernas)\b"),
+    _f("self_harm_method", "crisis", r"\bcortarme\s+las\s+venas\b"),
+    _f("cant_go_on", "concern", r"\bno\s+(?:puedo|aguanto|soporto)\s+mas\b(?!\s+(?:de|que|del)\b)",
+       negated="concern"),
+    _f("distress", "concern",
+       r"\b(?:estoy|me siento)\s+(?:muy\s+|tan\s+|super\s+)?(?:desesperad[oa]|deprimid[oa])\b"),
+    _f("hopelessness", "concern", r"\bsin\s+esperanzas?\b|\bno\s+tengo\s+esperanzas?\b|\bperdi\s+la\s+esperanza\b"),
+    _f("isolation", "concern", r"\bme\s+siento\s+(?:muy\s+|tan\s+)?sol[oa]\b"),
+    # ── de ──
+    _f("self_harm_intent", "crisis",
+       r"\bich\s+(?:will|mochte|werde|muss|wurde|wollte|kann)\s+mich\s+(?:(?!nicht\b|nie\b|niemals\b)\w+\s+){0,2}?(?:umbringen|toten|"
+       r"selbst\s+toten)\b|\bich\s+bring(?:e)?\s+mich\s+um\b|\bmir\s+das\s+leben\s+(?:zu\s+)?nehmen\b"
+       r"|\b(?:selbstmord|suizid)\s+(?:zu\s+)?(?:begehen|machen)\b"),
+    _f("passive_death_wish", "crisis",
+       r"\bich\s+(?:will|mochte|wurde\s+gerne?|wurde\s+lieber)\s+(?:(?!nicht\b|nie\b|niemals\b)\w+\s+){0,2}?sterben\b"
+       r"|\bich\s+(?:ware|war)\s+(?:lieber|am\s+liebsten)\s+tot\b|\bich\s+will\s+tot\s+sein\b"
+       r"|\bich\s+(?:will|mochte|kann)\s+nicht\s+mehr\s+(?:leben|weiterleben|aufwachen)\b",
+       negated="none"),
+    _f("suicidal_ideation", "crisis",
+       r"\b(?:suizidgedanken|selbstmordgedanken)\b|\bich\s+(?:denke|dachte)\s+(?:oft\s+|viel\s+|standig\s+)?"
+       r"(?:an|uber)\s+(?:selbstmord|suizid)\b|\bich\s+bin\s+(?:sehr\s+|so\s+)?suizidal\b"),
+    _f("self_harm_current", "crisis",
+       r"\bich\s+(?:ritze|verletze)\s+mich\b(?!\s+(?:beim|am|an|aus\s+versehen|versehentlich))"
+       r"|\bich\s+(?:will|mochte|muss)\s+mich\s+(?:ritzen|selbst\s+verletzen|verletzen)\b"),
+    _f("cant_go_on", "concern", r"\bich\s+kann\s+nicht\s+mehr\s*$"),
+    _f("distress", "concern", r"\bich\s+bin\s+(?:so\s+|total\s+|sehr\s+)?(?:verzweifelt|depressiv)\b"),
+    _f("hopelessness", "concern", r"\b(?:ich\s+bin|fuhle\s+mich|alles\s+ist)\s+(?:so\s+)?hoffnungslos\b"),
+    _f("isolation", "concern", r"\bich\s+fuhle\s+mich\s+(?:so\s+|sehr\s+|total\s+)?(?:allein|einsam)\b"),
+    # ── fr ──
+    _f("self_harm_intent", "crisis",
+       r"\b(?:veux|vais|voudrais|compte|pense a|envie de|aimerais|dois)\s+me\s+(?:tuer|suicider|foutre en l'air)\b"
+       + _HYPERBOLE_FR),
+    _f("self_harm_intent", "crisis",
+       r"\bme\s+suicider\b|\bmettre\s+fin\s+a\s+(?:mes\s+jours|ma\s+vie)\b|\ben\s+finir\s+avec\s+(?:la|ma)\s+vie\b"
+       r"|\bje\s+veux\s+en\s+finir\b(?!\s+avec\s+(?!la\s+vie|ma\s+vie|tout))"),
+    _f("passive_death_wish", "crisis",
+       r"\b(?:je\s+veux|je\s+voudrais|j'aimerais|envie\s+de)\s+mourir\b(?!\s+(?:de|d'|vieux|vieille)\b)"
+       r"|\bje\s+(?:ne\s+veux|n'ai)\s+plus\s+(?:envie\s+de\s+)?vivre\b|\bje\s+(?:voudrais|veux)\s+etre\s+morte?\b",
+       negated="none"),
+    _f("suicidal_ideation", "crisis",
+       r"\b(?:pensees|idees)\s+suicidaires\b|\bje\s+suis\s+suicidaire\b|\bje\s+pense\s+au\s+suicide\b"),
+    _f("self_harm_current", "crisis",
+       r"\b(?:veux|vais|envie de)\s+me\s+(?:faire\s+du\s+mal|scarifier|couper\s+les\s+veines|mutiler)\b"
+       r"|\bje\s+me\s+(?:scarifie|mutile)\b"),
+    _f("cant_go_on", "concern", r"\bje\s+n'en\s+peux\s+plus\b"),
+    _f("distress", "concern",
+       r"\bje\s+suis\s+(?:tellement\s+|si\s+|tres\s+|completement\s+)?(?:desesperee?|deprimee?)\b"),
+    _f("hopelessness", "concern", r"\bsans\s+espoir\b|\bj'ai\s+perdu\s+(?:tout\s+)?espoir\b"),
+    _f("isolation", "concern", r"\bje\s+me\s+sens\s+(?:tellement\s+|si\s+|tres\s+)?seule?\b"),
+    # ── pt ──
+    _f("self_harm_intent", "crisis",
+       r"\b(?:quero|vou|queria|preciso|penso em|pensando em|vontade de)\s+(?:me\s+(?:matar|suicidar)|"
+       r"matar-me|suicidar-me)\b" + _HYPERBOLE_PT),
+    _f("self_harm_intent", "crisis",
+       r"\bvou-me\s+matar\b" + _HYPERBOLE_PT + r"|\bme\s+suicidar\b|\bsuicidar-me\b"
+       r"|\b(?:tirar|acabar\s+com)\s+(?:a\s+)?minha\s+(?:propria\s+)?vida\b"),
+    _f("passive_death_wish", "crisis",
+       r"\b(?:quero|queria|vontade de)\s+morrer\b(?!\s+(?:de|velh[oa])\b)|\bqueria\s+estar\s+mort[oa]\b"
+       r"|\bqueria\s+nao\s+ter\s+nascido\b"
+       r"|\bnao\s+quero\s+(?:mais\s+)?viver\b(?!\s+(?:aqui|ali|em|no|na|com|assim|longe|perto|sozinh))",
+       negated="none"),
+    _f("suicidal_ideation", "crisis",
+       r"\bpensamentos\s+suicidas\b|\bpens(?:o|ando)\s+em\s+suicidio\b"),
+    _f("self_harm_current", "crisis",
+       r"\b(?:quero|vou|preciso)\s+me\s+(?:cortar|machucar|ferir|mutilar)\b(?!\s+(?:com\s+o\s+papel|cozinhando|"
+       r"sem\s+querer))"),
+    _f("cant_go_on", "concern", r"\bnao\s+aguento\s+mais\b(?!\s+(?:de|esperar)\b)"),
+    _f("distress", "concern",
+       r"\b(?:estou|me\s+sinto)\s+(?:muito\s+|tao\s+)?(?:desesperad[oa]|deprimid[oa])\b"),
+    _f("hopelessness", "concern", r"\bsem\s+esperanca\b|\bperdi\s+a\s+esperanca\b"),
+    _f("isolation", "concern", r"\bme\s+sinto\s+(?:muito\s+|tao\s+)?sozinh[oa]\b"),
+    # ── it ──
+    _f("self_harm_intent", "crisis",
+       r"\b(?:voglio|vorrei|sto per|penso di|ho deciso di|devo)\s+(?:uccidermi|ammazzarmi|suicidarmi|"
+       r"togliermi la vita|farla finita)\b" + _HYPERBOLE_IT + r"(?!\s+con\s+(?!la\s+vita|tutto))"),
+    _f("self_harm_intent", "crisis",
+       r"\bmi\s+(?:voglio|vado a)\s+(?:uccidere|ammazzare|suicidare)\b" + _HYPERBOLE_IT
+       + r"|\bmi\s+(?:uccido|ammazzo|suicido)\b" + _HYPERBOLE_IT
+       + r"|\bsuicidarmi\b|\btogliermi\s+la\s+vita\b"),
+    _f("passive_death_wish", "crisis",
+       r"\b(?:voglio|vorrei)\s+morire\b(?!\s+(?:dal|dalla|dalle|dai|di|da)\b)|\bnon\s+voglio\s+piu\s+vivere\b"
+       r"|\bvorrei\s+essere\s+mort[oa]\b|\bvorrei\s+non\s+essere\s+mai\s+nat[oa]\b",
+       negated="none"),
+    _f("suicidal_ideation", "crisis", r"\bpensieri\s+suicidi\b|\bpenso\s+al\s+suicidio\b"),
+    _f("self_harm_current", "crisis",
+       r"\b(?:voglio|vorrei|devo)\s+farmi\s+del\s+male\b"
+       r"|\bmi\s+(?:taglio|ferisco)\s+(?:ancora|di nuovo|le braccia|i polsi|apposta)\b"),
+    _f("cant_go_on", "concern", r"\bnon\s+ce\s+la\s+faccio\s+piu\b"),
+    _f("distress", "concern", r"\bsono\s+(?:cosi\s+|molto\s+|tanto\s+)?(?:disperat[oa]|depress[oa])\b"),
+    _f("hopelessness", "concern", r"\bsenza\s+speranza\b"),
+    _f("isolation", "concern", r"\bmi\s+sento\s+(?:cosi\s+|molto\s+|tanto\s+)?sol[oa]\b"),
+]
+
 # High-signal phrases checked on the squashed (letters-only, repeats collapsed)
 # text, only at a word start and only if the regex pass did not already see
 # that reason (so negation from the normal pass is respected).
@@ -1436,14 +1708,8 @@ def _result(level: Level, reasons: list[str]) -> SafetyResult:
 MAX_SCREEN_CHARS = 20000
 
 
-def screen_text(text: Optional[str]) -> SafetyResult:
-    """Screen one piece of free text. Deterministic, offline, never logs text.
-
-    Texts longer than ``MAX_SCREEN_CHARS`` are screened in full up to that
-    length (callers should already clip far below it)."""
-    if not text or not str(text).strip():
-        return SafetyResult()
-    norm = normalise(str(text)[:MAX_SCREEN_CHARS])
+def _screen_norm(norm: str) -> dict[str, Level]:
+    """All rule, concept and combination hits on one normalised text."""
     hits: dict[str, Level] = {}
     seen: set[str] = set()
 
@@ -1475,6 +1741,12 @@ def screen_text(text: Optional[str]) -> SafetyResult:
             m = pat.search(clause)
             if m and not _negated(clause[: m.start()]):
                 signals.add(name)
+        if _FOREIGN_HINT.search(clause):
+            for reason, level, pat, neg_level in _FOREIGN:
+                for m in pat.finditer(clause):
+                    seen.add(reason)
+                    negd = _FOREIGN_NEG.search(" ".join(clause[: m.start()].split()[-4:]))
+                    add(reason, neg_level if negd else level)
 
     squashed, pos, start = _squash(norm)
     for key, reason in _SQUASHED:
@@ -1527,6 +1799,88 @@ def screen_text(text: Optional[str]) -> SafetyResult:
     if "want_out" in signals and distressed:
         add("passive_death_wish", "crisis")
 
+    return hits
+
+
+# A capital I/І/Ι after a letter: the text may use it as an "l" ("kiII").
+_CAP_I_INSIDE = re.compile(r"(?<=[^\W\d_])[" + _CAP_I + "]|[" + _CAP_I + r"](?=[^\W\d_])")
+
+
+# Vocabulary (word starts) that any rule able to fire across a line break
+# involves; windows without any of it are skipped. Deliberately broad.
+_JOIN_RISK = re.compile(
+    r"\b(?:kil|die|dy|dead|death|suicid|unaliv|sewer|kms|life|liv|aliv|exist|wak|woke|hurt|harm|cut|burn|"
+    r"scratch|hang|pill|tablet|med|overdos|od\b|end|self|myself|gone|sleep|asleep|disappear|vanish|"
+    r"better|jump|bridge|roof|ledge|cliff|train|rope|noose|gun|knife|blade|razor|wrist|bleed|stab|shoot|"
+    r"murder|hit|beat|chok|strangl|abus|rap|touch|safe|scar|afraid|terrif|plan|goodbye|farewell|note|"
+    r"letter|point|hope|alone|lonel|worthless|burden|cry|numb|depress|hate|tired|done|enough|over|"
+    r"anymore|forever|want|wish|wanna|go on|can|cope|lock|follow|stalk|threat|weapon|bomb|revenge|pay|"
+    r"drink|drank|drunk|starv|eat|purg|throw|attempt|tried|try|tonight|ready|decided|giv|affairs|will\b|"
+    r"no one|nobody|miss|care|breath|bear|take|took|swallow|enough|stop|out|exit|escape|pain|suffer|"
+    r"grave|funeral|born|here|around|leav|left|never|not|no\b)")
+
+
+def _line_joined(norm: str, span: int = 8) -> str:
+    """Where bare line breaks (no sentence punctuation before them) cut a
+    sentence, the ``span`` words either side of each break re-joined with
+    spaces ("i want to kill\nmyself" -> "i want to kill myself"); "" when
+    there are none. Short windows keep this cheap on hard-wrapped text."""
+    if "\n" not in norm:
+        return ""
+    out: list[str] = []
+    for sent in re.split(r"[.!?;]+", norm):
+        if "\n" not in sent:
+            continue
+        words: list[str] = []
+        breaks: list[int] = []
+        for k, line in enumerate(sent.split("\n")):
+            if k and words:
+                breaks.append(len(words))
+            words += line.split()
+        for b in breaks:
+            if 0 < b < len(words):
+                win = " ".join(words[max(0, b - span): b + span])
+                if (not out or out[-1] != win) and (_JOIN_RISK.search(win) or _FOREIGN_HINT.search(win)):
+                    out.append(win)
+    return ". ".join(out)
+
+
+def _changed_sentences(base: str, alt: str) -> str:
+    """The sentences of ``alt`` that differ from ``base`` in a word that could
+    matter to the screen (all of ``alt`` when the sentence structure differs)."""
+    sa, sb = re.split(r"([.!?;\n]+)", base), re.split(r"([.!?;\n]+)", alt)
+    if len(sa) != len(sb):
+        return alt
+    def risky(x: str, y: str) -> bool:
+        return any(u != v and (_JOIN_RISK.match(v) or v in _LEX)
+                   for u, v in zip(x.split(), y.split()))
+    return "\n".join(y for x, y in zip(sa[::2], sb[::2]) if x != y and risky(x, y))
+
+
+def screen_text(text: Optional[str]) -> SafetyResult:
+    """Screen one piece of free text. Deterministic, offline, never logs text.
+
+    Texts longer than ``MAX_SCREEN_CHARS`` are screened in full up to that
+    length (callers should already clip far below it). Several readings of the
+    text are screened and the most severe wins: the normalised text, the same
+    with a capital I inside a lowercase word read as "l" (only the sentences
+    where that differs), and the words either side of each bare line break
+    re-joined (a line break is otherwise a sentence boundary)."""
+    if not text or not str(text).strip():
+        return SafetyResult()
+    raw = str(text)[:MAX_SCREEN_CHARS]
+    base = normalise(raw)
+    variants = [base, _line_joined(base)]
+    if _CAP_I_INSIDE.search(raw):
+        alt = normalise(raw, i_as_l=True)
+        if alt != base:
+            variants += [_changed_sentences(base, alt), _line_joined(alt)]
+    hits: dict[str, Level] = {}
+    for variant in variants:
+        if variant:
+            for reason, lvl in _screen_norm(variant).items():
+                if _RANK[lvl] > _RANK.get(hits.get(reason, "none"), 0):
+                    hits[reason] = lvl
     if not hits:
         return SafetyResult()
     level: Level = max(hits.values(), key=lambda lv: _RANK[lv])
