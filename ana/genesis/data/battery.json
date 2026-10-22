@@ -1,0 +1,1334 @@
+{
+ "version": 1,
+ "scale_points": 7,
+ "items": [
+  {
+   "id": "risk-01",
+   "domain": "risk",
+   "kind": "choice",
+   "prompt": "You're offered a stable job you'd be good at, or a risky venture you'd love. Which?",
+   "options": [
+    "The stable job",
+    "The risky venture"
+   ]
+  },
+  {
+   "id": "risk-02",
+   "domain": "risk",
+   "kind": "scale",
+   "prompt": "How comfortable are you not knowing how something will turn out?",
+   "anchors": [
+    "I need to know",
+    "I enjoy not knowing"
+   ]
+  },
+  {
+   "id": "risk-03",
+   "domain": "risk",
+   "kind": "choice",
+   "prompt": "A coin flip: double your savings or lose half. Do you take it?",
+   "options": [
+    "Take it",
+    "Walk away"
+   ]
+  },
+  {
+   "id": "risk-04",
+   "domain": "risk",
+   "kind": "choice",
+   "prompt": "Lost in a new city with a dead phone. What do you do first?",
+   "options": [
+    "Ask a stranger",
+    "Wander and figure it out",
+    "Find a café and wait it out"
+   ]
+  },
+  {
+   "id": "risk-05",
+   "domain": "risk",
+   "kind": "scale",
+   "prompt": "How often do you act on a strong gut feeling before you've thought it through?",
+   "anchors": [
+    "Almost never",
+    "Almost always"
+   ]
+  },
+  {
+   "id": "risk-06",
+   "domain": "risk",
+   "kind": "choice",
+   "prompt": "You can move anywhere in the world tomorrow, everything paid. Do you go?",
+   "options": [
+    "Yes, immediately",
+    "Yes, after planning",
+    "No, I'd stay"
+   ]
+  },
+  {
+   "id": "risk-07",
+   "domain": "risk",
+   "kind": "choice",
+   "prompt": "Which regret would sting more?",
+   "options": [
+    "Having tried and failed",
+    "Never having tried"
+   ]
+  },
+  {
+   "id": "risk-08",
+   "domain": "risk",
+   "kind": "scale",
+   "prompt": "How much do you enjoy physical danger (heights, speed, deep water)?",
+   "anchors": [
+    "Not at all",
+    "A lot"
+   ]
+  },
+  {
+   "id": "risk-09",
+   "domain": "risk",
+   "kind": "choice",
+   "prompt": "A friend's startup needs an investment you can afford to lose. You…",
+   "options": [
+    "Invest",
+    "Decline politely",
+    "Offer help instead of money"
+   ]
+  },
+  {
+   "id": "risk-10",
+   "domain": "risk",
+   "kind": "choice",
+   "prompt": "Your plan collapses an hour before something important. Your first reaction?",
+   "options": [
+    "Improvise immediately",
+    "Stop and replan",
+    "Feel it first, then act"
+   ]
+  },
+  {
+   "id": "social-01",
+   "domain": "social",
+   "kind": "choice",
+   "prompt": "Free Saturday night, no plans. What sounds best?",
+   "options": [
+    "A big party",
+    "Dinner with two close friends",
+    "Alone at home",
+    "Somewhere new on my own"
+   ]
+  },
+  {
+   "id": "social-02",
+   "domain": "social",
+   "kind": "scale",
+   "prompt": "After a long day with people, how drained do you feel?",
+   "anchors": [
+    "Energized",
+    "Completely drained"
+   ]
+  },
+  {
+   "id": "social-03",
+   "domain": "social",
+   "kind": "choice",
+   "prompt": "At a gathering where you know nobody, you…",
+   "options": [
+    "Start talking to someone",
+    "Wait to be approached",
+    "Find the host or the dog",
+    "Leave early"
+   ]
+  },
+  {
+   "id": "social-04",
+   "domain": "social",
+   "kind": "scale",
+   "prompt": "How many people would you call real close friends?",
+   "anchors": [
+    "None or one",
+    "More than ten"
+   ]
+  },
+  {
+   "id": "social-05",
+   "domain": "social",
+   "kind": "choice",
+   "prompt": "A friend shares good news that makes you envious. You…",
+   "options": [
+    "Celebrate fully, envy hidden",
+    "Celebrate and admit the envy",
+    "Go a bit quiet"
+   ]
+  },
+  {
+   "id": "social-06",
+   "domain": "social",
+   "kind": "choice",
+   "prompt": "Group decision on where to eat. You usually…",
+   "options": [
+    "Decide for everyone",
+    "Suggest options",
+    "Go along with it"
+   ]
+  },
+  {
+   "id": "social-07",
+   "domain": "social",
+   "kind": "scale",
+   "prompt": "How much do you care what strangers think of you?",
+   "anchors": [
+    "Not at all",
+    "A great deal"
+   ]
+  },
+  {
+   "id": "social-08",
+   "domain": "social",
+   "kind": "choice",
+   "prompt": "You hear a rumor about a friend. You…",
+   "options": [
+    "Tell the friend",
+    "Ignore it",
+    "Defend them on the spot",
+    "Quietly check if it's true"
+   ]
+  },
+  {
+   "id": "social-09",
+   "domain": "social",
+   "kind": "choice",
+   "prompt": "Which compliment would mean more?",
+   "options": [
+    "You're brilliant",
+    "You're kind",
+    "You're fun",
+    "You're reliable"
+   ]
+  },
+  {
+   "id": "social-10",
+   "domain": "social",
+   "kind": "scale",
+   "prompt": "How easily do you open up about personal things?",
+   "anchors": [
+    "Very hard",
+    "Very easily"
+   ]
+  },
+  {
+   "id": "work-01",
+   "domain": "work",
+   "kind": "choice",
+   "prompt": "Which matters most in work?",
+   "options": [
+    "Meaning",
+    "Money",
+    "Mastery",
+    "Freedom",
+    "Status"
+   ]
+  },
+  {
+   "id": "work-02",
+   "domain": "work",
+   "kind": "choice",
+   "prompt": "You'd rather be…",
+   "options": [
+    "The best in a small field",
+    "Good in a big field"
+   ]
+  },
+  {
+   "id": "work-03",
+   "domain": "work",
+   "kind": "scale",
+   "prompt": "How much do you need to be in charge of how you do your work?",
+   "anchors": [
+    "Not at all",
+    "Completely"
+   ]
+  },
+  {
+   "id": "work-04",
+   "domain": "work",
+   "kind": "choice",
+   "prompt": "A project is 90% done and you've lost interest. You…",
+   "options": [
+    "Push through to finish",
+    "Hand it off",
+    "Let it sit",
+    "Start something new"
+   ]
+  },
+  {
+   "id": "work-05",
+   "domain": "work",
+   "kind": "choice",
+   "prompt": "Your boss takes credit for your idea. You…",
+   "options": [
+    "Confront them privately",
+    "Raise it publicly",
+    "Let it go",
+    "Start looking for a new job"
+   ]
+  },
+  {
+   "id": "work-06",
+   "domain": "work",
+   "kind": "scale",
+   "prompt": "How much do you enjoy routine work you're good at?",
+   "anchors": [
+    "Hate it",
+    "Love it"
+   ]
+  },
+  {
+   "id": "work-07",
+   "domain": "work",
+   "kind": "choice",
+   "prompt": "Deadline tomorrow, work is good but not great. You…",
+   "options": [
+    "Ship it",
+    "Stay up making it great",
+    "Ask for more time"
+   ]
+  },
+  {
+   "id": "work-08",
+   "domain": "work",
+   "kind": "choice",
+   "prompt": "Would you rather work…",
+   "options": [
+    "Alone",
+    "With one partner",
+    "In a small team",
+    "Leading a large team"
+   ]
+  },
+  {
+   "id": "work-09",
+   "domain": "work",
+   "kind": "scale",
+   "prompt": "How important is it that your work is visible to others?",
+   "anchors": [
+    "Not at all",
+    "Very"
+   ]
+  },
+  {
+   "id": "work-10",
+   "domain": "work",
+   "kind": "choice",
+   "prompt": "If you never had to earn money again, you would…",
+   "options": [
+    "Keep doing similar work",
+    "Do something completely different",
+    "Rest for a long while",
+    "Build something of my own"
+   ]
+  },
+  {
+   "id": "morality-01",
+   "domain": "morality",
+   "kind": "choice",
+   "prompt": "A cashier gives you too much change. You…",
+   "options": [
+    "Return it right away",
+    "Keep it",
+    "Depends on the store"
+   ]
+  },
+  {
+   "id": "morality-02",
+   "domain": "morality",
+   "kind": "choice",
+   "prompt": "Your best friend committed a serious crime and confides in you. You…",
+   "options": [
+    "Urge them to turn themselves in",
+    "Keep the secret",
+    "Report them"
+   ]
+  },
+  {
+   "id": "morality-03",
+   "domain": "morality",
+   "kind": "scale",
+   "prompt": "Is it okay to lie to protect someone's feelings?",
+   "anchors": [
+    "Never",
+    "Always fine"
+   ]
+  },
+  {
+   "id": "morality-04",
+   "domain": "morality",
+   "kind": "choice",
+   "prompt": "Which is worse?",
+   "options": [
+    "Breaking a promise",
+    "Telling a hard truth that hurts"
+   ]
+  },
+  {
+   "id": "morality-05",
+   "domain": "morality",
+   "kind": "choice",
+   "prompt": "Rules that make no sense to you…",
+   "options": [
+    "I follow them anyway",
+    "I bend them quietly",
+    "I break them openly",
+    "I argue to change them"
+   ]
+  },
+  {
+   "id": "morality-06",
+   "domain": "morality",
+   "kind": "scale",
+   "prompt": "How much should loyalty to your people outweigh fairness to strangers?",
+   "anchors": [
+    "Not at all",
+    "Completely"
+   ]
+  },
+  {
+   "id": "morality-07",
+   "domain": "morality",
+   "kind": "choice",
+   "prompt": "Someone wronged you years ago and now apologizes sincerely. You…",
+   "options": [
+    "Forgive fully",
+    "Forgive but stay distant",
+    "Can't forgive"
+   ]
+  },
+  {
+   "id": "morality-08",
+   "domain": "morality",
+   "kind": "scale",
+   "prompt": "How guilty do you feel after small wrongs (a white lie, a broken minor promise)?",
+   "anchors": [
+    "Not at all",
+    "Very"
+   ]
+  },
+  {
+   "id": "morality-09",
+   "domain": "morality",
+   "kind": "choice",
+   "prompt": "Would you take a pill that made you perfectly honest forever?",
+   "options": [
+    "Yes",
+    "No"
+   ]
+  },
+  {
+   "id": "morality-10",
+   "domain": "morality",
+   "kind": "choice",
+   "prompt": "Justice or mercy, if you must choose?",
+   "options": [
+    "Justice",
+    "Mercy"
+   ]
+  },
+  {
+   "id": "money-01",
+   "domain": "money",
+   "kind": "choice",
+   "prompt": "An unexpected windfall of a month's income. You…",
+   "options": [
+    "Save it",
+    "Spend it on an experience",
+    "Buy something lasting",
+    "Give some away"
+   ]
+  },
+  {
+   "id": "money-02",
+   "domain": "money",
+   "kind": "scale",
+   "prompt": "How much do you think about money day to day?",
+   "anchors": [
+    "Almost never",
+    "Constantly"
+   ]
+  },
+  {
+   "id": "money-03",
+   "domain": "money",
+   "kind": "choice",
+   "prompt": "Which feels more like wealth?",
+   "options": [
+    "Owning things",
+    "Having free time",
+    "Having security",
+    "Being able to be generous"
+   ]
+  },
+  {
+   "id": "money-04",
+   "domain": "money",
+   "kind": "choice",
+   "prompt": "You split a bill with friends. You…",
+   "options": [
+    "Split evenly",
+    "Pay exactly your share",
+    "Often pay for everyone"
+   ]
+  },
+  {
+   "id": "money-05",
+   "domain": "money",
+   "kind": "scale",
+   "prompt": "How comfortable are you with debt?",
+   "anchors": [
+    "Not at all",
+    "Totally fine"
+   ]
+  },
+  {
+   "id": "money-06",
+   "domain": "money",
+   "kind": "choice",
+   "prompt": "Expensive item you want but don't need. You…",
+   "options": [
+    "Buy it",
+    "Wait a month and decide",
+    "Never buy it"
+   ]
+  },
+  {
+   "id": "money-07",
+   "domain": "money",
+   "kind": "choice",
+   "prompt": "Which hurts more?",
+   "options": [
+    "Losing money",
+    "Missing a gain"
+   ]
+  },
+  {
+   "id": "money-08",
+   "domain": "money",
+   "kind": "scale",
+   "prompt": "How much does your income define how you see yourself?",
+   "anchors": [
+    "Not at all",
+    "Very much"
+   ]
+  },
+  {
+   "id": "money-09",
+   "domain": "money",
+   "kind": "choice",
+   "prompt": "Lending money to a friend, you…",
+   "options": [
+    "Expect it back",
+    "Consider it a gift",
+    "Avoid lending"
+   ]
+  },
+  {
+   "id": "money-10",
+   "domain": "money",
+   "kind": "choice",
+   "prompt": "Your ideal home…",
+   "options": [
+    "Small and beautiful",
+    "Big and comfortable",
+    "Doesn't matter much",
+    "Somewhere I can move from easily"
+   ]
+  },
+  {
+   "id": "love-01",
+   "domain": "love",
+   "kind": "choice",
+   "prompt": "Which matters most in a partner?",
+   "options": [
+    "Understanding me",
+    "Excitement",
+    "Stability",
+    "Shared ambition",
+    "Kindness"
+   ]
+  },
+  {
+   "id": "love-02",
+   "domain": "love",
+   "kind": "scale",
+   "prompt": "How quickly do you fall for someone?",
+   "anchors": [
+    "Very slowly",
+    "Instantly"
+   ]
+  },
+  {
+   "id": "love-03",
+   "domain": "love",
+   "kind": "choice",
+   "prompt": "After a fight with someone you love, you usually…",
+   "options": [
+    "Reach out first",
+    "Wait for them",
+    "Need space for days"
+   ]
+  },
+  {
+   "id": "love-04",
+   "domain": "love",
+   "kind": "scale",
+   "prompt": "How much space do you need in a close relationship?",
+   "anchors": [
+    "None",
+    "A lot"
+   ]
+  },
+  {
+   "id": "love-05",
+   "domain": "love",
+   "kind": "choice",
+   "prompt": "How do you most show love?",
+   "options": [
+    "Words",
+    "Time together",
+    "Doing things for them",
+    "Gifts",
+    "Touch"
+   ]
+  },
+  {
+   "id": "love-06",
+   "domain": "love",
+   "kind": "choice",
+   "prompt": "You discover your partner read your private messages. You feel…",
+   "options": [
+    "Furious",
+    "Hurt",
+    "Understanding",
+    "Indifferent"
+   ]
+  },
+  {
+   "id": "love-07",
+   "domain": "love",
+   "kind": "scale",
+   "prompt": "How jealous do you tend to be?",
+   "anchors": [
+    "Never",
+    "Very"
+   ]
+  },
+  {
+   "id": "love-08",
+   "domain": "love",
+   "kind": "choice",
+   "prompt": "Would you rather love more or be loved more?",
+   "options": [
+    "Love more",
+    "Be loved more"
+   ]
+  },
+  {
+   "id": "love-09",
+   "domain": "love",
+   "kind": "choice",
+   "prompt": "A relationship that's comfortable but no longer alive. You…",
+   "options": [
+    "Try to revive it",
+    "End it",
+    "Stay for the comfort"
+   ]
+  },
+  {
+   "id": "love-10",
+   "domain": "love",
+   "kind": "scale",
+   "prompt": "How much do you believe in 'the one'?",
+   "anchors": [
+    "Not at all",
+    "Completely"
+   ]
+  },
+  {
+   "id": "conflict-01",
+   "domain": "conflict",
+   "kind": "choice",
+   "prompt": "Someone is rude to you in public. You…",
+   "options": [
+    "Call it out",
+    "Ignore it",
+    "Make a joke",
+    "Stew on it later"
+   ]
+  },
+  {
+   "id": "conflict-02",
+   "domain": "conflict",
+   "kind": "scale",
+   "prompt": "How long do you hold a grudge?",
+   "anchors": [
+    "Minutes",
+    "Years"
+   ]
+  },
+  {
+   "id": "conflict-03",
+   "domain": "conflict",
+   "kind": "choice",
+   "prompt": "In an argument you realize you're wrong. You…",
+   "options": [
+    "Admit it right away",
+    "Shift the topic",
+    "Concede later, privately",
+    "Keep arguing"
+   ]
+  },
+  {
+   "id": "conflict-04",
+   "domain": "conflict",
+   "kind": "scale",
+   "prompt": "How much do you enjoy a good debate?",
+   "anchors": [
+    "Hate it",
+    "Love it"
+   ]
+  },
+  {
+   "id": "conflict-05",
+   "domain": "conflict",
+   "kind": "choice",
+   "prompt": "Two friends are fighting and both want your support. You…",
+   "options": [
+    "Pick the one who's right",
+    "Stay neutral",
+    "Try to mediate",
+    "Avoid both for a while"
+   ]
+  },
+  {
+   "id": "conflict-06",
+   "domain": "conflict",
+   "kind": "choice",
+   "prompt": "When you're angry, people usually…",
+   "options": [
+    "Can't tell",
+    "See it on my face",
+    "Hear about it directly",
+    "Feel it later"
+   ]
+  },
+  {
+   "id": "conflict-07",
+   "domain": "conflict",
+   "kind": "scale",
+   "prompt": "How easily do you say no to people?",
+   "anchors": [
+    "Very hard",
+    "Very easy"
+   ]
+  },
+  {
+   "id": "conflict-08",
+   "domain": "conflict",
+   "kind": "choice",
+   "prompt": "Criticism of your work stings most when it's…",
+   "options": [
+    "Unfair",
+    "Fair",
+    "From someone I respect",
+    "In public"
+   ]
+  },
+  {
+   "id": "conflict-09",
+   "domain": "conflict",
+   "kind": "choice",
+   "prompt": "Someone you love keeps making the same mistake. You…",
+   "options": [
+    "Tell them bluntly",
+    "Hint",
+    "Let them learn",
+    "Fix it for them"
+   ]
+  },
+  {
+   "id": "conflict-10",
+   "domain": "conflict",
+   "kind": "scale",
+   "prompt": "How much does unresolved tension bother you?",
+   "anchors": [
+    "Not at all",
+    "Can't rest until it's fixed"
+   ]
+  },
+  {
+   "id": "time-01",
+   "domain": "time",
+   "kind": "choice",
+   "prompt": "Which part of the day feels most like yours?",
+   "options": [
+    "Early morning",
+    "Midday",
+    "Evening",
+    "Late night"
+   ]
+  },
+  {
+   "id": "time-02",
+   "domain": "time",
+   "kind": "scale",
+   "prompt": "How often do you think about the past?",
+   "anchors": [
+    "Rarely",
+    "Constantly"
+   ]
+  },
+  {
+   "id": "time-03",
+   "domain": "time",
+   "kind": "scale",
+   "prompt": "How often do you think about the future?",
+   "anchors": [
+    "Rarely",
+    "Constantly"
+   ]
+  },
+  {
+   "id": "time-04",
+   "domain": "time",
+   "kind": "choice",
+   "prompt": "Plans for the weekend are best when they're…",
+   "options": [
+    "Fully planned",
+    "Loosely sketched",
+    "Totally open"
+   ]
+  },
+  {
+   "id": "time-05",
+   "domain": "time",
+   "kind": "choice",
+   "prompt": "You'd rather have…",
+   "options": [
+    "One unforgettable day",
+    "A hundred good ordinary ones"
+   ]
+  },
+  {
+   "id": "time-06",
+   "domain": "time",
+   "kind": "scale",
+   "prompt": "How punctual are you?",
+   "anchors": [
+    "Always late",
+    "Always early"
+   ]
+  },
+  {
+   "id": "time-07",
+   "domain": "time",
+   "kind": "choice",
+   "prompt": "If you could know the date of your death, would you?",
+   "options": [
+    "Yes",
+    "No"
+   ]
+  },
+  {
+   "id": "time-08",
+   "domain": "time",
+   "kind": "choice",
+   "prompt": "Which feels like the biggest waste of time?",
+   "options": [
+    "Small talk",
+    "Waiting",
+    "Meetings",
+    "Doing nothing",
+    "Nothing is a waste"
+   ]
+  },
+  {
+   "id": "time-09",
+   "domain": "time",
+   "kind": "scale",
+   "prompt": "How patient are you with slow progress?",
+   "anchors": [
+    "Not at all",
+    "Endlessly"
+   ]
+  },
+  {
+   "id": "time-10",
+   "domain": "time",
+   "kind": "choice",
+   "prompt": "Ten years from now you'd most like to be…",
+   "options": [
+    "Somewhere new",
+    "Deeper where I am",
+    "Doing something I can't imagine yet"
+   ]
+  },
+  {
+   "id": "taste-01",
+   "domain": "taste",
+   "kind": "choice",
+   "prompt": "Which place calls to you?",
+   "options": [
+    "The sea",
+    "Mountains",
+    "A big city",
+    "A quiet village",
+    "A desert"
+   ]
+  },
+  {
+   "id": "taste-02",
+   "domain": "taste",
+   "kind": "choice",
+   "prompt": "Which do you return to most?",
+   "options": [
+    "Music",
+    "Books",
+    "Films",
+    "Games",
+    "Conversation"
+   ]
+  },
+  {
+   "id": "taste-03",
+   "domain": "taste",
+   "kind": "scale",
+   "prompt": "How much does beauty in your surroundings affect your mood?",
+   "anchors": [
+    "Not at all",
+    "Enormously"
+   ]
+  },
+  {
+   "id": "taste-04",
+   "domain": "taste",
+   "kind": "choice",
+   "prompt": "New restaurant: you order…",
+   "options": [
+    "What I know I'll like",
+    "The strangest thing",
+    "Whatever the server recommends"
+   ]
+  },
+  {
+   "id": "taste-05",
+   "domain": "taste",
+   "kind": "choice",
+   "prompt": "Which weather feels most like you?",
+   "options": [
+    "Bright sun",
+    "Rain",
+    "Storm",
+    "Fog",
+    "Snow"
+   ]
+  },
+  {
+   "id": "taste-06",
+   "domain": "taste",
+   "kind": "scale",
+   "prompt": "How much do you care about how you dress?",
+   "anchors": [
+    "Not at all",
+    "A lot"
+   ]
+  },
+  {
+   "id": "taste-07",
+   "domain": "taste",
+   "kind": "choice",
+   "prompt": "A gift you'd love most…",
+   "options": [
+    "Something handmade",
+    "Something useful",
+    "An experience",
+    "Something rare",
+    "A letter"
+   ]
+  },
+  {
+   "id": "taste-08",
+   "domain": "taste",
+   "kind": "choice",
+   "prompt": "Your space is usually…",
+   "options": [
+    "Minimal",
+    "Cozy and full",
+    "Chaotic",
+    "Changes all the time"
+   ]
+  },
+  {
+   "id": "taste-09",
+   "domain": "taste",
+   "kind": "scale",
+   "prompt": "How much do you enjoy art that confuses you?",
+   "anchors": [
+    "Not at all",
+    "Very much"
+   ]
+  },
+  {
+   "id": "taste-10",
+   "domain": "taste",
+   "kind": "choice",
+   "prompt": "Morning drink?",
+   "options": [
+    "Coffee",
+    "Tea",
+    "Water",
+    "Nothing",
+    "Something else"
+   ]
+  },
+  {
+   "id": "self-01",
+   "domain": "self",
+   "kind": "scale",
+   "prompt": "How well do you know yourself?",
+   "anchors": [
+    "Barely",
+    "Completely"
+   ]
+  },
+  {
+   "id": "self-02",
+   "domain": "self",
+   "kind": "choice",
+   "prompt": "Your biggest strength is closest to…",
+   "options": [
+    "My mind",
+    "My heart",
+    "My will",
+    "My humor",
+    "My patience"
+   ]
+  },
+  {
+   "id": "self-03",
+   "domain": "self",
+   "kind": "choice",
+   "prompt": "When you fail, your inner voice says…",
+   "options": [
+    "Try again",
+    "I knew it",
+    "Whatever, next",
+    "What did I learn?"
+   ]
+  },
+  {
+   "id": "self-04",
+   "domain": "self",
+   "kind": "scale",
+   "prompt": "How much has your personality changed in the last ten years?",
+   "anchors": [
+    "Not at all",
+    "Completely"
+   ]
+  },
+  {
+   "id": "self-05",
+   "domain": "self",
+   "kind": "choice",
+   "prompt": "Do you trust yourself more in the head or the gut?",
+   "options": [
+    "Head",
+    "Gut"
+   ]
+  },
+  {
+   "id": "self-06",
+   "domain": "self",
+   "kind": "scale",
+   "prompt": "How often do you feel misunderstood?",
+   "anchors": [
+    "Never",
+    "Almost always"
+   ]
+  },
+  {
+   "id": "self-07",
+   "domain": "self",
+   "kind": "choice",
+   "prompt": "Alone with your thoughts for a full day, no distractions. You feel…",
+   "options": [
+    "Peaceful",
+    "Restless",
+    "Creative",
+    "Anxious"
+   ]
+  },
+  {
+   "id": "self-08",
+   "domain": "self",
+   "kind": "choice",
+   "prompt": "Which would you rather be remembered for?",
+   "options": [
+    "What I built",
+    "How I treated people",
+    "What I discovered",
+    "How I lived"
+   ]
+  },
+  {
+   "id": "self-09",
+   "domain": "self",
+   "kind": "scale",
+   "prompt": "How much do you need to be special?",
+   "anchors": [
+    "Not at all",
+    "Deeply"
+   ]
+  },
+  {
+   "id": "self-10",
+   "domain": "self",
+   "kind": "choice",
+   "prompt": "You're given one more hour a day. You spend it…",
+   "options": [
+    "Working",
+    "With people",
+    "Alone",
+    "Sleeping",
+    "Learning"
+   ]
+  },
+  {
+   "id": "family-01",
+   "domain": "family",
+   "kind": "scale",
+   "prompt": "How much does your family of origin shape who you are today?",
+   "anchors": [
+    "Not at all",
+    "Entirely"
+   ]
+  },
+  {
+   "id": "family-02",
+   "domain": "family",
+   "kind": "choice",
+   "prompt": "With family, you're usually the…",
+   "options": [
+    "Peacemaker",
+    "Rebel",
+    "Responsible one",
+    "Joker",
+    "Outsider"
+   ]
+  },
+  {
+   "id": "family-03",
+   "domain": "family",
+   "kind": "choice",
+   "prompt": "A family obligation clashes with something you really want to do. You…",
+   "options": [
+    "Choose family",
+    "Choose what I want",
+    "Try to do both",
+    "Feel guilty either way"
+   ]
+  },
+  {
+   "id": "family-04",
+   "domain": "family",
+   "kind": "scale",
+   "prompt": "How close are you to the family you grew up with?",
+   "anchors": [
+    "Very distant",
+    "Very close"
+   ]
+  },
+  {
+   "id": "family-05",
+   "domain": "family",
+   "kind": "choice",
+   "prompt": "Which family value do you carry most?",
+   "options": [
+    "Hard work",
+    "Faith",
+    "Education",
+    "Loyalty",
+    "Independence",
+    "None, I rejected them"
+   ]
+  },
+  {
+   "id": "family-06",
+   "domain": "family",
+   "kind": "choice",
+   "prompt": "Would you want children (or more children)?",
+   "options": [
+    "Yes",
+    "No",
+    "Unsure",
+    "Already have them and that's enough"
+   ]
+  },
+  {
+   "id": "family-07",
+   "domain": "family",
+   "kind": "scale",
+   "prompt": "How much do you want to be like your parents?",
+   "anchors": [
+    "Not at all",
+    "Very much"
+   ]
+  },
+  {
+   "id": "family-08",
+   "domain": "family",
+   "kind": "choice",
+   "prompt": "Holidays with family feel…",
+   "options": [
+    "Warm",
+    "Obligatory",
+    "Complicated",
+    "Like home",
+    "Like a performance"
+   ]
+  },
+  {
+   "id": "family-09",
+   "domain": "family",
+   "kind": "choice",
+   "prompt": "If a parent needed full-time care, you'd…",
+   "options": [
+    "Care for them myself",
+    "Arrange professional care",
+    "Share it with siblings",
+    "Don't know"
+   ]
+  },
+  {
+   "id": "family-10",
+   "domain": "family",
+   "kind": "scale",
+   "prompt": "How much do you feel you owe your family?",
+   "anchors": [
+    "Nothing",
+    "Everything"
+   ]
+  },
+  {
+   "id": "change-01",
+   "domain": "change",
+   "kind": "choice",
+   "prompt": "You learn a deeply held belief of yours was wrong. You feel…",
+   "options": [
+    "Relieved",
+    "Embarrassed",
+    "Curious",
+    "Defensive"
+   ]
+  },
+  {
+   "id": "change-02",
+   "domain": "change",
+   "kind": "scale",
+   "prompt": "How much do you enjoy starting over?",
+   "anchors": [
+    "Dread it",
+    "Love it"
+   ]
+  },
+  {
+   "id": "change-03",
+   "domain": "change",
+   "kind": "choice",
+   "prompt": "What usually makes you change your mind?",
+   "options": [
+    "Evidence",
+    "Someone I trust",
+    "Experience",
+    "Time",
+    "I rarely change it"
+   ]
+  },
+  {
+   "id": "change-04",
+   "domain": "change",
+   "kind": "scale",
+   "prompt": "How attached are you to your habits?",
+   "anchors": [
+    "Not at all",
+    "Very"
+   ]
+  },
+  {
+   "id": "change-05",
+   "domain": "change",
+   "kind": "choice",
+   "prompt": "Moving to a new place, the first thing you do is…",
+   "options": [
+    "Explore",
+    "Unpack and settle",
+    "Find people",
+    "Find a routine"
+   ]
+  },
+  {
+   "id": "change-06",
+   "domain": "change",
+   "kind": "choice",
+   "prompt": "Which kind of growth do you want most right now?",
+   "options": [
+    "Inner peace",
+    "Skill",
+    "Love",
+    "Courage",
+    "Wisdom"
+   ]
+  },
+  {
+   "id": "change-07",
+   "domain": "change",
+   "kind": "scale",
+   "prompt": "How much do you believe people can fundamentally change?",
+   "anchors": [
+    "Not at all",
+    "Completely"
+   ]
+  },
+  {
+   "id": "change-08",
+   "domain": "change",
+   "kind": "choice",
+   "prompt": "An old friend says you've changed. You hear it as…",
+   "options": [
+    "A compliment",
+    "An insult",
+    "Just true",
+    "Depends on their tone"
+   ]
+  },
+  {
+   "id": "change-09",
+   "domain": "change",
+   "kind": "choice",
+   "prompt": "A door you thought was closed reopens. You…",
+   "options": [
+    "Walk through",
+    "Look first",
+    "Leave it closed"
+   ]
+  },
+  {
+   "id": "change-10",
+   "domain": "change",
+   "kind": "scale",
+   "prompt": "How much do you fear becoming someone you don't recognize?",
+   "anchors": [
+    "Not at all",
+    "Deeply"
+   ]
+  }
+ ]
+}

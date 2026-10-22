@@ -1,0 +1,7 @@
+__pycache__/
+*.egg-info/
+.pytest_cache/
+
+# Genesis output is the most personal data this project will ever hold.
+# It never goes into git.
+genesis_data/

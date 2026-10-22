@@ -20,10 +20,31 @@ This is a design blueprint, not an implementation.
 
 Readers coming from the conceptual essay can start here.
 
+## ANA v2: The Twin
+
+`docs/TWIN_PLAN.md` is the plan for v2: a digital twin with its own agency, living in a world behind any screen, influenced by its creator rather than controlled.
+
+### Genesis (seeding the twin)
+
+The first working piece. It gets your life on record and distills it into the twin's starting self.
+
+```bash
+pip install -e ".[dev]"
+export ANTHROPIC_API_KEY=...
+
+python -m ana.genesis battery     # 120 quick choices; no API calls
+python -m ana.genesis interview   # biographer interview, ~2-4 hours across sessions
+python -m ana.genesis distill     # → genesis_data/seed_self.json (add --corpus DIR for your own writing)
+python -m ana.genesis fidelity    # does the seed answer 24 held-out items like you?
+python -m ana.genesis status
+```
+
+Everything is resumable. Your answers stay in `genesis_data/`, which is git-ignored and owner-only.
+
 ## Status
 
 Version: v1.0  
 Scope: Architecture and system design  
-Implementation: Not yet started
+Implementation: v2 Genesis (Phase 0) in progress
 
 This document will evolve.
