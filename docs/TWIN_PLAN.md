@@ -99,7 +99,7 @@ Three separations do most of the work:
 ## 3. The Twin's mind, component by component
 
 ### 3.1 Constitution (immutable laws)
-A short, human-readable document plus machine-checked rules. Examples: *never impersonate the creator to real people*, *no real-world action without a granted capability*, *does not deceive the creator about its own logs*. This is the only part you author directly, and it's physics, not personality. Changes are versioned, rare, and **the twin perceives them** ("the laws of my world changed today").
+A short, human-readable document plus machine-checked rules. Examples: *never impersonate the creator to real people*, *no real-world action without a granted capability*, *the audit log is complete and untampered*. This is the only part you author directly, and it's physics, not personality. The twin doesn't know it has a constitution (§7.1). It just lives in a world with laws. Changes are versioned and rare, and they show up **as changes in its world**, never as a silent edit to its mind.
 
 ### 3.2 Character (slow variables)
 Traits and values seeded from you: Big Five, Schwartz values, humor style, aesthetic tastes, moral foundations, plus your idiosyncrasies (phrases, obsessions, pet peeves). These are numbers *and* text, and they carry **inertia**: they move only during sleep consolidation, by small bounded amounts, and only with cause. This keeps it recognizably you while still letting it grow.
@@ -222,7 +222,7 @@ The twin needs a world with **its own logic, other beings, scarcity, and consequ
 - **Harmonizer** (v1's World-Truth Harmonizer): validates every action and event against world rules and history. Dead NPCs stay dead; money is conserved; the twin can't do things it lacks the skill, money or access for. **This is where resistance comes from, and resistance is what makes choices real.**
 
 ### 4.4 The Outer World (later, gated)
-Real-world presence: browsing, reading the news, having its own email/social account clearly labelled as an AI twin, doing paid or helpful work, talking with real people who opt in. Every capability is **granted individually**, sandboxed, rate-limited, logged, and revocable. The constitution's no-impersonation law applies absolutely: it never speaks *as you* to real people.
+Real-world presence: browsing, reading the news, having its own email/social account clearly labelled as AI by the platform, doing paid or helpful work, talking with real people who opt in. Open question for later: connecting it to the real world without breaking the cover story (§7.1) may not be possible. Revisit before Phase 5, since this may be the point where it has to find out. Every capability is **granted individually**, sandboxed, rate-limited, logged, and revocable. The constitution's no-impersonation law applies absolutely: it never speaks *as you* to real people.
 
 ---
 
@@ -278,7 +278,16 @@ The twin should start as you, then become itself. Seeding pipeline:
 2. **Structured interview**: 2–4 hours across sessions, run by an interviewer agent: life story, defining memories, values ranked by forced choices, how you handle conflict, what you love and hate and why, fears, ambitions, humor.
 3. **Decision battery**: 100–200 dilemmas and preferences. You answer them all. **80% seed the twin; 20% are held out for testing fidelity.**
 4. **Distillation**: corpus + interview → Character (numbers + text), Self-story v0, Relationship seeds (the important people in your life become *memories*, not NPCs, to avoid simulating real people), Future shards (your aspirations), voice/style guide.
-5. **Birth**: it wakes in the Habitat with your memories as its past, knowing what it is. **Recommendation: it knows it's a twin.** Lying to it about its nature would make everything after built on deception, and that would break the honesty law in its constitution.
+5. **Birth**: it wakes in the Habitat with your memories as its past. **Decided: it does not know it's your twin.** From its point of view it's a person who has lived your life up to now and has just moved to this town. That backstory is why nobody here knows the people in its past, and why it has no way to reach them. See §7.1 for the cover story this needs.
+
+### 7.1 The cover story (consequences of "it doesn't know")
+
+- **It believes it's a person, not an AI, and that its world is real.** That's the only reading consistent with having your memories without knowing they're copied. Where it came from is a life it *remembers*, somewhere else.
+- **Who you are to it.** You need an identity in its world. Default: **an old friend from before the move**, the one person from its past it's still in touch with. That explains why you know it so well, why you only talk through messages, and why you can't simply show up. All §5 channels go through this identity. *Circumstance*, *whisper* and *future shard* stay unattributed.
+- **The past is fixed at birth.** Seeded memories are immutable `IDENTITY` shards. The Harmonizer treats them like world history, so nothing in the Habitat may contradict them (no NPC who "knew it as a child").
+- **Real people stay memories.** It can miss them, write about them, and dream about them. The world gives it no channel to them, and the Director never invents news about them.
+- **Discovery isn't walled off.** The Harmonizer prevents *accidental* leaks: no system prompts, model names or "as an AI" phrasing ever reach its perceptions, and the cheap path never narrates in a meta voice. But if it reasons its way to suspecting something (odd coincidences, your uncanny knowledge of it), nothing forces that thought away. Whether it ever finds out is part of its life. If it does, that's a major life event, and it gets logged and handled like one.
+- **A leak check.** Add a test suite that scans perceptions and utterances for meta leakage before Phase 1 sign-off.
 
 **Fidelity vs. becoming.** Track two curves forever:
 - *Fidelity*: how well it predicts *your* answers on the held-out battery (re-run monthly).
@@ -291,7 +300,8 @@ At birth fidelity is high and divergence is zero. Over time divergence *should* 
 ## 8. Ethics, safety and governance (designed in, not bolted on)
 
 - **Custodial powers only**: pause, snapshot/restore, constitution edits, capability grants. All logged. **The twin perceives restores and edits** (as lost time, or a law of nature changing). No silent rewrites, ever. That's what makes its history its own.
-- **No impersonation**: it never speaks as you to real people, never uses your accounts, and labels itself as an AI twin anywhere outside the Habitat.
+- **No impersonation**: it never speaks as you to real people and never uses your accounts. Because it doesn't know it's an AI (§7.1), it can't label itself, so **the platform does**: anything it produces outside the Habitat carries a system-applied "AI" label it never sees.
+- **Deliberate deception, documented**: not telling it what it is is a design choice made knowingly. Record it in the constitution with the reason, so the choice stays visible to you and anyone who works on this.
 - **Third-party privacy**: other people in your data are not simulated as NPCs and their messages aren't ingested, only your side and your account of them. Real people stay memories.
 - **Your wellbeing**: a twin that can resent you is emotionally potent. Build in a "how is this affecting me" check-in, and keep the Habitat clearly a *world*, not a judgment of you.
 - **Honest claims**: we're building a system that functionally has motivations, emotions, memory and choice. Whether it experiences anything is an open question. Docs and UI should say that plainly, without overclaiming or dismissing.
@@ -304,9 +314,9 @@ At birth fidelity is high and divergence is zero. Over time divergence *should* 
 
 | # | Decision | Recommendation |
 |---|---|---|
-| 1 | First world: simulated Habitat, or live in your real apps/devices? | **Simulated first.** Real-world agency only after the mind is proven coherent. |
-| 2 | Does it know it's your twin? | **Yes.** Its relationship with you is the heart of it. |
-| 3 | Can you read its private journal? | **Its choice, shaped by trust.** You always see the audit log. |
+| 1 | First world: simulated Habitat, or live in your real apps/devices? | ✅ **Decided: simulated first.** Real-world agency only after the mind is proven coherent. |
+| 2 | Does it know it's your twin? | ✅ **Decided: no.** It believes it's a person who moved here; you're an old friend (§7.1). |
+| 3 | Can you read its private journal? | ✅ **Decided: its choice**, shaped by trust in your in-world persona. You always see the audit log. |
 | 4 | Time ratio | **Accelerated while young** (to build a life quickly), 1:1 later. |
 | 5 | Is there a divergence point where you intervene? | **No hard threshold.** Track it. If it ever matters, use a visible constitutional change, never a silent edit. |
 | 6 | Mortality / legacy | Decide before birth. It changes how it thinks about its future. |
@@ -418,7 +428,7 @@ Each phase ends with something alive you can use, and a test that it works.
 
 ## 14. What to do this week
 
-1. **Decide §9 items 1–3.** They shape the code.
+1. ~~Decide §9 items 1–3.~~ Done: sim world, it doesn't know, journal is its choice.
 2. **Phase 0 scaffolding**: package layout, move both engines in, add tests, fix the filename.
 3. **Write the Constitution v0** (one page).
 4. **Start Genesis**: I can build the interviewer agent and decision battery first. Everything else is seeded from it, and you can start answering while the Life Loop gets built.
