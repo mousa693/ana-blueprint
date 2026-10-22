@@ -5,3 +5,6 @@ __pycache__/
 # Genesis output is the most personal data this project will ever hold.
 # It never goes into git.
 genesis_data/
+
+# Lives run locally.
+life_data/

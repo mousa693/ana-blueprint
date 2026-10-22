@@ -1132,17 +1132,22 @@ class MCMG:
             await self._persist_node(n)
         return True
 
-    async def decay(self) -> Dict[str, Any]:
+    async def decay(self, elapsed: Optional[float] = None) -> Dict[str, Any]:
         """
         Apply ANA‑aware tiered decay to all active nodes.  Omega decays fast,
         Alpha medium, Prime slow, Identity almost never.  Also decays
         association weights and prunes low‑confidence memories.  Periodically
         refits the embedder based on the current corpus.  Returns a summary.
+
+        ``elapsed`` is the time since the last decay in whatever unit the
+        caller's clock runs on (a simulated world passes world hours).  When
+        omitted, wall‑clock seconds since the previous call are used.
         """
         persist_nodes: List[MemoryNode] = []
         now = time.time()
         async with self._lock:
-            elapsed = now - self._last_decay
+            if elapsed is None:
+                elapsed = now - self._last_decay
             self._last_decay = now
             for node in list(self._nodes.values()):
                 if node.status == MemoryStatus.ARCHIVED:

@@ -41,10 +41,26 @@ python -m ana.genesis status
 
 Everything is resumable. Your answers stay in `genesis_data/`, which is git-ignored and owner-only.
 
+### The Life Loop (the twin, living)
+
+The twin's mind (drives, feelings, relationships, goals it sets itself, memory, temperament) living in a small coastal town with four neighbours, weather, money and bad luck. Runs offline; no API key needed.
+
+```bash
+python -m ana.life run --days 14                                  # a fictional demo twin, Rui
+python -m ana.life run --seed genesis_data/seed_self.json         # yours, once Genesis is done
+python -m ana.life run --influence my_nudges.json                 # message, gift, shape its world
+python -m ana.life run --narrator claude                          # journal and letters in its own voice
+python -m ana.life experiment                                     # does influence work without controlling?
+```
+
+Each run writes `life_data/run/`: `summary.md` (agency metrics and the Phase 1 exit criteria), one page per day with its journal and every choice it made and why, its letters to you, and the full decision and world event logs.
+
+Layout: `ana/mind` (the twin), `ana/world` (the Habitat and its rules), `ana/gateway.py` (your only way in), `ana/life` (the loop, narration, reports), `ana/memory` (MCMG), `ana/temperament` (Pi-Phi and the explore/consolidate regulator).
+
 ## Status
 
 Version: v1.0  
 Scope: Architecture and system design  
-Implementation: v2 Genesis (Phase 0) in progress
+Implementation: v2 Phase 0 (Genesis) built; Phase 1 Life Loop first version built
 
 This document will evolve.

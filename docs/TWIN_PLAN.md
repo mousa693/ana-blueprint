@@ -351,6 +351,23 @@ At birth fidelity is high and divergence is zero. Over time divergence *should* 
 
 Each phase ends with something alive you can use, and a test that it works.
 
+### Progress (updated as work lands)
+
+**Built**
+- *Phase 0:* Genesis (`python -m ana.genesis`): battery, interview, distillation, leak scan, fidelity test. MCMG and Pi-Phi moved into the package (`ana/memory`, `ana/temperament`); MCMG decay now runs on world time instead of wall-clock seconds.
+- *Phase 1, first version* (`python -m ana.life`): drives, appraisal and mood, relationships with negativity bias, goals it sets and abandons itself, utility-scored choice with every decision logged with its reasons and alternatives, cheap path, sleep consolidation into MCMG, the temperament regulator. A coastal town with 4 neighbours who have their own schedules, moods and memory of the twin; work, rent, weather, fate; the Harmonizer. Offline narrator, plus an optional Claude narrator on a daily budget that falls back to the template if a leak is detected. A 14-day unattended run passes 4 of the 5 exit criteria. The fifth (contradiction-free self-story) needs reflection by the language model and isn't measured yet.
+- *Phase 2, early:* the gateway (message, gift, circumstance, whisper) with cooldowns; reactance when it's pushed too often; unasked help that stings for an autonomy-driven twin. Influence experiment: a suggestion raises the chance of an action from ~12% to ~30% for a proud, autonomy-driven twin and from ~15% to ~79% for a compliant one. It moves the twin without deciding for it, and how much depends on who the twin is.
+
+**Not yet**
+- Persistence: a life runs in one process. Snapshot/resume is the next step toward running 24/7.
+- Beliefs (world model) and self-story revision by reflection; contradiction checks.
+- Skill library (Phase 3); Pi-Phi generalized to per-domain surprise.
+- Postgres + pgvector, real embeddings (MCMG still uses hashed TF-IDF).
+- NPCs are lighter than planned (4, without drives of their own); there's one employer, so the twin can't yet choose a vocation.
+- Screens: Telegram, inspector UI.
+- The tuning constants are hand-set against the fictional demo twin; recalibrate on the first real seed.
+- Nothing has run against the live Claude API yet (no credentials in the build environment).
+
 ### Phase 0 — Foundations (2–3 weeks)
 - Restructure repo into a package (`ana/memory`, `ana/temperament`, `ana/mind`, `ana/world`, `ana/gateway`, `ana/presence`); rename `mcmg_ana v3.py` → `ana/memory/mcmg.py` (the space in the filename blocks imports).
 - Tests for MCMG and Pi-Phi; fix sync SQLite inside async calls; Postgres + pgvector storage adapter; real embedder.
