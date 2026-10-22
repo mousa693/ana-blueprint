@@ -356,10 +356,11 @@ Each phase ends with something alive you can use, and a test that it works.
 **Built**
 - *Phase 0:* Genesis (`python -m ana.genesis`): battery, interview, distillation, leak scan, fidelity test. MCMG and Pi-Phi moved into the package (`ana/memory`, `ana/temperament`); MCMG decay now runs on world time instead of wall-clock seconds.
 - *Phase 1, first version* (`python -m ana.life`): drives, appraisal and mood, relationships with negativity bias, goals it sets and abandons itself, utility-scored choice with every decision logged with its reasons and alternatives, cheap path, sleep consolidation into MCMG, the temperament regulator. A coastal town with 4 neighbours who have their own schedules, moods and memory of the twin; work, rent, weather, fate; the Harmonizer. Offline narrator, plus an optional Claude narrator on a daily budget that falls back to the template if a leak is detected. A 14-day unattended run passes 4 of the 5 exit criteria. The fifth (contradiction-free self-story) needs reflection by the language model and isn't measured yet.
+- *Persistence and memory:* every run saves a snapshot, and `--resume` continues the same life; resuming gives exactly the same life as running straight through (tested). Memory runs on a defined clock (one MCMG unit = 4 world hours): detail lasts about a week, day summaries a few weeks, significant moments and week summaries months. The journal notices when today echoes an older memory.
 - *Phase 2, early:* the gateway (message, gift, circumstance, whisper) with cooldowns; reactance when it's pushed too often; unasked help that stings for an autonomy-driven twin. Influence experiment: a suggestion raises the chance of an action from ~12% to ~30% for a proud, autonomy-driven twin and from ~15% to ~79% for a compliant one. It moves the twin without deciding for it, and how much depends on who the twin is.
 
 **Not yet**
-- Persistence: a life runs in one process. Snapshot/resume is the next step toward running 24/7.
+- A daemon that runs the life continuously in real time (snapshots make it possible; nothing runs it yet).
 - Beliefs (world model) and self-story revision by reflection; contradiction checks.
 - Skill library (Phase 3); Pi-Phi generalized to per-domain surprise.
 - Postgres + pgvector, real embeddings (MCMG still uses hashed TF-IDF).

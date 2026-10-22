@@ -5,6 +5,7 @@ Run a life.
     python -m ana.life run --seed genesis_data/seed_self.json --days 14
     python -m ana.life run --influence plan.json           with scripted influence (see below)
     python -m ana.life run --narrator claude               journal and letters in its own voice
+    python -m ana.life run --resume life_data/run --days 7  keep living a saved life (every run saves one)
     python -m ana.life experiment                          does influence work without controlling?
 
 An influence script is a JSON list, each entry one of:
@@ -28,6 +29,9 @@ from .demo import demo_seed
 from .loop import Life
 from .narrator import ClaudeNarrator
 from .report import write
+
+
+DEFAULT_OUT = "life_data/run"
 
 
 def load_seed(path: Path | None) -> SeedSelf:
@@ -54,9 +58,14 @@ def apply_influence(life: Life, script: List[Dict]) -> None:
 
 
 async def run_life(seed: SeedSelf, days: int, world_seed: int, out: Path | None, script: List[Dict],
-                   narrator=None) -> Life:
-    life = Life(seed, world_seed=world_seed, out_dir=out, narrator=narrator)
+                   narrator=None, resume: Path | None = None) -> Life:
+    if resume:
+        life = await Life.load(resume / "snapshot", out_dir=out, narrator=narrator)
+    else:
+        life = Life(seed, world_seed=world_seed, out_dir=out, narrator=narrator)
     await life.run(days, before_tick=lambda l: apply_influence(l, script))
+    if out:
+        await life.save(out / "snapshot")
     life.close()
     return life
 
@@ -69,11 +78,12 @@ def cmd_run(args: argparse.Namespace) -> int:
         from ..llm import LLM
 
         narrator = ClaudeNarrator(LLM(), calls_per_day=args.llm_calls_per_day)
-    out = Path(args.out)
-    life = asyncio.run(run_life(seed, args.days, args.world_seed, out, script, narrator))
+    resume = Path(args.resume) if args.resume else None
+    out = Path(args.out) if not resume or args.out != DEFAULT_OUT else resume
+    life = asyncio.run(run_life(seed, args.days, args.world_seed, out, script, narrator, resume))
     s = write(life, out)
     print((out / "summary.md").read_text())
-    print(f"Wrote {out}/ (summary.md, days/, letters.md, decisions.jsonl, world_events.jsonl)")
+    print(f"Wrote {out}/ (summary.md, days/, letters.md, decisions.jsonl, world_events.jsonl, snapshot/)")
     return 0 if all(s["phase1"].values()) else 2
 
 
@@ -104,7 +114,8 @@ def main(argv: list[str] | None = None) -> int:
     run.add_argument("--seed", type=Path, help="seed_self.json from Genesis (default: the fictional demo twin)")
     run.add_argument("--days", type=int, default=14)
     run.add_argument("--world-seed", type=int, default=7, help="same number, same world")
-    run.add_argument("--out", default="life_data/run")
+    run.add_argument("--out", default=DEFAULT_OUT)
+    run.add_argument("--resume", help="a previous run's directory; continues that life")
     run.add_argument("--influence", help="JSON influence script")
     run.add_argument("--narrator", choices=["template", "claude"], default="template")
     run.add_argument("--llm-calls-per-day", type=int, default=3)

@@ -14,6 +14,7 @@ Each 30-minute tick:
 from __future__ import annotations
 
 import json
+import pickle
 import random
 from dataclasses import asdict
 from pathlib import Path
@@ -26,6 +27,10 @@ from ..mind.mind import Activity, Mind
 from ..world.town import ACTIONS_BY_KIND, TICKS_PER_HOUR
 from ..world.world import Option, Outcome, World
 from .narrator import Narrator, TemplateNarrator, day_facts
+
+
+SNAPSHOT_VERSION = 1
+LIFE_FIELDS = ("journal", "letters", "awake_day", "ticks", "deliberations", "collapses", "timeline", "_born")
 
 
 class Life:
@@ -53,13 +58,58 @@ class Life:
         self.timeline: Dict[tuple[int, int], str] = {}  # (day, hour) → what it was doing
         self._born = False
 
-    def _open(self, name: str) -> Optional[TextIO]:
+    def _open(self, name: str, mode: str = "w") -> Optional[TextIO]:
         if not self.out_dir:
             return None
         self.out_dir.mkdir(parents=True, exist_ok=True)
-        f = open(self.out_dir / name, "w", encoding="utf-8")
+        f = open(self.out_dir / name, mode, encoding="utf-8")
         self._files.append(f)
         return f
+
+    # ── persistence ───────────────────────────────────────────────────────
+
+    async def save(self, path: Path) -> None:
+        """Snapshot the whole life: world, mind, memory, journal.  Resume with ``Life.load``.
+
+        The snapshot is a pickle tied to this code version (plus MCMG's own JSON).
+        It is a checkpoint, not an archive; the event logs are the durable record.
+        """
+        path = Path(path)
+        path.mkdir(parents=True, exist_ok=True)
+        memory_file = path / "memory.json"
+        memory_file.unlink(missing_ok=True)
+        await self.mind.memory.save(str(memory_file))
+        if not memory_file.exists():
+            raise RuntimeError(f"memory snapshot failed to write to {memory_file}")
+        state = {
+            "version": SNAPSHOT_VERSION,
+            "world": self.world,
+            "mind": self.mind,
+            "gateway": self.gateway,
+            "life": {k: getattr(self, k) for k in LIFE_FIELDS},
+        }
+        tmp = path / "life.pkl.tmp"
+        tmp.write_bytes(pickle.dumps(state))
+        tmp.replace(path / "life.pkl")
+
+    @classmethod
+    async def load(cls, path: Path, out_dir: Optional[Path] = None, narrator: Optional[Narrator] = None) -> "Life":
+        """Resume a saved life.  New events and decisions are appended to ``out_dir``'s logs."""
+        path = Path(path)
+        state = pickle.loads((path / "life.pkl").read_bytes())
+        if state["version"] != SNAPSHOT_VERSION:
+            raise ValueError(f"snapshot version {state['version']} != {SNAPSHOT_VERSION}")
+        life = cls.__new__(cls)
+        life.out_dir = Path(out_dir) if out_dir else None
+        life._files = []
+        life.world, life.mind, life.gateway = state["world"], state["mind"], state["gateway"]
+        life.world._log_file = life._open("world_events.jsonl", "a")
+        life._decision_log = life._open("decisions.jsonl", "a")
+        life.narrator = narrator or TemplateNarrator()
+        for k, v in state["life"].items():
+            setattr(life, k, v)
+        await life.mind.memory.load(str(path / "memory.json"))
+        return life
 
     def close(self) -> None:
         for f in self._files:
@@ -135,5 +185,7 @@ class Life:
         day = self.awake_day
         if day in self.journal or 10 <= w.hour < 20:
             return  # a daytime collapse or a nap; the day isn't over
-        await m.sleep(day)
-        self.journal[day] = self.narrator.journal(m, day, day_facts(m, day, w.weather, w.body.money))
+        night = await m.sleep(day)
+        facts = day_facts(m, day, w.weather, w.body.money)
+        facts["echo"] = night["echo"]
+        self.journal[day] = self.narrator.journal(m, day, facts)

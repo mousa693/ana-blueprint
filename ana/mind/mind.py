@@ -26,6 +26,11 @@ SALIENT_KINDS = {"approached", "message", "gift", "circumstance", "loss", "windf
 SURPRISING_KINDS = {"approached", "circumstance", "loss", "windfall", "work_cut", "festival"}
 UNREMARKABLE = {"sleep", "rest", "go", "coffee", "cook", "buy_food", "message_friend"}
 
+# MCMG decay rates are per unit; one unit = 4 world hours.  Detail (Omega) lasts about a week,
+# day summaries (Alpha) a few weeks, significant moments and week summaries (Prime) months.
+MEMORY_UNITS_PER_DAY = 6.0
+SIGNIFICANT = 0.6  # moments at least this intense go straight to Prime
+
 # How hard a suggestion from someone trusted pulls, and how much a need for autonomy resists it.
 SUGGESTION_PULL = 0.22
 AUTONOMY_RESISTANCE = 0.6
@@ -121,6 +126,15 @@ class Mind:
         self.hates = [a.thing.lower() for a in seed.hates]
         self._goal_seq = 0
         self._seed_goals()
+
+    def __getstate__(self) -> Dict:
+        state = self.__dict__.copy()
+        del state["memory"]  # MCMG snapshots itself as JSON (Life.save)
+        return state
+
+    def __setstate__(self, state: Dict) -> None:
+        self.__dict__.update(state)
+        self.memory = MCMG()
 
     # ── birth ─────────────────────────────────────────────────────────────
 
@@ -440,19 +454,51 @@ class Mind:
     async def sleep(self, day: int) -> Dict:
         """Consolidate the day: remember what mattered, let the rest fade, rethink goals."""
         rec = self.day_record(day)
-        moments = sorted(rec.moments, key=lambda m: -m["intensity"])
+        moments, seen = [], set()
+        for m in sorted(rec.moments, key=lambda m: -m["intensity"]):
+            if m["text"] not in seen:
+                seen.add(m["text"])
+                moments.append(m)
+        echo = await self._echo(moments, day)
         for m in moments[:8]:
+            significant = m["intensity"] >= SIGNIFICANT
             await self.memory.add({"text": m["text"], "valence": m["valence"], "day": day},
-                                  tags={f"day:{day}", "episodic"}, origin=CoreOrigin.OMEGA,
+                                  tags={f"day:{day}", "episodic", *(["significant"] if significant else [])},
+                                  origin=CoreOrigin.PRIME if significant else CoreOrigin.OMEGA,
                                   confidence=clamp(0.35 + 0.5 * m["intensity"]), entropy=0.3)
         if moments:
             summary = " ".join(m["text"] for m in moments[:3])
             await self.memory.add({"text": f"Day {day}: {summary}", "day": day},
                                   tags={f"day:{day}", "summary"}, origin=CoreOrigin.ALPHA,
-                                  confidence=0.6, entropy=0.2)
-        await self.memory.decay(elapsed=24.0)
+                                  confidence=0.7, entropy=0.2)
+        if day % 7 == 0:
+            await self._remember_week(day)
+        await self.memory.decay(elapsed=MEMORY_UNITS_PER_DAY)
         self._rethink_goals(day)
-        return {"day": day, "moments": moments}
+        return {"day": day, "moments": moments, "echo": echo}
+
+    async def _echo(self, moments: List[Dict], day: int) -> Optional[str]:
+        """Does today remind me of something?  Older memories only, never today's."""
+        if not moments:
+            return None
+        results = await self.memory.recall(moments[0]["text"], top_k=3)
+        for r in results:
+            content = r.node.content if isinstance(r.node.content, dict) else {"text": str(r.node.content)}
+            if content.get("day") != day and r.score > 0.15:
+                text = re.sub(r"^(Day|Week) \d+: ", "", content["text"])
+                return re.split(r"(?<=[.!?]) ", text)[0]
+        return None
+
+    async def _remember_week(self, day: int) -> None:
+        week = [self.days[d] for d in range(day - 6, day + 1) if d in self.days]
+        best = list({m["text"]: m for m in sorted((m for r in week for m in r.moments),
+                                                   key=lambda m: m["intensity"])}.values())[::-1][:3]
+        people = [r.name for w, r in self.relationships.items() if w != "friend" and r.affection > 0.3]
+        text = f"Week {day // 7}: " + " ".join(m["text"] for m in best)
+        if people:
+            text += f" Getting close to {', '.join(people)}."
+        await self.memory.add({"text": text, "day": day}, tags={"week", "summary"}, origin=CoreOrigin.PRIME,
+                              confidence=0.8, entropy=0.15)
 
     def _rethink_goals(self, day: int) -> None:
         rec = self.day_record(day)

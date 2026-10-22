@@ -50,6 +50,7 @@ python -m ana.life run --days 14                                  # a fictional 
 python -m ana.life run --seed genesis_data/seed_self.json         # yours, once Genesis is done
 python -m ana.life run --influence my_nudges.json                 # message, gift, shape its world
 python -m ana.life run --narrator claude                          # journal and letters in its own voice
+python -m ana.life run --resume life_data/run --days 7            # keep living the same life
 python -m ana.life experiment                                     # does influence work without controlling?
 ```
 

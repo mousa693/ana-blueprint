@@ -102,3 +102,39 @@ def test_claude_narrator_budget_and_leak_fallback():
     assert "program" not in second and second.startswith("Day 5")
     assert third.startswith("Day 5") and len(llm.calls) == 2
     assert "Rui" in llm.calls[0]["system"]
+
+
+def test_resume_continues_the_same_life(tmp_path):
+    async def go():
+        straight = Life(demo_seed(), world_seed=7)
+        await straight.run(9)
+        first = Life(demo_seed(), world_seed=7)
+        await first.run(4)
+        await first.save(tmp_path / "snap")
+        resumed = await Life.load(tmp_path / "snap")
+        await resumed.run(5)
+        return straight, resumed
+
+    straight, resumed = asyncio.run(go())
+    assert [d.chosen for d in straight.mind.decisions] == [d.chosen for d in resumed.mind.decisions]
+    assert straight.journal == resumed.journal
+    assert len(resumed.mind.memory) == len(straight.mind.memory)
+
+
+def test_it_remembers_its_life_here_not_just_its_past():
+    life = live(28)
+    nodes = list(life.mind.memory)
+    weeks = [n for n in nodes if "week" in n.tags]
+    assert len(weeks) == 4
+    assert any(n.origin == CoreOrigin.ALPHA for n in nodes)
+    assert any("reminded me" in j for j in life.journal.values())
+
+
+def test_cli_resume_appends_to_the_same_life(tmp_path):
+    out = tmp_path / "run"
+    assert main(["run", "--days", "7", "--out", str(out)]) in (0, 2)
+    first = sum(1 for _ in open(out / "decisions.jsonl"))
+    assert main(["run", "--resume", str(out), "--days", "7"]) == 0
+    s = json.loads((out / "summary.json").read_text())
+    assert s["days"] == 14
+    assert sum(1 for _ in open(out / "decisions.jsonl")) == s["decisions"] > first

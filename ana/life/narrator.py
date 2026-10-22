@@ -74,6 +74,8 @@ class TemplateNarrator:
         lines = [f"Day {day}. {f['weather'].capitalize()}. Feeling {f['mood']}."]
         lines += f["best"][:2]
         lines += f["worst"][:1]
+        if f.get("echo"):
+            lines.append(f"It reminded me of something: {_lower_first(f['echo'])}")
         for name, stance in f["people"][:2]:
             lines.append(f"{name}: {_stance_phrase(stance)}")
         for g in f["goals_started"]:
@@ -98,6 +100,12 @@ class TemplateNarrator:
             parts.append(f"You said I should {mind.action_label(f['suggested'][0])}. Maybe.")
         parts.append(f["longing"])
         return " ".join(parts)
+
+
+def _lower_first(text: str) -> str:
+    if text.startswith(("Day ", "Week ", "I ", "I'")):
+        return text
+    return text[0].lower() + text[1:]
 
 
 def _stance_phrase(stance: str) -> str:

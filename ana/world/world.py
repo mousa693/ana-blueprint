@@ -141,6 +141,11 @@ class World:
         self.active: Dict[str, Dict] = {}  # circumstance id → {"until": day, ...}
         self.discoveries: List[str] = []
 
+    def __getstate__(self) -> Dict:
+        state = self.__dict__.copy()
+        state["_log_file"] = None  # reattached on resume
+        return state
+
     # ── time ───────────────────────────────────────────────────────────────
 
     @property
