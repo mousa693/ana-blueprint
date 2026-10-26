@@ -1,0 +1,12 @@
+{
+  "name": "hieroglyph-translator",
+  "version": "0.1.0",
+  "description": "Scan ancient Egyptian hieroglyphs with your camera and get a translation.",
+  "type": "module",
+  "private": true,
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test test/*.test.js"
+  }
+}

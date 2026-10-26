@@ -1,0 +1,136 @@
+:root {
+  --bg: #f6f0e4;
+  --surface: #fffaf0;
+  --surface-2: #efe5d2;
+  --text: #2a2118;
+  --muted: #7a6a55;
+  --border: #e0d3bb;
+  --accent: #b5651d;
+  --accent-text: #ffffff;
+  --lapis: #1f4e8c;
+  --good: #3c7a3a;
+  --warn: #b07b10;
+  --bad: #a83a2a;
+  --glyph-font: 'Noto Sans Egyptian Hieroglyphs', 'Segoe UI Historic', sans-serif;
+  --radius: 14px;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #17130f;
+    --surface: #211b15;
+    --surface-2: #2c241c;
+    --text: #f1e7d6;
+    --muted: #a9987f;
+    --border: #3a3027;
+    --accent: #e0953f;
+    --accent-text: #1a140e;
+    --lapis: #7aa7e6;
+    --good: #7cc178;
+    --warn: #e2b04a;
+    --bad: #ec7d6b;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #17130f; --surface: #211b15; --surface-2: #2c241c; --text: #f1e7d6; --muted: #a9987f;
+  --border: #3a3027; --accent: #e0953f; --accent-text: #1a140e; --lapis: #7aa7e6;
+  --good: #7cc178; --warn: #e2b04a; --bad: #ec7d6b; color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font: 16px/1.5 Inter, system-ui, sans-serif;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 0 16px calc(24px + env(safe-area-inset-bottom));
+}
+.glyph, .brand-glyph, .empty-glyphs, .glyph-input, .key, .sign-glyph { font-family: var(--glyph-font); }
+
+.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 18px 0 10px; }
+.brand { display: flex; align-items: center; gap: 12px; }
+.brand-glyph { font-size: 40px; color: var(--lapis); line-height: 1; }
+h1 { font: 600 26px/1.1 'Cormorant Garamond', Georgia, serif; margin: 0; letter-spacing: .01em; }
+.sub { margin: 2px 0 0; color: var(--muted); font-size: 14px; }
+.badge { font-size: 12px; padding: 4px 10px; border-radius: 999px; background: var(--surface-2); color: var(--muted); white-space: nowrap; }
+.badge.demo { background: var(--warn); color: #1a140e; }
+
+.tabs { display: flex; gap: 4px; background: var(--surface-2); padding: 4px; border-radius: 12px; margin: 8px 0 16px; position: sticky; top: 0; z-index: 5; }
+.tab { flex: 1; border: 0; background: none; color: var(--muted); font: 500 14px Inter, sans-serif; padding: 9px 4px; border-radius: 9px; cursor: pointer; }
+.tab.active { background: var(--surface); color: var(--text); box-shadow: 0 1px 2px rgb(0 0 0 / .08); }
+
+.panel[hidden] { display: none; }
+
+.viewer { position: relative; background: var(--surface); border: 1px dashed var(--border); border-radius: var(--radius); aspect-ratio: 4 / 3; overflow: hidden; display: grid; place-items: center; }
+.viewer video, .viewer img { width: 100%; height: 100%; object-fit: contain; background: #000; }
+.viewer-empty { text-align: center; color: var(--muted); padding: 24px; }
+.empty-glyphs { font-size: 48px; color: var(--accent); opacity: .8; letter-spacing: .2em; }
+
+.actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+.actions .btn { flex: 1 1 140px; }
+.btn { display: inline-flex; justify-content: center; align-items: center; gap: 6px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font: 600 15px Inter, sans-serif; padding: 12px 16px; border-radius: 12px; cursor: pointer; min-height: 46px; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.btn.wide { width: 100%; margin-top: 8px; }
+.link { background: none; border: 0; color: var(--accent); font: 500 14px Inter, sans-serif; cursor: pointer; padding: 4px; }
+
+.hint summary { cursor: pointer; color: var(--muted); font-size: 14px; padding: 4px 0; }
+input[type="text"], input[type="search"], textarea {
+  width: 100%; font: inherit; color: var(--text); background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; padding: 12px 14px; margin-top: 6px;
+}
+textarea.glyph-input { font-size: 26px; line-height: 1.4; resize: vertical; }
+.tip, .muted { color: var(--muted); font-size: 13px; }
+.label { font-size: 13px; font-weight: 600; color: var(--muted); }
+
+.keyboard-head { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; }
+.keyboard { display: grid; grid-template-columns: repeat(auto-fill, minmax(48px, 1fr)); gap: 6px; max-height: 260px; overflow-y: auto; padding: 6px 0; }
+.key { font-size: 26px; height: 52px; border: 1px solid var(--border); background: var(--surface); color: var(--text); border-radius: 10px; cursor: pointer; }
+.key:active { background: var(--surface-2); }
+
+.filters { display: flex; gap: 6px; flex-wrap: wrap; margin: 10px 0; }
+.chip { border: 1px solid var(--border); background: var(--surface); color: var(--muted); border-radius: 999px; padding: 6px 12px; font: 500 13px Inter, sans-serif; cursor: pointer; }
+.chip.active { background: var(--text); color: var(--bg); border-color: var(--text); }
+.sign-list { display: grid; gap: 8px; }
+.sign { display: grid; grid-template-columns: 56px 1fr; gap: 12px; align-items: center; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; }
+.sign-glyph { font-size: 36px; text-align: center; color: var(--lapis); }
+.sign-title { font-weight: 600; }
+.sign-title code { font-size: 12px; color: var(--muted); font-weight: 500; margin-left: 6px; }
+.sign-meta { font-size: 14px; color: var(--muted); }
+
+.result { margin-top: 20px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; }
+.result h2 { font: 600 13px Inter, sans-serif; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 18px 0 6px; }
+.result h2:first-child { margin-top: 0; }
+.translation { font: 600 24px/1.3 'Cormorant Garamond', Georgia, serif; margin: 0; }
+.translit { font-style: italic; font-size: 18px; margin: 0; }
+.gloss { font-size: 14px; color: var(--muted); margin: 4px 0 0; }
+.meta-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.pill { font-size: 12px; padding: 3px 9px; border-radius: 999px; background: var(--surface-2); color: var(--muted); }
+.conf { display: flex; align-items: center; gap: 8px; margin-top: 12px; font-size: 13px; color: var(--muted); }
+.conf-bar { flex: 1; height: 6px; background: var(--surface-2); border-radius: 999px; overflow: hidden; }
+.conf-fill { height: 100%; border-radius: 999px; }
+.glyph-row { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; scroll-snap-type: x mandatory; }
+.glyph-card { flex: 0 0 auto; min-width: 84px; scroll-snap-align: start; text-align: center; background: var(--bg); border: 1px solid var(--border); border-radius: 12px; padding: 8px 6px; }
+.glyph-card .glyph { font-size: 34px; line-height: 1.2; color: var(--lapis); min-height: 42px; }
+.glyph-card .ph { font-style: italic; font-weight: 600; }
+.glyph-card .gd { font-size: 11px; color: var(--muted); }
+.glyph-card .ds { font-size: 11px; color: var(--muted); max-width: 96px; margin: 2px auto 0; }
+.glyph-card.determinative { border-style: dashed; }
+.notes { font-size: 14px; color: var(--muted); white-space: pre-wrap; }
+.result-actions { display: flex; gap: 8px; margin-top: 16px; }
+.result-actions .btn { flex: 1; min-height: 40px; padding: 8px 12px; font-size: 14px; }
+.error { color: var(--bad); }
+.loading { display: flex; align-items: center; gap: 12px; color: var(--muted); }
+.spinner { font-family: var(--glyph-font); font-size: 32px; color: var(--accent); animation: pulse 1.2s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: .3; } }
+
+.history-item { display: grid; grid-template-columns: 64px 1fr; gap: 12px; align-items: center; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 8px; margin-bottom: 8px; cursor: pointer; width: 100%; text-align: left; color: var(--text); font: inherit; }
+.history-item img, .history-item .thumb-glyph { width: 64px; height: 64px; object-fit: cover; border-radius: 8px; background: var(--surface-2); display: grid; place-items: center; font-family: var(--glyph-font); font-size: 28px; }
+.history-item .t { font-weight: 600; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.history-item .d { font-size: 12px; color: var(--muted); }
+
+.foot { text-align: center; color: var(--muted); font-size: 12px; margin-top: 32px; }

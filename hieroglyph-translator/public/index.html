@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#1f1a14">
+  <title>Hieroglyph Translator</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Egyptian+Hieroglyphs&family=Inter:wght@400;500;600;700&family=Cormorant+Garamond:wght@600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <span class="brand-glyph" aria-hidden="true">𓂀</span>
+      <div>
+        <h1>Hieroglyph Translator</h1>
+        <p class="sub">Point your camera at ancient Egyptian text</p>
+      </div>
+    </div>
+    <span id="model-badge" class="badge" hidden></span>
+  </header>
+
+  <nav class="tabs" role="tablist">
+    <button role="tab" class="tab active" data-tab="scan" aria-selected="true">Scan</button>
+    <button role="tab" class="tab" data-tab="type" aria-selected="false">Type</button>
+    <button role="tab" class="tab" data-tab="signs" aria-selected="false">Signs</button>
+    <button role="tab" class="tab" data-tab="history" aria-selected="false">History</button>
+  </nav>
+
+  <main>
+    <!-- Scan -->
+    <section id="tab-scan" class="panel active" role="tabpanel">
+      <div id="viewer" class="viewer">
+        <video id="video" playsinline muted hidden></video>
+        <img id="preview" alt="Selected inscription" hidden>
+        <div id="viewer-empty" class="viewer-empty">
+          <div class="empty-glyphs" aria-hidden="true">𓋹 𓊽 𓌀</div>
+          <p>Take a photo of an inscription, stela, papyrus or museum label.</p>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button id="btn-camera" class="btn">Live camera</button>
+        <button id="btn-snap" class="btn primary" hidden>Capture</button>
+        <label class="btn">
+          Upload / take photo
+          <input id="file" type="file" accept="image/*" capture="environment" hidden>
+        </label>
+      </div>
+
+      <details class="hint">
+        <summary>Add context (optional)</summary>
+        <input id="hint" type="text" maxlength="500" placeholder="e.g. Karnak temple, tomb wall, Book of the Dead papyrus…">
+      </details>
+
+      <button id="btn-translate" class="btn primary wide" disabled>Translate</button>
+      <p class="tip">Tip: fill the frame, shoot straight on, avoid glare. Crop to one line or block for best results.</p>
+    </section>
+
+    <!-- Type -->
+    <section id="tab-type" class="panel" role="tabpanel" hidden>
+      <label for="text-input" class="label">Hieroglyphs, transliteration or Gardiner codes</label>
+      <textarea id="text-input" class="glyph-input" rows="3" placeholder="𓋹𓊽𓌀  ·  ꜥnḫ ḏd wꜣs  ·  S34 R11 S40"></textarea>
+      <div class="keyboard-head">
+        <span class="label">Tap signs to insert</span>
+        <button id="btn-clear" class="link">Clear</button>
+      </div>
+      <div id="keyboard" class="keyboard"></div>
+      <button id="btn-translate-text" class="btn primary wide">Translate</button>
+    </section>
+
+    <!-- Signs -->
+    <section id="tab-signs" class="panel" role="tabpanel" hidden>
+      <input id="sign-search" type="search" placeholder="Search: owl, life, m, G17…">
+      <div class="filters" id="sign-filters">
+        <button class="chip active" data-cat="all">All</button>
+        <button class="chip" data-cat="uniliteral">Alphabet</button>
+        <button class="chip" data-cat="word">Words</button>
+        <button class="chip" data-cat="determinative">Determinatives</button>
+      </div>
+      <div id="sign-list" class="sign-list"></div>
+    </section>
+
+    <!-- History -->
+    <section id="tab-history" class="panel" role="tabpanel" hidden>
+      <div id="history-list"></div>
+      <p id="history-empty" class="muted">Translations you make will show up here (stored only on this device).</p>
+    </section>
+
+    <!-- Result -->
+    <section id="result" class="result" hidden aria-live="polite"></section>
+  </main>
+
+  <footer class="foot">
+    AI readings can be wrong — treat them as a starting point, not scholarship.
+  </footer>
+
+  <canvas id="canvas" hidden></canvas>
+  <script src="signs.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

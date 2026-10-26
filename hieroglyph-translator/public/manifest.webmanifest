@@ -1,0 +1,9 @@
+{
+  "name": "Hieroglyph Translator",
+  "short_name": "Hieroglyphs",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#17130f",
+  "theme_color": "#1f1a14",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}
